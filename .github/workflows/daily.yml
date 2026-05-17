@@ -3,7 +3,7 @@ name: Daily Code Generator
 on:
   schedule:
     - cron: '0 6 * * *'   # 11:30 AM IST every day
-  workflow_dispatch:        # manual trigger from Actions tab
+  workflow_dispatch:
 
 jobs:
   generate:
@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Gemini SDK
-        run: pip install google-generativeai
+        run: pip install google-genai
 
       - name: Generate and write code
         env:
