@@ -1,7 +1,10 @@
-import os, random, datetime
+import os, random, datetime, time
 from google import genai
+from google.genai import errors
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+MODELS = ["gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
 
 TOPICS = [
     ("python",     "a Python utility function using stdlib — file parser, text processor, or formatter"),
@@ -18,23 +21,33 @@ TOPICS = [
 
 EXTENSIONS = {"python": "py", "java": "java", "javascript": "js", "cpp": "cpp"}
 
-def generate(lang, description):
-    prompt = f"""Write clean, production-quality {lang} code for: {description}
-Rules:
-- Single self-contained file, no external dependencies
-- Use proper types/type hints
-- 20-50 lines of code
-- Output ONLY the code, no markdown fences, no explanation"""
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt
+
+def generate(lang: str, description: str) -> str:
+    prompt = (
+        f"Write clean, production-quality {lang} code for: {description}\n"
+        "Rules:\n"
+        "- Single self-contained file, no external dependencies\n"
+        "- Use proper types/type hints\n"
+        "- 20-50 lines of code\n"
+        "- Output ONLY the code, no markdown fences, no explanation"
     )
-    code = response.text.strip()
-    if code.startswith("```"):
-        code = "\n".join(code.splitlines()[1:])
-    if code.endswith("```"):
-        code = "\n".join(code.splitlines()[:-1])
-    return code.strip()
+    last_err = None
+    for model in MODELS:
+        try:
+            response = client.models.generate_content(model=model, contents=prompt)
+            code = response.text.strip()
+            if code.startswith("```"):
+                code = "\n".join(code.splitlines()[1:])
+            if code.endswith("```"):
+                code = "\n".join(code.splitlines()[:-1])
+            print(f"Used model: {model}")
+            return code.strip()
+        except errors.ClientError as e:
+            print(f"Model {model} failed: {e.status_code} — trying next")
+            last_err = e
+            time.sleep(2)
+    raise RuntimeError(f"All models failed. Last error: {last_err}")
+
 
 lang, description = random.choice(TOPICS)
 today = datetime.date.today().isoformat()
