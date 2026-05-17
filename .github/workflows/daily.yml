@@ -2,7 +2,7 @@ name: Daily Code Generator
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # 11:30 AM IST every day
+    - cron: '30 3 * * *'   # 9:00 AM IST every day
   workflow_dispatch:
 
 jobs:
