@@ -1,8 +1,7 @@
 import os, random, datetime
-import google.generativeai as genai
+from google import genai
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-1.5-flash")
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 TOPICS = [
     ("python",     "a Python utility function using stdlib — file parser, text processor, or formatter"),
@@ -26,7 +25,11 @@ Rules:
 - Use proper types/type hints
 - 20-50 lines of code
 - Output ONLY the code, no markdown fences, no explanation"""
-    code = model.generate_content(prompt).text.strip()
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt
+    )
+    code = response.text.strip()
     if code.startswith("```"):
         code = "\n".join(code.splitlines()[1:])
     if code.endswith("```"):
