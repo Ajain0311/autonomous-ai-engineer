@@ -4,7 +4,7 @@ from google.genai import errors
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-MODELS = ["gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
+MODELS = ["gemini-2.0-flash-lite", "gemini-2.0-flash"]
 
 TOPICS = [
     ("python",     "a short Python utility function using only stdlib"),
@@ -44,13 +44,13 @@ def generate(lang: str, description: str) -> str:
                 print(f"  model={model} attempt={attempt} OK")
                 return clean(resp.text)
             except errors.ClientError as e:
-                if e.status_code == 429:
+                if e.code == 429:
                     wait = 60 * attempt
                     print(f"  model={model} rate-limited — waiting {wait}s...")
                     time.sleep(wait)
                     break
                 else:
-                    print(f"  model={model} error {e.status_code} — trying next model")
+                    print(f"  model={model} error {e.code} — trying next model")
     raise RuntimeError("All retries exhausted. Will succeed tomorrow when quota resets.")
 
 
