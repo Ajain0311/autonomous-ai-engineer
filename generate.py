@@ -21,6 +21,94 @@ TOPICS = [
 
 EXTENSIONS = {"python": "py", "java": "java", "javascript": "js", "cpp": "cpp"}
 
+FALLBACKS = {
+    "python": """\
+def is_palindrome(s: str) -> bool:
+    s = s.lower().replace(" ", "")
+    return s == s[::-1]
+
+def fibonacci(n: int) -> list:
+    a, b = 0, 1
+    result = []
+    for _ in range(n):
+        result.append(a)
+        a, b = b, a + b
+    return result
+
+def chunk_list(lst: list, size: int) -> list:
+    return [lst[i:i+size] for i in range(0, len(lst), size)]
+
+if __name__ == "__main__":
+    print(is_palindrome("racecar"))
+    print(fibonacci(10))
+    print(chunk_list(list(range(10)), 3))
+""",
+    "java": """\
+public class Utils {
+    public static int binarySearch(int[] arr, int target) {
+        int lo = 0, hi = arr.length - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            if (arr[mid] == target) return mid;
+            else if (arr[mid] < target) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return -1;
+    }
+
+    public static void bubbleSort(int[] arr) {
+        for (int i = 0; i < arr.length - 1; i++)
+            for (int j = 0; j < arr.length - 1 - i; j++)
+                if (arr[j] > arr[j+1]) {
+                    int tmp = arr[j]; arr[j] = arr[j+1]; arr[j+1] = tmp;
+                }
+    }
+}
+""",
+    "javascript": """\
+const groupBy = (arr, key) =>
+  arr.reduce((acc, item) => {
+    const group = item[key];
+    acc[group] = acc[group] || [];
+    acc[group].push(item);
+    return acc;
+  }, {});
+
+const flatten = (arr) => arr.reduce((acc, val) =>
+  Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []);
+
+const unique = (arr) => [...new Set(arr)];
+
+module.exports = { groupBy, flatten, unique };
+""",
+    "cpp": """\
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+bool isPrime(int n) {
+    if (n < 2) return false;
+    for (int i = 2; i * i <= n; i++)
+        if (n % i == 0) return false;
+    return true;
+}
+
+vector<int> sieve(int limit) {
+    vector<bool> is_prime(limit + 1, true);
+    is_prime[0] = is_prime[1] = false;
+    for (int i = 2; i * i <= limit; i++)
+        if (is_prime[i])
+            for (int j = i*i; j <= limit; j += i)
+                is_prime[j] = false;
+    vector<int> primes;
+    for (int i = 2; i <= limit; i++)
+        if (is_prime[i]) primes.push_back(i);
+    return primes;
+}
+""",
+}
+
 
 def clean(code: str) -> str:
     lines = code.strip().splitlines()
@@ -37,20 +125,25 @@ def generate(lang: str, description: str) -> str:
         "Rules: self-contained, no external libs, 15-30 lines, "
         "output ONLY the code with no explanation or markdown."
     )
-    for attempt in range(1, 4):
-        for model in MODELS:
+    for model in MODELS:
+        for attempt in range(1, 3):
             try:
                 resp = client.models.generate_content(model=model, contents=prompt)
                 print(f"  model={model} attempt={attempt} OK")
                 return clean(resp.text)
             except errors.ClientError as e:
                 if e.code == 429:
-                    wait = 30 * attempt
-                    print(f"  model={model} rate-limited — waiting {wait}s, trying next model...")
-                    time.sleep(wait)
+                    if attempt == 1:
+                        print(f"  model={model} rate-limited — waiting 65s for quota window to reset...")
+                        time.sleep(65)
+                    else:
+                        print(f"  model={model} still rate-limited — trying next model")
                 else:
                     print(f"  model={model} error {e.code} — trying next model")
-    raise RuntimeError("All retries exhausted. Will succeed tomorrow when quota resets.")
+                    break
+
+    print("  API quota exhausted — using offline fallback snippet")
+    return FALLBACKS[lang].strip()
 
 
 lang, description = random.choice(TOPICS)
