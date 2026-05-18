@@ -28,8 +28,7 @@ def clean(code: str) -> str:
         lines = lines[1:]
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
-    return "
-".join(lines).strip()
+   return "\n".join(lines).strip()
 
 
 def generate(lang: str, description: str) -> str:
