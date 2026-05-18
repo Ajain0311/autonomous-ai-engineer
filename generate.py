@@ -37,7 +37,7 @@ def generate(lang: str, description: str) -> str:
         "Rules: self-contained, no external libs, 15-30 lines, "
         "output ONLY the code with no explanation or markdown."
     )
-    for attempt in range(1, 7):
+    for attempt in range(1, 4):
         for model in MODELS:
             try:
                 resp = client.models.generate_content(model=model, contents=prompt)
@@ -45,10 +45,9 @@ def generate(lang: str, description: str) -> str:
                 return clean(resp.text)
             except errors.ClientError as e:
                 if e.code == 429:
-                    wait = 60 * attempt
-                    print(f"  model={model} rate-limited — waiting {wait}s...")
+                    wait = 30 * attempt
+                    print(f"  model={model} rate-limited — waiting {wait}s, trying next model...")
                     time.sleep(wait)
-                    break
                 else:
                     print(f"  model={model} error {e.code} — trying next model")
     raise RuntimeError("All retries exhausted. Will succeed tomorrow when quota resets.")
