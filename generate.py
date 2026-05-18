@@ -28,13 +28,12 @@ def clean(code: str) -> str:
         lines = lines[1:]
     if lines and lines[-1].strip() == "```":
         lines = lines[:-1]
-   return "\n".join(lines).strip()
+    return "\n".join(lines).strip()
 
 
 def generate(lang: str, description: str) -> str:
     prompt = (
-        f"Write a clean, concise {lang} snippet for: {description}.
-"
+        f"Write a clean, concise {lang} snippet for: {description}.\n"
         "Rules: self-contained, no external libs, 15-30 lines, "
         "output ONLY the code with no explanation or markdown."
     )
@@ -49,24 +48,23 @@ def generate(lang: str, description: str) -> str:
                     wait = 60 * attempt
                     print(f"  model={model} rate-limited — waiting {wait}s...")
                     time.sleep(wait)
-                    break          # retry same model after wait
+                    break
                 else:
                     print(f"  model={model} error {e.status_code} — trying next model")
     raise RuntimeError("All retries exhausted. Will succeed tomorrow when quota resets.")
 
 
 lang, description = random.choice(TOPICS)
-today  = datetime.date.today().isoformat()
-ext    = EXTENSIONS.get(lang, "txt")
-slug   = description.split()[2] if len(description.split()) > 2 else description.split()[0]
-path   = f"{lang}/{today}_{slug}.{ext}"
+today = datetime.date.today().isoformat()
+ext = EXTENSIONS.get(lang, "txt")
+slug = description.split()[2] if len(description.split()) > 2 else description.split()[0]
+path = f"{lang}/{today}_{slug}.{ext}"
 
 print(f"Generating {lang}: {description}")
 code = generate(lang, description)
 
 os.makedirs(lang, exist_ok=True)
 with open(path, "w", encoding="utf-8") as f:
-    f.write(code + "
-")
+    f.write(code + "\n")
 
 print(f"Written: {path}")
