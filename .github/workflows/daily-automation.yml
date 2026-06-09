@@ -59,6 +59,7 @@ jobs:
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash' }}
           FORCE_NEW_PROJECT: ${{ inputs.force_new_project || 'false' }}
           TASKS_PER_RUN: ${{ inputs.tasks_per_run || '1' }}
+          PYTHONPATH: ${{ github.workspace }}
         run: python automation/orchestrator.py
 
       - name: Commit updated state
