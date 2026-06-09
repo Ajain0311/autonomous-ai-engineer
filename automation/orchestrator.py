@@ -1,9 +1,12 @@
 """
-Main entry point for the daily automation run.
+Daily automation entry point.
 
-Flow:
+Runs TASKS_PER_RUN times per invocation (default 1).
+The workflow calls this 4× per day → 3-4 commits/day spread across IST hours.
+
+Flow per iteration:
   1. Load state.json
-  2. If no active project (or all tasks done) → pick a new idea via Gemini
+  2. If no active project (or all tasks done) → plan new project via Gemini
   3. Create GitHub repo + Netlify site for new projects
   4. Generate code for the next pending task with Gemini
   5. Commit files to the project repo
@@ -11,9 +14,9 @@ Flow:
 """
 
 import logging
+import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 from automation import config
 from automation.trend_finder import get_trending_topics
@@ -36,7 +39,8 @@ from automation.progress_tracker import (
 
 def _setup_logging() -> None:
     config.LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    log_file = config.LOGS_DIR / f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.log"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    log_file = config.LOGS_DIR / f"run_{stamp}.log"
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -48,22 +52,19 @@ def _setup_logging() -> None:
 
 
 def _start_new_project(state: dict, github: GitHubManager) -> dict:
-    """Find a trending idea, plan it, create the repo, and wire up Netlify."""
     logger = logging.getLogger(__name__)
 
     logger.info("Fetching trending topics…")
     trending = get_trending_topics()
 
     logger.info("Planning new project with Gemini…")
-    done_names = get_completed_project_names(state)
-    plan = plan_new_project(trending, done_names)
+    plan = plan_new_project(trending, get_completed_project_names(state))
 
     state = set_new_project(state, plan)
     project = get_current_project(state)
 
     logger.info("Creating GitHub repo: %s", project["name"])
-    repo_url = github.create_repo(project["name"], project["description"])
-    project["github_url"] = repo_url
+    project["github_url"] = github.create_repo(project["name"], project["description"])
 
     if config.NETLIFY_TOKEN:
         netlify = NetlifyManager()
@@ -81,58 +82,53 @@ def _start_new_project(state: dict, github: GitHubManager) -> dict:
     return state
 
 
-def run() -> None:
-    _setup_logging()
-    logger = logging.getLogger(__name__)
-    logger.info("=== Daily Code Automation — %s ===", datetime.now(timezone.utc).date())
-
-    config.validate()
-
-    state = load_state()
-    github = GitHubManager()
+def _run_one_task(state: dict, github: GitHubManager, logger: logging.Logger) -> dict:
+    """Generate and commit code for the next pending task. Returns updated state."""
     project = get_current_project(state)
 
-    # Archive completed project before starting fresh
-    if project and is_project_complete(state):
-        logger.info("Project '%s' fully complete.", project["name"])
+    # Archive a fully-complete project, then start fresh
+    if is_project_complete(state):
+        logger.info("Project '%s' is fully complete — archiving.", project["name"])
         if config.NETLIFY_TOKEN and project.get("netlify_site_id"):
             try:
-                netlify = NetlifyManager()
-                deploy = netlify.get_deploy_status(project["netlify_site_id"])
+                deploy = NetlifyManager().get_deploy_status(project["netlify_site_id"])
                 if deploy["state"] == "ready":
                     state = complete_current_project(
-                        state, deploy["url"], project["github_url"] or ""
+                        state, deploy["url"], project.get("github_url", "")
                     )
                     save_state(state)
             except Exception as exc:
-                logger.warning("Could not fetch Netlify deploy status: %s", exc)
-        project = None
+                logger.warning("Could not check Netlify deploy: %s", exc)
+        state = _start_new_project(state, github)
 
-    if not project:
+    elif not project:
         state = _start_new_project(state, github)
 
     project = get_current_project(state)
     task = get_next_task(state)
 
     if not task:
-        logger.info("No pending tasks — nothing to do today.")
-        return
+        logger.info("No pending tasks — nothing to commit this iteration.")
+        return state
 
-    logger.info("Task [%d/%d]: %s", task["id"], len(project["tasks"]), task["name"])
-
-    done_tasks = get_completed_tasks(state)
+    total = len(project["tasks"])
+    done_count = sum(1 for t in project["tasks"] if t.get("status") == "done")
+    logger.info(
+        "Task [%d/%d]: %s  (project: %s)",
+        done_count + 1, total, task["name"], project["name"],
+    )
 
     logger.info("Generating code with Gemini…")
-    impl = generate_task_code(project, task, done_tasks)
+    impl = generate_task_code(project, task, get_completed_tasks(state))
 
     files: dict = impl.get("file_contents", {})
     commit_msg: str = impl.get("commit_message") or f"feat: {task['name']}"
 
     if not files:
-        logger.warning("Gemini returned no files for this task — skipping commit.")
-        return
+        logger.warning("Gemini returned no files — skipping commit.")
+        return state
 
-    logger.info("Committing %d file(s) to %s…", len(files), project["name"])
+    logger.info("Committing %d file(s) → %s", len(files), project["name"])
     sha = github.commit_files(
         repo_name=project["name"],
         files=files,
@@ -142,13 +138,32 @@ def run() -> None:
     state = mark_task_done(state, task["id"], sha)
     save_state(state)
 
-    remaining = sum(1 for t in project["tasks"] if t.get("status") == "pending") - 1
+    remaining = sum(1 for t in project["tasks"] if t.get("status") == "pending")
+    logger.info("Commit %s done | %d task(s) remaining", sha[:7], remaining)
+    return state
+
+
+def run() -> None:
+    _setup_logging()
+    logger = logging.getLogger(__name__)
+
+    tasks_per_run = int(os.environ.get("TASKS_PER_RUN", "1"))
+    now = datetime.now(timezone.utc)
     logger.info(
-        "Done. Commit %s | %d task(s) remaining in '%s'",
-        sha[:7],
-        max(remaining, 0),
-        project["name"],
+        "=== Daily Code Automation — %s UTC | tasks_per_run=%d ===",
+        now.strftime("%Y-%m-%d %H:%M"),
+        tasks_per_run,
     )
+
+    config.validate()
+    github = GitHubManager()
+    state = load_state()
+
+    for i in range(tasks_per_run):
+        if tasks_per_run > 1:
+            logger.info("--- Iteration %d/%d ---", i + 1, tasks_per_run)
+        state = _run_one_task(state, github, logger)
+
     logger.info("=== Run complete ===")
 
 

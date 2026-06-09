@@ -2,8 +2,16 @@ name: Daily Code Generation
 
 on:
   schedule:
-    # 09:00 UTC every day
-    - cron: '0 9 * * *'
+    #  4 runs/day — spread across IST working hours
+    #  Run 1: 04:00 UTC = 09:30 IST
+    - cron: '0 4 * * *'
+    #  Run 2: 08:00 UTC = 13:30 IST
+    - cron: '0 8 * * *'
+    #  Run 3: 12:00 UTC = 17:30 IST
+    - cron: '0 12 * * *'
+    #  Run 4: 16:00 UTC = 21:30 IST
+    - cron: '0 16 * * *'
+
   workflow_dispatch:
     inputs:
       force_new_project:
@@ -11,6 +19,11 @@ on:
         required: false
         default: 'false'
         type: boolean
+      tasks_per_run:
+        description: 'How many tasks to commit this run (default: 1)'
+        required: false
+        default: '1'
+        type: string
 
 permissions:
   contents: write
@@ -25,7 +38,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Use PAT so the bot can push state.json back to this repo
           token: ${{ secrets.GH_PAT }}
           fetch-depth: 1
 
@@ -37,7 +49,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        # google-genai is included in requirements.txt
 
       - name: Run automation
         env:
@@ -45,8 +56,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           GITHUB_USERNAME: ${{ vars.GH_USERNAME }}
           NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-1.5-pro' }}
-          FORCE_NEW_PROJECT: ${{ inputs.force_new_project }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash' }}
+          FORCE_NEW_PROJECT: ${{ inputs.force_new_project || 'false' }}
+          TASKS_PER_RUN: ${{ inputs.tasks_per_run || '1' }}
         run: python automation/orchestrator.py
 
       - name: Commit updated state
@@ -55,5 +67,5 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add automation/state.json automation/logs/ || true
           git diff --staged --quiet || \
-            git commit -m "chore(state): update automation state $(date -u +%Y-%m-%d)"
+            git commit -m "chore(state): sync state $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
