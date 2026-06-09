@@ -106,12 +106,26 @@ Return ONLY the JSON — no markdown fences, no commentary.
 """
 
 
+_FALLBACK_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro",
+]
+
+# Seconds to wait after each consecutive 429, per model
+_BACKOFF = [90, 120]
+
+
 def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
-    """Call Gemini with retry on rate limit. Returns parsed JSON."""
-    models = [config.GEMINI_MODEL, "gemini-2.0-flash-lite"]
+    """Call Gemini with exponential backoff across multiple model fallbacks."""
+    # Build model list: configured model first, then the rest (deduped)
+    primary = config.GEMINI_MODEL
+    models = [primary] + [m for m in _FALLBACK_MODELS if m != primary]
 
     for model in models:
-        for attempt in range(1, 3):
+        for attempt, wait in enumerate(_BACKOFF, start=1):
             try:
                 response = _client.models.generate_content(
                     model=model,
@@ -122,26 +136,33 @@ def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
                         max_output_tokens=8192,
                     ),
                 )
-                text = response.text
-                logger.debug("Gemini OK (model=%s attempt=%d)", model, attempt)
-                return _parse_json(text)
+                logger.info("Gemini OK (model=%s attempt=%d)", model, attempt)
+                return _parse_json(response.text)
 
             except errors.ClientError as exc:
                 if exc.code == 429:
-                    if attempt == 1:
-                        logger.warning("Rate limited — waiting 65s before retry")
-                        time.sleep(65)
-                    else:
-                        logger.warning("Still rate limited — trying next model")
-                        break
+                    logger.warning(
+                        "Rate limited on %s (attempt %d) — waiting %ds",
+                        model, attempt, wait,
+                    )
+                    time.sleep(wait)
                 else:
-                    logger.warning("Gemini error %s — trying next model", exc.code)
-                    break
+                    logger.warning(
+                        "Gemini %s error %s — skipping to next model",
+                        model, exc.code,
+                    )
+                    break  # non-429 error: skip to next model immediately
             except Exception as exc:
-                logger.error("Unexpected Gemini error: %s", exc)
+                logger.error("Unexpected Gemini error on %s: %s", model, exc)
                 raise
+        else:
+            # Exhausted all retries for this model
+            logger.warning("All retries exhausted for %s — trying next model", model)
 
-    raise RuntimeError("All Gemini models exhausted without a successful response")
+    raise RuntimeError(
+        "All Gemini models rate-limited or unavailable. "
+        "Free-tier quota may be exhausted for today."
+    )
 
 
 def _parse_json(text: str) -> Dict[str, Any]:
