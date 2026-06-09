@@ -1,0 +1,59 @@
+name: Daily Code Generation
+
+on:
+  schedule:
+    # 09:00 UTC every day
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      force_new_project:
+        description: 'Ignore current project and start a new one'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    name: Generate & Commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Use PAT so the bot can push state.json back to this repo
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        # google-genai is included in requirements.txt
+
+      - name: Run automation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_USERNAME: ${{ vars.GH_USERNAME }}
+          NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-1.5-pro' }}
+          FORCE_NEW_PROJECT: ${{ inputs.force_new_project }}
+        run: python automation/orchestrator.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name  "Daily Code Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add automation/state.json automation/logs/ || true
+          git diff --staged --quiet || \
+            git commit -m "chore(state): update automation state $(date -u +%Y-%m-%d)"
+          git push

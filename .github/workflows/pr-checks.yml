@@ -1,0 +1,53 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate-state:
+    name: Validate state.json
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check state.json is valid JSON
+        run: |
+          python - <<'EOF'
+          import json, sys, pathlib
+
+          p = pathlib.Path("automation/state.json")
+          if not p.exists():
+              print("state.json does not exist yet — OK for new repo")
+              sys.exit(0)
+
+          with open(p) as f:
+              state = json.load(f)
+
+          project = state.get("current_project")
+          completed = state.get("completed_projects", [])
+
+          print(f"state.json is valid JSON")
+          print(f"  current project : {project['name'] if project else 'none'}")
+          print(f"  completed       : {len(completed)}")
+          print(f"  total commits   : {state.get('total_commits', 0)}")
+          EOF
+
+  lint-python:
+    name: Lint automation scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install linting tools
+        run: pip install ruff
+
+      - name: Ruff lint
+        run: ruff check automation/
