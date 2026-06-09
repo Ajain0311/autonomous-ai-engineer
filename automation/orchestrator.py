@@ -88,20 +88,18 @@ def _run_one_task(state: dict, github: GitHubManager, logger: logging.Logger) ->
 
     # Archive a fully-complete project, then start fresh
     if is_project_complete(state):
-        logger.info("Project '%s' is fully complete — archiving.", project["name"])
-        if config.NETLIFY_TOKEN and project.get("netlify_site_id"):
-            try:
-                deploy = NetlifyManager().get_deploy_status(project["netlify_site_id"])
-                if deploy["state"] == "ready":
-                    state = complete_current_project(
-                        state, deploy["url"], project.get("github_url", "")
-                    )
-                    save_state(state)
-            except Exception as exc:
-                logger.warning("Could not check Netlify deploy: %s", exc)
-        state = _start_new_project(state, github)
-
-    elif not project:
+        if project:
+            logger.info("Project '%s' is fully complete — archiving.", project["name"])
+            if config.NETLIFY_TOKEN and project.get("netlify_site_id"):
+                try:
+                    deploy = NetlifyManager().get_deploy_status(project["netlify_site_id"])
+                    if deploy["state"] == "ready":
+                        state = complete_current_project(
+                            state, deploy["url"], project.get("github_url", "")
+                        )
+                        save_state(state)
+                except Exception as exc:
+                    logger.warning("Could not check Netlify deploy: %s", exc)
         state = _start_new_project(state, github)
 
     project = get_current_project(state)
