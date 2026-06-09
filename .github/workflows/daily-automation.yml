@@ -2,14 +2,17 @@ name: Daily Code Generation
 
 on:
   schedule:
-    #  2 runs/day — keeps us well within Gemini free-tier rate limits.
-    #  Each run commits 1 task (TASKS_PER_RUN=1) → 2 commits/day baseline.
-    #  Use workflow_dispatch with tasks_per_run=2 to get 4 commits on demand.
+    #  4 runs/day — 4 API keys in rotation means 4× quota headroom.
+    #  Each run commits 1 task → 4 commits/day spread across IST hours.
     #
-    #  Run 1: 04:30 UTC = 10:00 IST
-    - cron: '30 4 * * *'
-    #  Run 2: 13:30 UTC = 19:00 IST
-    - cron: '30 13 * * *'
+    #  Run 1: 03:30 UTC = 09:00 IST
+    - cron: '30 3 * * *'
+    #  Run 2: 07:30 UTC = 13:00 IST
+    - cron: '30 7 * * *'
+    #  Run 3: 11:30 UTC = 17:00 IST
+    - cron: '30 11 * * *'
+    #  Run 4: 15:30 UTC = 21:00 IST
+    - cron: '30 15 * * *'
 
   workflow_dispatch:
     inputs:
