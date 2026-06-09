@@ -13,7 +13,10 @@ from automation import config
 
 logger = logging.getLogger(__name__)
 
-_client = genai.Client(api_key=config.GEMINI_API_KEY)
+# One client per API key — built at import time from the key list in config
+_clients: list[genai.Client] = [
+    genai.Client(api_key=key) for key in config.GEMINI_API_KEYS
+]
 
 _PLAN_PROMPT = """\
 You are a senior software architect. Based on these trending topics, design a compelling web app.
@@ -114,20 +117,32 @@ _FALLBACK_MODELS = [
     "gemini-1.5-pro",
 ]
 
-# Seconds to wait after each consecutive 429, per model
-_BACKOFF = [90, 120]
+# Seconds to wait only after ALL keys are exhausted for a given model
+_ALL_KEYS_WAIT = 90
 
 
 def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
-    """Call Gemini with exponential backoff across multiple model fallbacks."""
-    # Build model list: configured model first, then the rest (deduped)
+    """
+    Rotate through every API key for each model.
+
+    Priority order:
+      key[0] + model[0]  →  key[1] + model[0]  →  … (all keys, same model)
+      → wait 90s if every key is rate-limited for this model
+      → key[0] + model[1]  →  key[1] + model[1]  →  …
+      → …
+
+    Switching keys is instant (no sleep). Sleep only when every key
+    is exhausted for the current model before trying the next model.
+    """
     primary = config.GEMINI_MODEL
     models = [primary] + [m for m in _FALLBACK_MODELS if m != primary]
 
     for model in models:
-        for attempt, wait in enumerate(_BACKOFF, start=1):
+        all_keys_limited = True  # assume worst; clear on any non-429 attempt
+
+        for key_idx, client in enumerate(_clients):
             try:
-                response = _client.models.generate_content(
+                response = client.models.generate_content(
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
@@ -136,32 +151,39 @@ def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
                         max_output_tokens=8192,
                     ),
                 )
-                logger.info("Gemini OK (model=%s attempt=%d)", model, attempt)
+                logger.info("Gemini OK — key[%d] model=%s", key_idx, model)
                 return _parse_json(response.text)
 
             except errors.ClientError as exc:
                 if exc.code == 429:
                     logger.warning(
-                        "Rate limited on %s (attempt %d) — waiting %ds",
-                        model, attempt, wait,
+                        "key[%d] rate-limited on %s — trying next key",
+                        key_idx, model,
                     )
-                    time.sleep(wait)
+                    # all_keys_limited stays True; keep looping keys
                 else:
                     logger.warning(
-                        "Gemini %s error %s — skipping to next model",
-                        model, exc.code,
+                        "key[%d] error %s on %s — skipping model",
+                        key_idx, exc.code, model,
                     )
-                    break  # non-429 error: skip to next model immediately
+                    all_keys_limited = False  # non-quota error; no point waiting
+                    break
             except Exception as exc:
-                logger.error("Unexpected Gemini error on %s: %s", model, exc)
+                logger.error("Unexpected error on key[%d] %s: %s", key_idx, model, exc)
                 raise
+
         else:
-            # Exhausted all retries for this model
-            logger.warning("All retries exhausted for %s — trying next model", model)
+            # Exhausted every key for this model
+            if all_keys_limited:
+                logger.warning(
+                    "All %d key(s) rate-limited on %s — waiting %ds before next model",
+                    len(_clients), model, _ALL_KEYS_WAIT,
+                )
+                time.sleep(_ALL_KEYS_WAIT)
 
     raise RuntimeError(
-        "All Gemini models rate-limited or unavailable. "
-        "Free-tier quota may be exhausted for today."
+        f"All {len(_clients)} API key(s) and {len(models)} model(s) exhausted. "
+        "Daily free-tier quota may be fully consumed."
     )
 
 

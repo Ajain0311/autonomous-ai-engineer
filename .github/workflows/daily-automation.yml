@@ -51,6 +51,7 @@ jobs:
 
       - name: Run automation
         env:
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           GITHUB_USERNAME: ${{ vars.GH_USERNAME }}
