@@ -4,12 +4,12 @@ import json
 import logging
 import re
 import time
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List
 
 from google import genai
 from google.genai import errors, types
 
-from automation import config
+from automation import config, quota_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 _clients: list[genai.Client] = [
     genai.Client(api_key=key) for key in config.GEMINI_API_KEYS
 ]
-
-# Keys permanently excluded this session due to 401/403 responses
-_dead_keys: Set[int] = set()
 
 _PLAN_PROMPT = """\
 You are a senior software architect. Based on these trending topics, design a compelling web app.
@@ -107,10 +104,7 @@ Return ONLY valid JSON:
   "npm_packages": ["package@version"],
   "commit_message": "feat(scope): what was built"
 }}
-
-Return ONLY the JSON — no markdown fences, no commentary.
 """
-
 
 _FALLBACK_MODELS = [
     "gemini-2.0-flash",
@@ -121,44 +115,62 @@ _FALLBACK_MODELS = [
     "gemini-1.5-pro",
 ]
 
-# Exponential backoff: start at 60s, cap at 300s
 _BACKOFF_BASE = 60
 _BACKOFF_MAX = 300
 
 
 def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
     """
-    Rotate through every active API key for each model.
+    Rotate through available API keys for each available model.
 
-    Error semantics:
-    - 429: key rate-limited on this model — try next key (same model)
-    - 401/403: key permanently invalid — mark dead, skip for ALL future calls
-    - 404: model does not exist — skip this model immediately
-    - other: unexpected error — skip this model
-
-    After all active (non-dead) keys return 429 for a model, wait with
-    exponential backoff before trying the next model.
+    Intelligence layered in:
+    - quota_tracker.available_models(): skips 404-cached models (persisted 7d)
+    - quota_tracker.active_keys(): skips RPD-exhausted and dead keys; LRU-orders
+      remaining keys so quota load is spread evenly across keys
+    - quota_tracker.mark_key_rate_limited(): distinguishes RPD from RPM via error
+      message parsing, falling back to model-count heuristic
+    - Early exit when all keys are RPD-exhausted: no point trying models
+    - Exponential backoff only when all active keys are rate-limited on a model
     """
     if not _clients:
         raise RuntimeError("No Gemini API keys configured.")
 
     primary = config.GEMINI_MODEL
-    models = [primary] + [m for m in _FALLBACK_MODELS if m != primary]
+    all_models = [primary] + [m for m in _FALLBACK_MODELS if m != primary]
+    models = quota_tracker.available_models(all_models)
+
+    if not models:
+        raise RuntimeError(
+            "No models available — all are 404-cached as unavailable. "
+            "Check model names or wait for quota_tracker to re-check in 7 days."
+        )
+
+    if quota_tracker.all_rpd_exhausted(len(_clients)):
+        raise RuntimeError(
+            "All API keys have hit today's daily quota (RPD). "
+            "Quota resets at midnight UTC."
+        )
+
+    skipped = len(all_models) - len(models)
+    if skipped:
+        logger.info("Skipping %d 404-cached model(s) from quota state", skipped)
 
     backoff = _BACKOFF_BASE
 
     for model in models:
-        active_keys = [i for i in range(len(_clients)) if i not in _dead_keys]
-        if not active_keys:
-            raise RuntimeError(
-                "All API keys are invalid or unauthorized (401/403). "
-                "Check that your GEMINI_API_KEYS secrets are correct."
-            )
+        active = quota_tracker.active_keys(len(_clients))
+        if not active:
+            if quota_tracker.all_rpd_exhausted(len(_clients)):
+                raise RuntimeError(
+                    "All API keys have hit today's daily quota (RPD). "
+                    "Quota resets at midnight UTC."
+                )
+            raise RuntimeError("No API keys available (all dead or exhausted).")
 
         skip_model = False
-        rate_limited_keys: List[int] = []
+        all_rate_limited = True  # proven False on any non-429 error
 
-        for key_idx in active_keys:
+        for key_idx in active:
             try:
                 response = _clients[key_idx].models.generate_content(
                     model=model,
@@ -170,32 +182,36 @@ def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
                     ),
                 )
                 logger.info("Gemini OK — key[%d] model=%s", key_idx, model)
+                quota_tracker.mark_key_success(key_idx)
                 return _parse_json(response.text)
 
             except errors.ClientError as exc:
                 if exc.code == 429:
                     logger.warning(
-                        "key[%d] rate-limited (429) on %s — trying next key",
-                        key_idx, model,
+                        "key[%d] rate-limited (429) on %s", key_idx, model
                     )
-                    rate_limited_keys.append(key_idx)
+                    quota_tracker.mark_key_rate_limited(key_idx, exc)
                 elif exc.code in (401, 403):
                     logger.warning(
-                        "key[%d] unauthorized (%s) — excluding for this session",
+                        "key[%d] unauthorized (%s) — dead for this session",
                         key_idx, exc.code,
                     )
-                    _dead_keys.add(key_idx)
-                    # Do NOT break — remaining keys for this model are still valid
+                    quota_tracker.mark_key_dead(key_idx)
+                    all_rate_limited = False
                 elif exc.code == 404:
-                    logger.warning("model %s not found (404) — skipping", model)
+                    logger.warning(
+                        "model %s not found (404) — caching as unavailable", model
+                    )
+                    quota_tracker.mark_model_unavailable(model)
                     skip_model = True
+                    all_rate_limited = False
                     break
                 else:
                     logger.warning(
-                        "key[%d] error %s on %s — skipping model",
-                        key_idx, exc.code, model,
+                        "key[%d] error %s on %s — skipping model", key_idx, exc.code, model
                     )
                     skip_model = True
+                    all_rate_limited = False
                     break
             except Exception as exc:
                 logger.error("Unexpected error on key[%d] %s: %s", key_idx, model, exc)
@@ -204,15 +220,16 @@ def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
         if skip_model:
             continue
 
-        # Re-check active keys after any 401/403 discoveries above
-        still_active = [i for i in active_keys if i not in _dead_keys]
+        still_active = quota_tracker.active_keys(len(_clients))
         if not still_active:
-            raise RuntimeError(
-                "All API keys are invalid or unauthorized (401/403). "
-                "Check that your GEMINI_API_KEYS secrets are correct."
-            )
+            if quota_tracker.all_rpd_exhausted(len(_clients)):
+                raise RuntimeError(
+                    "All API keys have hit today's daily quota (RPD). "
+                    "Quota resets at midnight UTC."
+                )
+            raise RuntimeError("No API keys available (all dead or exhausted).")
 
-        if len(rate_limited_keys) == len(still_active):
+        if all_rate_limited:
             logger.warning(
                 "All %d active key(s) rate-limited on %s — waiting %ds before next model",
                 len(still_active), model, backoff,
@@ -220,12 +237,11 @@ def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
             time.sleep(backoff)
             backoff = min(backoff * 2, _BACKOFF_MAX)
 
-    total_keys = len(_clients)
-    active_final = total_keys - len(_dead_keys)
+    total = len(_clients)
+    active_count = len(quota_tracker.active_keys(total))
     raise RuntimeError(
-        f"All {total_keys} API key(s) ({active_final} active) and "
-        f"{len(models)} model(s) exhausted. "
-        "Daily free-tier quota may be fully consumed."
+        f"All {total} API key(s) ({active_count} currently active) and "
+        f"{len(models)} model(s) exhausted. Daily free-tier quota may be fully consumed."
     )
 
 
