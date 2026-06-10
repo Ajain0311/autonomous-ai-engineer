@@ -58,7 +58,11 @@ def _start_new_project(state: dict, github: GitHubManager) -> dict:
     trending = get_trending_topics()
 
     logger.info("Planning new project with Gemini…")
-    plan = plan_new_project(trending, get_completed_project_names(state))
+    try:
+        plan = plan_new_project(trending, get_completed_project_names(state))
+    except RuntimeError as exc:
+        logger.error("Cannot plan new project — Gemini unavailable: %s", exc)
+        return state
 
     state = set_new_project(state, plan)
     project = get_current_project(state)
@@ -117,7 +121,11 @@ def _run_one_task(state: dict, github: GitHubManager, logger: logging.Logger) ->
     )
 
     logger.info("Generating code with Gemini…")
-    impl = generate_task_code(project, task, get_completed_tasks(state))
+    try:
+        impl = generate_task_code(project, task, get_completed_tasks(state))
+    except RuntimeError as exc:
+        logger.error("Gemini quota exhausted — skipping task this run: %s", exc)
+        return state
 
     files: dict = impl.get("file_contents", {})
     commit_msg: str = impl.get("commit_message") or f"feat: {task['name']}"

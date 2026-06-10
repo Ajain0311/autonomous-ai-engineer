@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 ROOT_DIR = Path(__file__).parent.parent
 
 # Multiple Gemini API keys — comma-separated in GEMINI_API_KEYS env var.
@@ -32,4 +34,10 @@ def validate() -> None:
     if missing:
         raise EnvironmentError(
             f"Missing required environment variables: {', '.join(missing)}"
+        )
+    logger.info("Loaded %d Gemini API key(s)", len(GEMINI_API_KEYS))
+    if len(GEMINI_API_KEYS) < 2:
+        logger.warning(
+            "Only 1 Gemini API key configured — consider adding more keys "
+            "to GEMINI_API_KEYS for better quota coverage across 4 daily runs."
         )

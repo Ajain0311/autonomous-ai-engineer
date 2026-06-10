@@ -4,7 +4,7 @@ import json
 import logging
 import re
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from google import genai
 from google.genai import errors, types
@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 _clients: list[genai.Client] = [
     genai.Client(api_key=key) for key in config.GEMINI_API_KEYS
 ]
+
+# Keys permanently excluded this session due to 401/403 responses
+_dead_keys: Set[int] = set()
 
 _PLAN_PROMPT = """\
 You are a senior software architect. Based on these trending topics, design a compelling web app.
@@ -111,38 +114,53 @@ Return ONLY the JSON — no markdown fences, no commentary.
 
 _FALLBACK_MODELS = [
     "gemini-2.0-flash",
+    "gemini-2.5-flash",
     "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
     "gemini-1.5-flash-8b",
     "gemini-1.5-pro",
 ]
 
-# Seconds to wait only after ALL keys are exhausted for a given model
-_ALL_KEYS_WAIT = 90
+# Exponential backoff: start at 60s, cap at 300s
+_BACKOFF_BASE = 60
+_BACKOFF_MAX = 300
 
 
 def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
     """
-    Rotate through every API key for each model.
+    Rotate through every active API key for each model.
 
-    Priority order:
-      key[0] + model[0]  →  key[1] + model[0]  →  … (all keys, same model)
-      → wait 90s if every key is rate-limited for this model
-      → key[0] + model[1]  →  key[1] + model[1]  →  …
-      → …
+    Error semantics:
+    - 429: key rate-limited on this model — try next key (same model)
+    - 401/403: key permanently invalid — mark dead, skip for ALL future calls
+    - 404: model does not exist — skip this model immediately
+    - other: unexpected error — skip this model
 
-    Switching keys is instant (no sleep). Sleep only when every key
-    is exhausted for the current model before trying the next model.
+    After all active (non-dead) keys return 429 for a model, wait with
+    exponential backoff before trying the next model.
     """
+    if not _clients:
+        raise RuntimeError("No Gemini API keys configured.")
+
     primary = config.GEMINI_MODEL
     models = [primary] + [m for m in _FALLBACK_MODELS if m != primary]
 
-    for model in models:
-        all_keys_limited = True  # assume worst; clear on any non-429 attempt
+    backoff = _BACKOFF_BASE
 
-        for key_idx, client in enumerate(_clients):
+    for model in models:
+        active_keys = [i for i in range(len(_clients)) if i not in _dead_keys]
+        if not active_keys:
+            raise RuntimeError(
+                "All API keys are invalid or unauthorized (401/403). "
+                "Check that your GEMINI_API_KEYS secrets are correct."
+            )
+
+        skip_model = False
+        rate_limited_keys: List[int] = []
+
+        for key_idx in active_keys:
             try:
-                response = client.models.generate_content(
+                response = _clients[key_idx].models.generate_content(
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
@@ -157,32 +175,56 @@ def _call_gemini(prompt: str, temperature: float) -> Dict[str, Any]:
             except errors.ClientError as exc:
                 if exc.code == 429:
                     logger.warning(
-                        "key[%d] rate-limited on %s — trying next key",
+                        "key[%d] rate-limited (429) on %s — trying next key",
                         key_idx, model,
                     )
-                    # all_keys_limited stays True; keep looping keys
+                    rate_limited_keys.append(key_idx)
+                elif exc.code in (401, 403):
+                    logger.warning(
+                        "key[%d] unauthorized (%s) — excluding for this session",
+                        key_idx, exc.code,
+                    )
+                    _dead_keys.add(key_idx)
+                    # Do NOT break — remaining keys for this model are still valid
+                elif exc.code == 404:
+                    logger.warning("model %s not found (404) — skipping", model)
+                    skip_model = True
+                    break
                 else:
                     logger.warning(
                         "key[%d] error %s on %s — skipping model",
                         key_idx, exc.code, model,
                     )
-                    all_keys_limited = False  # non-quota error; no point waiting
+                    skip_model = True
                     break
             except Exception as exc:
                 logger.error("Unexpected error on key[%d] %s: %s", key_idx, model, exc)
                 raise
 
-        else:
-            # Exhausted every key for this model
-            if all_keys_limited:
-                logger.warning(
-                    "All %d key(s) rate-limited on %s — waiting %ds before next model",
-                    len(_clients), model, _ALL_KEYS_WAIT,
-                )
-                time.sleep(_ALL_KEYS_WAIT)
+        if skip_model:
+            continue
 
+        # Re-check active keys after any 401/403 discoveries above
+        still_active = [i for i in active_keys if i not in _dead_keys]
+        if not still_active:
+            raise RuntimeError(
+                "All API keys are invalid or unauthorized (401/403). "
+                "Check that your GEMINI_API_KEYS secrets are correct."
+            )
+
+        if len(rate_limited_keys) == len(still_active):
+            logger.warning(
+                "All %d active key(s) rate-limited on %s — waiting %ds before next model",
+                len(still_active), model, backoff,
+            )
+            time.sleep(backoff)
+            backoff = min(backoff * 2, _BACKOFF_MAX)
+
+    total_keys = len(_clients)
+    active_final = total_keys - len(_dead_keys)
     raise RuntimeError(
-        f"All {len(_clients)} API key(s) and {len(models)} model(s) exhausted. "
+        f"All {total_keys} API key(s) ({active_final} active) and "
+        f"{len(models)} model(s) exhausted. "
         "Daily free-tier quota may be fully consumed."
     )
 
