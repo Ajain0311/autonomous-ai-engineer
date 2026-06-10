@@ -1,0 +1,335 @@
+{
+  "current_project": {
+    "name": "agent-craft-ai-skill-hub",
+    "title": "AgentCraft: AI Skill Hub",
+    "description": "A collaborative web platform for crafting, organizing, and sharing AI agent skills, prompts, and complex agentic workflows. It empowers teams to build a structured knowledge base of effective AI interactions, fostering reusability and accelerating agent development.",
+    "category": "productivity",
+    "features": [
+      "Create and manage AI 'skills' (prompts, agent configurations, code snippets)",
+      "Tagging and categorization for easy discovery",
+      "Version control for skill iterations (conceptual)",
+      "Public/private sharing options (conceptual)",
+      "Search and filter capabilities",
+      "Markdown-based skill descriptions and previews",
+      "User profiles and basic collaboration spaces"
+    ],
+    "tech_stack": {
+      "framework": "React 18",
+      "language": "TypeScript",
+      "bundler": "Vite",
+      "styling": "Tailwind CSS",
+      "state": "Zustand",
+      "routing": "React Router v6",
+      "testing": "Vitest + React Testing Library",
+      "extras": [
+        "lucide-react",
+        "date-fns",
+        "react-markdown",
+        "react-hot-toast"
+      ]
+    },
+    "tasks": [
+      {
+        "id": 1,
+        "name": "Project Setup & Base Styling",
+        "description": "Scaffold Vite+React+TS project, configure Tailwind CSS, ESLint, Prettier, Vitest, and Netlify deployment. Set up base `App.tsx` and global `index.css`.",
+        "files": [
+          "package.json",
+          "vite.config.ts",
+          "tsconfig.json",
+          "index.html",
+          "tailwind.config.js",
+          "postcss.config.js",
+          ".eslintrc.cjs",
+          ".prettierrc",
+          "src/main.tsx",
+          "src/App.tsx",
+          "src/index.css",
+          "netlify.toml",
+          "src/test/setup.ts"
+        ],
+        "type": "setup",
+        "status": "pending"
+      },
+      {
+        "id": 2,
+        "name": "Core Layout & Navigation",
+        "description": "Implement a responsive web layout including a header, sidebar, and main content area. Set up React Router v6 for key routes: Home, Skills List, Skill Detail, and New Skill.",
+        "files": [
+          "src/components/Layout.tsx",
+          "src/components/Header.tsx",
+          "src/components/Sidebar.tsx",
+          "src/router.tsx",
+          "src/pages/HomePage.tsx",
+          "src/pages/SkillsListPage.tsx",
+          "src/pages/SkillDetailPage.tsx",
+          "src/pages/NewSkillPage.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 3,
+        "name": "Zustand Store & Mock Data",
+        "description": "Define the `Skill` and `User` TypeScript interfaces. Set up a Zustand store to manage application state (skills, current user). Populate the store with mock skill data for development.",
+        "files": [
+          "src/types/skill.ts",
+          "src/store/useSkillStore.ts",
+          "src/data/mockSkills.ts"
+        ],
+        "type": "data",
+        "status": "pending"
+      },
+      {
+        "id": 4,
+        "name": "Skills List & Search/Filter",
+        "description": "Develop the `SkillsListPage` to display a list of skills from the Zustand store. Implement a search bar and a basic tag filtering UI and logic using `lucide-react` for icons.",
+        "files": [
+          "src/pages/SkillsListPage.tsx",
+          "src/components/skills/SkillCard.tsx",
+          "src/components/common/SearchBar.tsx",
+          "src/components/common/TagFilter.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 5,
+        "name": "Skill Detail View",
+        "description": "Create the `SkillDetailPage` to display comprehensive information for a single skill, fetched by its ID. Utilize `react-markdown` to render skill descriptions formatted in Markdown.",
+        "files": [
+          "src/pages/SkillDetailPage.tsx",
+          "src/components/skills/SkillDetailContent.tsx",
+          "src/components/common/MarkdownRenderer.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 6,
+        "name": "Create New Skill Form",
+        "description": "Build the `NewSkillPage` with a form for users to add new AI skills. Include inputs for skill name, prompt, description (with a Markdown editor), and a multi-select/chip input for tags. Integrate with Zustand to save new skills.",
+        "files": [
+          "src/pages/NewSkillPage.tsx",
+          "src/components/forms/SkillForm.tsx",
+          "src/components/forms/TagInput.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 7,
+        "name": "Edit Skill Functionality",
+        "description": "Extend the `SkillForm` to support editing existing skills. Implement an 'Edit' button on the `SkillDetailPage` that navigates to an `EditSkillPage`, pre-populating the form with the skill's current data for updates in Zustand.",
+        "files": [
+          "src/pages/EditSkillPage.tsx",
+          "src/pages/SkillDetailPage.tsx",
+          "src/components/forms/SkillForm.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 8,
+        "name": "User Profiles & Basic Sharing",
+        "description": "Mock a `currentUser` in a dedicated Zustand store. Display basic user information in the header/sidebar. Add a conceptual 'Public/Private' toggle to skill forms to indicate sharing status (frontend-only).",
+        "files": [
+          "src/store/useUserStore.ts",
+          "src/components/user/UserProfile.tsx",
+          "src/components/Header.tsx",
+          "src/components/forms/SkillForm.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 9,
+        "name": "Enhanced UI & Interaction",
+        "description": "Integrate `react-hot-toast` for user feedback (success/error messages). Enhance UI with subtle animations/transitions and use `date-fns` for consistent date formatting across skill cards and detail pages.",
+        "files": [
+          "src/App.tsx",
+          "src/components/common/ToastNotification.tsx",
+          "src/utils/dateHelpers.ts",
+          "src/components/skills/SkillCard.tsx",
+          "src/pages/SkillDetailPage.tsx"
+        ],
+        "type": "feature",
+        "status": "pending"
+      },
+      {
+        "id": 10,
+        "name": "Testing & Final Polish",
+        "description": "Write unit and integration tests for key components and Zustand store actions using Vitest and React Testing Library. Conduct a final review of responsiveness, accessibility, and overall styling. Prepare `public` assets and finalize `netlify.toml`.",
+        "files": [
+          "src/components/skills/__tests__/SkillCard.test.tsx",
+          "src/store/__tests__/useSkillStore.test.ts",
+          "src/pages/__tests__/SkillsListPage.test.tsx",
+          "public/favicon.ico",
+          "src/index.css"
+        ],
+        "type": "testing",
+        "status": "pending"
+      }
+    ],
+    "created_at": "2026-06-10T14:38:51.236584+00:00",
+    "github_url": "https://github.com/Ajain0311/agent-craft-ai-skill-hub",
+    "netlify_site_id": "d845dd1e-bbf1-4f71-b0ed-195850c1922b",
+    "netlify_url": "https://agent-craft-ai-skill-hub.netlify.app"
+  },
+  "completed_projects": [],
+  "total_commits": 0,
+  "trending_cache": {
+    "date": "2026-06-10",
+    "fetched_at": "2026-06-10T14:37:24.777063+00:00",
+    "data": {
+      "github_trending": [
+        {
+          "name": "addyosmani /agent-skills",
+          "description": "Production-grade engineering skills for AI coding agents.",
+          "language": "Shell",
+          "stars": "50,677",
+          "source": "github_trending"
+        },
+        {
+          "name": "phuryn /pm-skills",
+          "description": "PM Skills Marketplace: 100+ agentic skills, commands, and plugins \u2014 from discovery to strategy, execution, launch, and growth.",
+          "language": "",
+          "stars": "14,191",
+          "source": "github_trending"
+        },
+        {
+          "name": "refactoringhq /tolaria",
+          "description": "Desktop app to manage markdown knowledge bases",
+          "language": "TypeScript",
+          "stars": "14,710",
+          "source": "github_trending"
+        },
+        {
+          "name": "mvanhorn /last30days-skill",
+          "description": "AI agent skill that researches any topic across Reddit, X, YouTube, HN, Polymarket, and the web - then synthesizes a grounded summary",
+          "language": "Python",
+          "stars": "38,770",
+          "source": "github_trending"
+        },
+        {
+          "name": "soxoj /maigret",
+          "description": "\ud83d\udd75\ufe0f\u200d\u2642\ufe0f Collect a dossier on a person by username from 3000+ sites",
+          "language": "Python",
+          "stars": "31,777",
+          "source": "github_trending"
+        },
+        {
+          "name": "x1xhlol /system-prompts-and-models-of-ai-tools",
+          "description": "FULL Augment Code, Claude Code, Cluely, CodeBuddy, Comet, Cursor, Devin AI, Junie, Kiro, Leap.new, Lovable, Manus, NotionAI, Orchids.app, Perplexity, Poke, Qoder, Replit, Same.dev, Trae, Traycer AI, VSCode Agent, Warp.dev, Windsurf, Xcode, Z.ai Code, Dia & v0. (And other Open Sourced) System Prompts, Internal Tools & AI Models",
+          "language": "",
+          "stars": "139,415",
+          "source": "github_trending"
+        },
+        {
+          "name": "obra /superpowers",
+          "description": "An agentic skills framework & software development methodology that works.",
+          "language": "Shell",
+          "stars": "223,236",
+          "source": "github_trending"
+        },
+        {
+          "name": "masterking32 /MasterDnsVPN",
+          "description": "Advanced DNS tunneling VPN for censorship bypass, optimized beyond DNSTT and SlipStream with low-overhead ARQ, resolver load balancing, high packet-loss stability and speed.",
+          "language": "Go",
+          "stars": "5,015",
+          "source": "github_trending"
+        },
+        {
+          "name": "harry0703 /MoneyPrinterTurbo",
+          "description": "\u5229\u7528AI\u5927\u6a21\u578b\uff0c\u4e00\u952e\u751f\u6210\u9ad8\u6e05\u77ed\u89c6\u9891 Generate short videos with one click using AI LLM.",
+          "language": "Python",
+          "stars": "84,579",
+          "source": "github_trending"
+        },
+        {
+          "name": "maziyarpanahi /openmed",
+          "description": "open-source healthcare ai",
+          "language": "Python",
+          "stars": "2,151",
+          "source": "github_trending"
+        },
+        {
+          "name": "luongnv89 /claude-howto",
+          "description": "A visual, example-driven guide to Claude Code \u2014 from basic concepts to advanced agents, with copy-paste templates that bring immediate value.",
+          "language": "Python",
+          "stars": "36,378",
+          "source": "github_trending"
+        },
+        {
+          "name": "activeloopai /hivemind",
+          "description": "One brain for all your agents",
+          "language": "TypeScript",
+          "stars": "677",
+          "source": "github_trending"
+        }
+      ],
+      "hackernews": [
+        {
+          "name": "Claude Fable 5",
+          "description": "Claude Fable 5",
+          "score": 2418,
+          "source": "hackernews"
+        },
+        {
+          "name": "macOS Container Machines",
+          "description": "macOS Container Machines",
+          "score": 977,
+          "source": "hackernews"
+        },
+        {
+          "name": "German ruling declares Google liable for false answers in AI Overviews",
+          "description": "German ruling declares Google liable for false answers in AI Overviews",
+          "score": 780,
+          "source": "hackernews"
+        },
+        {
+          "name": "Upcoming breaking changes for npm v12",
+          "description": "Upcoming breaking changes for npm v12",
+          "score": 435,
+          "source": "hackernews"
+        },
+        {
+          "name": "What it feels like to work with Mythos",
+          "description": "What it feels like to work with Mythos",
+          "score": 329,
+          "source": "hackernews"
+        },
+        {
+          "name": "Mercedes\u2011Benz starts large\u2011scale production of electric axial flux motor",
+          "description": "Mercedes\u2011Benz starts large\u2011scale production of electric axial flux motor",
+          "score": 304,
+          "source": "hackernews"
+        },
+        {
+          "name": "Surprise, pay $1000",
+          "description": "Surprise, pay $1000",
+          "score": 264,
+          "source": "hackernews"
+        },
+        {
+          "name": "Ultrafast machine learning on FPGAs via Kolmogorov-Arnold Networks",
+          "description": "Ultrafast machine learning on FPGAs via Kolmogorov-Arnold Networks",
+          "score": 261,
+          "source": "hackernews"
+        }
+      ]
+    }
+  },
+  "quota": {
+    "rpd_exhausted": {
+      "1": "2026-06-10",
+      "2": "2026-06-10",
+      "0": "2026-06-10"
+    },
+    "model_unavailable": {},
+    "key_last_used": {
+      "0": "2026-06-10T14:38:51.236407+00:00"
+    }
+  },
+  "last_updated": "2026-06-10T14:38:54.264164+00:00"
+}

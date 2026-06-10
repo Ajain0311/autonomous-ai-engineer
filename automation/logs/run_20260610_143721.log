@@ -1,0 +1,41 @@
+2026-06-10 14:37:21,276 [INFO] __main__: === Daily Code Automation — 2026-06-10 14:37 UTC | tasks_per_run=1 ===
+2026-06-10 14:37:21,277 [INFO] automation.config: Loaded 3 Gemini API key(s)
+2026-06-10 14:37:22,555 [INFO] automation.trend_finder: GitHub trending: found 12 repos
+2026-06-10 14:37:24,776 [INFO] automation.trend_finder: HackerNews: found 8 top stories
+2026-06-10 14:37:24,777 [INFO] __main__: Planning new project with Gemini…
+2026-06-10 14:37:24,777 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:37:25,055 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-10 14:37:25,056 [WARNING] automation.project_planner: key[0] rate-limited (429) on gemini-2.0-flash
+2026-06-10 14:37:25,057 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:37:25,171 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-10 14:37:25,172 [WARNING] automation.project_planner: key[1] rate-limited (429) on gemini-2.0-flash
+2026-06-10 14:37:25,172 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:37:25,288 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-10 14:37:25,289 [WARNING] automation.project_planner: key[2] rate-limited (429) on gemini-2.0-flash
+2026-06-10 14:37:25,289 [WARNING] automation.project_planner: All 3 active key(s) rate-limited on gemini-2.0-flash — waiting 60s before next model
+2026-06-10 14:38:25,290 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:38:51,234 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-06-10 14:38:51,236 [INFO] automation.project_planner: Gemini OK — key[0] model=gemini-2.5-flash
+2026-06-10 14:38:51,236 [INFO] automation.project_planner: Planned project: agent-craft-ai-skill-hub (AgentCraft: AI Skill Hub)
+2026-06-10 14:38:51,236 [INFO] __main__: Creating GitHub repo: agent-craft-ai-skill-hub
+2026-06-10 14:38:53,135 [INFO] automation.github_manager: Created repo: https://github.com/Ajain0311/agent-craft-ai-skill-hub
+2026-06-10 14:38:53,918 [INFO] automation.netlify_manager: Netlify site created: d845dd1e-bbf1-4f71-b0ed-195850c1922b → https://agent-craft-ai-skill-hub.netlify.app
+2026-06-10 14:38:53,919 [INFO] __main__: Netlify site: https://agent-craft-ai-skill-hub.netlify.app
+2026-06-10 14:38:53,920 [INFO] automation.progress_tracker: State saved → /home/runner/work/daily-code/daily-code/automation/state.json
+2026-06-10 14:38:53,920 [INFO] __main__: Task [1/10]: Project Setup & Base Styling  (project: agent-craft-ai-skill-hub)
+2026-06-10 14:38:53,921 [INFO] __main__: Generating code with Gemini…
+2026-06-10 14:38:53,921 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:38:54,030 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-10 14:38:54,030 [WARNING] automation.project_planner: key[1] rate-limited (429) on gemini-2.0-flash
+2026-06-10 14:38:54,031 [WARNING] automation.quota_tracker: key[1] 429 on 2+ models this run — inferring RPD exhaustion
+2026-06-10 14:38:54,031 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:38:54,153 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-10 14:38:54,153 [WARNING] automation.project_planner: key[2] rate-limited (429) on gemini-2.0-flash
+2026-06-10 14:38:54,154 [WARNING] automation.quota_tracker: key[2] 429 on 2+ models this run — inferring RPD exhaustion
+2026-06-10 14:38:54,154 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-10 14:38:54,262 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-10 14:38:54,263 [WARNING] automation.project_planner: key[0] rate-limited (429) on gemini-2.0-flash
+2026-06-10 14:38:54,263 [WARNING] automation.quota_tracker: key[0] 429 on 2+ models this run — inferring RPD exhaustion
+2026-06-10 14:38:54,263 [ERROR] __main__: Gemini unavailable — skipping task this run: All API keys have hit today's daily quota (RPD). Quota resets at midnight UTC.
+2026-06-10 14:38:54,265 [INFO] automation.progress_tracker: State saved → /home/runner/work/daily-code/daily-code/automation/state.json
+2026-06-10 14:38:54,265 [INFO] __main__: === Run complete ===
