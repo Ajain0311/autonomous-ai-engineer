@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List
 
-from github import Github, GithubException
+from github import Github, GithubException, InputGitTreeElement
 
 from automation import config
 
@@ -89,12 +89,12 @@ class GitHubManager:
             base_tree = parent_commit.tree
             logger.info("Bootstrapped empty repo %s with an initial README", repo_name)
 
-        # Create blobs
-        tree_elements: List[Dict] = []
+        # Create blobs — create_git_tree requires InputGitTreeElement objects
+        tree_elements: List[InputGitTreeElement] = []
         for path, content in files.items():
             blob = repo.create_git_blob(content=content, encoding="utf-8")
             tree_elements.append(
-                {"path": path, "mode": "100644", "type": "blob", "sha": blob.sha}
+                InputGitTreeElement(path=path, mode="100644", type="blob", sha=blob.sha)
             )
 
         # Create tree
