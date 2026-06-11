@@ -1,10 +1,15 @@
-import os, random, datetime, time
+import datetime
+import os
+import random
+import time
 from google import genai
 from google.genai import errors
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-MODELS = ["gemini-2.0-flash-lite", "gemini-2.0-flash"]
+# gemma-3-27b-it last: separate free-tier bucket (14,400 req/day vs ~200 for
+# gemini) — keeps this from ever falling back to the canned offline snippets.
+MODELS = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemma-3-27b-it"]
 
 TOPICS = [
     ("python",     "a short Python utility function using only stdlib"),
@@ -141,6 +146,9 @@ def generate(lang: str, description: str) -> str:
                 else:
                     print(f"  model={model} error {e.code} — trying next model")
                     break
+            except errors.ServerError as e:
+                print(f"  model={model} overloaded ({e.code}) — trying next model")
+                break
 
     print("  API quota exhausted — using offline fallback snippet")
     return FALLBACKS[lang].strip()

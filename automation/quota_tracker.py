@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _UTC = timezone.utc
 
 _MODEL_RECHECK_DAYS = 7   # days before retrying a 404-cached model
-_RPD_CONFIRM_MODELS = 2   # key failing with 429 on this many models → assume RPD
+_RPD_CONFIRM_MODELS = 3   # key failing with ambiguous 429 on this many models → assume RPD
 
 # Session-only state (reset on process restart)
 _dead_keys: Set[int] = set()
@@ -97,20 +97,25 @@ def mark_key_rate_limited(key_idx: int, exc) -> None:
     """
     Called on any 429. First tries to detect RPD vs RPM from the error message
     (Google includes the quota limit name, e.g. 'PerDayPerProject').
-    Falls back to the model-count heuristic: a key that gets 429 on N+ different
-    models in one run is almost certainly RPD-exhausted, because RPM resets in
-    ~60s and we sleep between model attempts.
+    Explicit per-minute limits are NOT counted toward the RPD inference — model
+    attempts are back-to-back now, so an RPM-limited key would otherwise rack
+    up 429s across models in seconds and be wrongly benched for the day.
+    Only ambiguous 429s feed the model-count heuristic.
     """
     if _looks_like_rpd(exc):
         logger.warning("key[%d] daily quota (RPD) detected from error message", key_idx)
         _rpd_exhausted[key_idx] = _today()
         return
 
+    if _looks_like_rpm(exc):
+        return  # per-minute — clears on its own within ~60s
+
     count = _model_fail_count.get(key_idx, 0) + 1
     _model_fail_count[key_idx] = count
     if count >= _RPD_CONFIRM_MODELS:
         logger.warning(
-            "key[%d] 429 on %d+ models this run — inferring RPD exhaustion", key_idx, count
+            "key[%d] ambiguous 429 on %d+ models this run — inferring RPD exhaustion",
+            key_idx, count,
         )
         _rpd_exhausted[key_idx] = _today()
 
@@ -142,3 +147,9 @@ def _looks_like_rpd(exc) -> bool:
     """
     msg = (getattr(exc, "message", "") or "").lower()
     return "per_day" in msg or "perday" in msg or "_day_" in msg
+
+
+def _looks_like_rpm(exc) -> bool:
+    """True when the 429 message explicitly names a per-minute quota."""
+    msg = (getattr(exc, "message", "") or "").lower()
+    return "per_minute" in msg or "perminute" in msg or "_minute_" in msg

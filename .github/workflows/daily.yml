@@ -2,7 +2,9 @@ name: Daily Code Generator
 
 on:
   schedule:
-    - cron: '30 3 * * *'   # 9:00 AM IST every day
+    # 17:47 UTC = 23:17 IST — deliberately far from daily-automation.yml's
+    # slots so the two workflows never compete for the same Gemini quota window.
+    - cron: '47 17 * * *'
   workflow_dispatch:
 
 jobs:

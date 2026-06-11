@@ -60,6 +60,15 @@ def _save_state(state: dict) -> None:
     save_state(state)
 
 
+def _write_summary(text: str) -> None:
+    """Surface run outcome in the GitHub Actions job summary (no-op locally)."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(f"### Daily Code Generation\n\n{text}\n")
+
+
 def _get_trending(state: dict) -> dict:
     """
     Return today's trending topics, using a same-day cache when available.
@@ -202,18 +211,39 @@ def run() -> None:
             "Quota resets at midnight UTC.",
             len(config.GEMINI_API_KEYS),
         )
+        _write_summary(
+            "⏭️ Skipped — all API keys hit daily quota. Resets at midnight UTC."
+        )
         return
 
     github = GitHubManager()
+    commits_before = state.get("total_commits", 0)
+    failure: Exception | None = None
 
-    for i in range(tasks_per_run):
-        if tasks_per_run > 1:
-            logger.info("--- Iteration %d/%d ---", i + 1, tasks_per_run)
-        state = _run_one_task(state, github, logger)
+    try:
+        for i in range(tasks_per_run):
+            if tasks_per_run > 1:
+                logger.info("--- Iteration %d/%d ---", i + 1, tasks_per_run)
+            state = _run_one_task(state, github, logger)
+    except Exception as exc:  # noqa: BLE001 — state must survive any crash
+        failure = exc
+    finally:
+        # Quota learnings (404 models, RPD-exhausted keys) persist even when
+        # the run fails, so the next run doesn't repeat the same doomed calls.
+        _save_state(state)
 
-    # Always save quota state at end — captures model 404s and key exhaustions
-    # from runs where no task was committed (so _save_state inside tasks wasn't called).
-    _save_state(state)
+    committed = state.get("total_commits", 0) - commits_before
+    if failure is not None:
+        logger.error("Run failed: %s", failure)
+        _write_summary(f"❌ Run failed after {committed} commit(s): {failure}")
+        raise failure
+    if committed:
+        _write_summary(f"✅ Committed {committed} task(s).")
+    else:
+        _write_summary(
+            "⏭️ No task committed this run (quota or transient API issues). "
+            "Will retry next scheduled run."
+        )
     logger.info("=== Run complete ===")
 
 
