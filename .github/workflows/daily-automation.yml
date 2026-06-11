@@ -82,5 +82,7 @@ jobs:
           git add automation/state.json automation/logs/ || true
           git diff --staged --quiet || \
             git commit -m "chore(state): sync state $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git pull --rebase origin main || true
-          git push
+          # Rebase onto the branch this run checked out (not hardcoded main —
+          # dispatch runs from other branches would hit rebase conflicts).
+          git pull --rebase origin "${GITHUB_REF_NAME}" || git rebase --abort
+          git push origin "HEAD:${GITHUB_REF_NAME}"

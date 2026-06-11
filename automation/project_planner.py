@@ -111,6 +111,9 @@ Return ONLY valid JSON:
   "npm_packages": ["package@version"],
   "commit_message": "feat(scope): what was built"
 }}
+
+CRITICAL: every value in "file_contents" MUST be a string. For .json files,
+encode the content as an escaped JSON string — never as a nested object.
 """
 
 _FALLBACK_MODELS = [
@@ -347,6 +350,17 @@ def generate_task_code(
         done_tasks=json.dumps([t["name"] for t in done_tasks]),
     )
     result = _call_gemini(prompt, temperature=0.2)
+
+    # Gemini sometimes returns .json file contents as nested objects instead
+    # of strings — GitHub blob creation requires strings, so coerce here.
+    files = result.get("file_contents")
+    if isinstance(files, dict):
+        result["file_contents"] = {
+            path: content if isinstance(content, str)
+            else json.dumps(content, indent=2)
+            for path, content in files.items()
+        }
+
     file_count = len(result.get("file_contents", {}))
     logger.info("Generated %d file(s) for task: %s", file_count, task["name"])
     return result
