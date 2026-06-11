@@ -21,11 +21,13 @@ class GitHubManager:
     def create_repo(self, name: str, description: str) -> str:
         """Create a public repo and return its HTML URL."""
         try:
+            # auto_init=True: the git-data (blob/tree) API used by commit_files
+            # returns 409 "Git Repository is empty" until a first commit exists.
             repo = self._user.create_repo(
                 name=name,
                 description=description,
                 private=False,
-                auto_init=False,
+                auto_init=True,
                 has_issues=True,
                 has_wiki=False,
             )
@@ -70,7 +72,22 @@ class GitHubManager:
             parent_commit = repo.get_git_commit(ref.object.sha)
             base_tree = parent_commit.tree
         except GithubException:
-            pass  # Empty repo — first commit has no parent
+            pass  # Empty repo — needs bootstrapping below
+
+        if parent_commit is None:
+            # Completely empty repo: the blob/tree API 409s until a first
+            # commit exists. Seed one via the contents API (which does work
+            # on empty repos), then continue with the atomic path.
+            repo.create_file(
+                path="README.md",
+                message="chore: initialize repository",
+                content=f"# {repo_name}\n",
+                branch=branch,
+            )
+            ref = repo.get_git_ref(f"heads/{branch}")
+            parent_commit = repo.get_git_commit(ref.object.sha)
+            base_tree = parent_commit.tree
+            logger.info("Bootstrapped empty repo %s with an initial README", repo_name)
 
         # Create blobs
         tree_elements: List[Dict] = []
