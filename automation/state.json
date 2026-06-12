@@ -111,7 +111,9 @@
           "src/components/common/MarkdownRenderer.tsx"
         ],
         "type": "feature",
-        "status": "pending"
+        "status": "done",
+        "commit_sha": "072244c10b6a53f22e2a3e27807f4f18662123b6",
+        "completed_at": "2026-06-12T18:21:55.632894+00:00"
       },
       {
         "id": 6,
@@ -185,7 +187,7 @@
     "netlify_url": "https://agent-craft-ai-skill-hub.netlify.app"
   },
   "completed_projects": [],
-  "total_commits": 4,
+  "total_commits": 5,
   "trending_cache": {
     "date": "2026-06-10",
     "fetched_at": "2026-06-10T14:37:24.777063+00:00",
@@ -336,10 +338,10 @@
     },
     "model_unavailable": {},
     "key_last_used": {
-      "0": "2026-06-12T11:53:59.731264+00:00",
-      "1": "2026-06-12T08:42:54.457727+00:00",
+      "0": "2026-06-12T18:21:47.659203+00:00",
+      "1": "2026-06-12T18:21:02.428238+00:00",
       "2": "2026-06-12T15:42:57.312961+00:00"
     }
   },
-  "last_updated": "2026-06-12T15:43:06.492279+00:00"
+  "last_updated": "2026-06-12T18:21:55.633941+00:00"
 }
