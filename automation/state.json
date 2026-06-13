@@ -170,7 +170,9 @@
           "src/pages/SkillDetailPage.tsx"
         ],
         "type": "feature",
-        "status": "pending"
+        "status": "done",
+        "commit_sha": "50ffcb20426a84c97ab4b96fb479c00ba8f19214",
+        "completed_at": "2026-06-13T17:49:49.276597+00:00"
       },
       {
         "id": 10,
@@ -193,7 +195,7 @@
     "netlify_url": "https://agent-craft-ai-skill-hub.netlify.app"
   },
   "completed_projects": [],
-  "total_commits": 8,
+  "total_commits": 9,
   "trending_cache": {
     "date": "2026-06-10",
     "fetched_at": "2026-06-10T14:37:24.777063+00:00",
@@ -345,9 +347,9 @@
     "model_unavailable": {},
     "key_last_used": {
       "0": "2026-06-13T10:41:56.262938+00:00",
-      "1": "2026-06-13T10:41:02.425254+00:00",
+      "1": "2026-06-13T17:49:38.944738+00:00",
       "2": "2026-06-13T14:28:51.178413+00:00"
     }
   },
-  "last_updated": "2026-06-13T14:29:00.567660+00:00"
+  "last_updated": "2026-06-13T17:49:49.277492+00:00"
 }
