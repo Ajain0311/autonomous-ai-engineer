@@ -1,17 +1,14 @@
 {
   "current_project": {
-    "name": "agent-craft-ai-skill-hub",
-    "title": "AgentCraft: AI Skill Hub",
-    "description": "A collaborative web platform for crafting, organizing, and sharing AI agent skills, prompts, and complex agentic workflows. It empowers teams to build a structured knowledge base of effective AI interactions, fostering reusability and accelerating agent development.",
-    "category": "productivity",
+    "name": "ecostream-hub",
+    "title": "EcoStream Hub: Sustainable Media Server Manager",
+    "description": "EcoStream Hub is a web application designed for the 'Green Tech Hobbyist' who seeks to manage their digital media responsibly. It provides a user-friendly interface to organize and access various streaming sources, including publicly available IPTV channels. A core feature is its integration with guides and monitoring tools focused on setting up and managing a low-power, sustainable home media server using repurposed devices like old phones or Raspberry Pis, helping users reduce their energy consumption and extend hardware lifespan.",
+    "category": "entertainment",
     "features": [
-      "Create and manage AI 'skills' (prompts, agent configurations, code snippets)",
-      "Tagging and categorization for easy discovery",
-      "Version control for skill iterations (conceptual)",
-      "Public/private sharing options (conceptual)",
-      "Search and filter capabilities",
-      "Markdown-based skill descriptions and previews",
-      "User profiles and basic collaboration spaces"
+      "Unified media source management (IPTV, web streams)",
+      "Real-time resource monitoring for connected low-power servers",
+      "Interactive guides for sustainable server setup and optimization",
+      "Integrated media playback and content discovery"
     ],
     "tech_stack": {
       "framework": "React 18",
@@ -24,15 +21,14 @@
       "extras": [
         "lucide-react",
         "date-fns",
-        "react-markdown",
-        "react-hot-toast"
+        "react-player"
       ]
     },
     "tasks": [
       {
         "id": 1,
-        "name": "Project Setup & Base Styling",
-        "description": "Scaffold Vite+React+TS project, configure Tailwind CSS, ESLint, Prettier, Vitest, and Netlify deployment. Set up base `App.tsx` and global `index.css`.",
+        "name": "Project scaffold",
+        "description": "Vite+React+TS with Tailwind, ESLint, Prettier, Vitest, netlify.toml for deployment.",
         "files": [
           "package.json",
           "vite.config.ts",
@@ -45,296 +41,278 @@
           "src/main.tsx",
           "src/App.tsx",
           "src/index.css",
-          "netlify.toml",
-          "src/test/setup.ts"
+          "netlify.toml"
         ],
         "type": "setup",
-        "status": "done",
-        "commit_sha": "b5e5be1387ae958b4400a8886893359cfb9136cc",
-        "completed_at": "2026-06-11T17:56:11.954233+00:00"
+        "status": "pending"
       },
       {
         "id": 2,
-        "name": "Core Layout & Navigation",
-        "description": "Implement a responsive web layout including a header, sidebar, and main content area. Set up React Router v6 for key routes: Home, Skills List, Skill Detail, and New Skill.",
+        "name": "Core layout and routing",
+        "description": "Implement a basic shell layout including a header, sidebar navigation, and setup React Router v6 for page management (Home, Sources, Guides, Monitor, Settings). Ensure responsiveness.",
         "files": [
           "src/components/Layout.tsx",
           "src/components/Header.tsx",
           "src/components/Sidebar.tsx",
           "src/router.tsx",
           "src/pages/HomePage.tsx",
-          "src/pages/SkillsListPage.tsx",
-          "src/pages/SkillDetailPage.tsx",
-          "src/pages/NewSkillPage.tsx"
+          "src/pages/SourcesPage.tsx",
+          "src/pages/GuidesPage.tsx",
+          "src/pages/MonitorPage.tsx",
+          "src/pages/SettingsPage.tsx"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "988759f753131651ea5f88328f8e1a098a5b2e0f",
-        "completed_at": "2026-06-12T08:43:09.635519+00:00"
+        "status": "pending"
       },
       {
         "id": 3,
-        "name": "Zustand Store & Mock Data",
-        "description": "Define the `Skill` and `User` TypeScript interfaces. Set up a Zustand store to manage application state (skills, current user). Populate the store with mock skill data for development.",
+        "name": "Zustand store & API client setup",
+        "description": "Define a global Zustand store for application state (e.g., user preferences, media sources list). Create a placeholder API client (e.g., using `fetch` or a mock layer) for future backend interaction for media sources and server monitoring data.",
         "files": [
-          "src/types/skill.ts",
-          "src/store/useSkillStore.ts",
-          "src/data/mockSkills.ts"
+          "src/store/useAppStore.ts",
+          "src/services/apiClient.ts",
+          "src/types/index.ts"
         ],
-        "type": "data",
-        "status": "done",
-        "commit_sha": "16feb4ec41282f836521e15d2d107eb2aac45228",
-        "completed_at": "2026-06-12T11:54:05.110262+00:00"
+        "type": "setup",
+        "status": "pending"
       },
       {
         "id": 4,
-        "name": "Skills List & Search/Filter",
-        "description": "Develop the `SkillsListPage` to display a list of skills from the Zustand store. Implement a search bar and a basic tag filtering UI and logic using `lucide-react` for icons.",
+        "name": "Media source management UI",
+        "description": "Develop components for adding new IPTV M3U URLs or other web-based media stream links. Display a list of configured sources, allowing basic edit/delete operations. Integrate with the Zustand store.",
         "files": [
-          "src/pages/SkillsListPage.tsx",
-          "src/components/skills/SkillCard.tsx",
-          "src/components/common/SearchBar.tsx",
-          "src/components/common/TagFilter.tsx"
+          "src/pages/SourcesPage.tsx",
+          "src/components/media/AddSourceForm.tsx",
+          "src/components/media/SourceList.tsx"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "bc963ad6b7f37c17cebfe685808b143e15922542",
-        "completed_at": "2026-06-12T15:43:06.491389+00:00"
+        "status": "pending"
       },
       {
         "id": 5,
-        "name": "Skill Detail View",
-        "description": "Create the `SkillDetailPage` to display comprehensive information for a single skill, fetched by its ID. Utilize `react-markdown` to render skill descriptions formatted in Markdown.",
+        "name": "Media playback component",
+        "description": "Implement a basic video player (e.g., using `react-player`) that can stream content from the added media sources. Include basic controls (play/pause, volume) and a fullscreen option. Integrate with source selection.",
         "files": [
-          "src/pages/SkillDetailPage.tsx",
-          "src/components/skills/SkillDetailContent.tsx",
-          "src/components/common/MarkdownRenderer.tsx"
+          "src/components/media/MediaPlayer.tsx",
+          "src/pages/PlaybackPage.tsx"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "072244c10b6a53f22e2a3e27807f4f18662123b6",
-        "completed_at": "2026-06-12T18:21:55.632894+00:00"
+        "status": "pending"
       },
       {
         "id": 6,
-        "name": "Create New Skill Form",
-        "description": "Build the `NewSkillPage` with a form for users to add new AI skills. Include inputs for skill name, prompt, description (with a Markdown editor), and a multi-select/chip input for tags. Integrate with Zustand to save new skills.",
+        "name": "Server monitoring dashboard UI",
+        "description": "Create dashboard components to display mock or placeholder data for server metrics like CPU usage, RAM utilization, and estimated power consumption. Use simple charts or progress bars for visualization.",
         "files": [
-          "src/pages/NewSkillPage.tsx",
-          "src/components/forms/SkillForm.tsx",
-          "src/components/forms/TagInput.tsx"
+          "src/pages/MonitorPage.tsx",
+          "src/components/monitor/CpuWidget.tsx",
+          "src/components/monitor/RamWidget.tsx",
+          "src/components/monitor/PowerWidget.tsx"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "0c437c8b421500f6b690802dd3b24e06fd9e8269",
-        "completed_at": "2026-06-13T07:57:13.842295+00:00"
+        "status": "pending"
       },
       {
         "id": 7,
-        "name": "Edit Skill Functionality",
-        "description": "Extend the `SkillForm` to support editing existing skills. Implement an 'Edit' button on the `SkillDetailPage` that navigates to an `EditSkillPage`, pre-populating the form with the skill's current data for updates in Zustand.",
+        "name": "Sustainable setup guides page",
+        "description": "Develop a dedicated page for static content presenting step-by-step guides on setting up low-power media servers. Include sections on hardware selection (e.g., Raspberry Pi, old phones), OS installation, and recommended software.",
         "files": [
-          "src/pages/EditSkillPage.tsx",
-          "src/pages/SkillDetailPage.tsx",
-          "src/components/forms/SkillForm.tsx"
+          "src/pages/GuidesPage.tsx",
+          "src/components/guides/GuideContent.tsx"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "01464e8a21550180fb4347022838f7107bb759df",
-        "completed_at": "2026-06-13T10:42:04.501825+00:00"
+        "status": "pending"
       },
       {
         "id": 8,
-        "name": "User Profiles & Basic Sharing",
-        "description": "Mock a `currentUser` in a dedicated Zustand store. Display basic user information in the header/sidebar. Add a conceptual 'Public/Private' toggle to skill forms to indicate sharing status (frontend-only).",
+        "name": "Content search and filtering",
+        "description": "Implement a search bar and filtering options (e.g., by source type) to help users discover content across their managed media sources.",
         "files": [
-          "src/store/useUserStore.ts",
-          "src/components/user/UserProfile.tsx",
-          "src/components/Header.tsx",
-          "src/components/forms/SkillForm.tsx"
+          "src/components/common/SearchBar.tsx",
+          "src/components/common/FilterButtons.tsx",
+          "src/pages/HomePage.tsx"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "1b72b19d3c36ff55c8cdefb9ece70e2b7b761829",
-        "completed_at": "2026-06-13T14:29:00.566731+00:00"
+        "status": "pending"
       },
       {
         "id": 9,
-        "name": "Enhanced UI & Interaction",
-        "description": "Integrate `react-hot-toast` for user feedback (success/error messages). Enhance UI with subtle animations/transitions and use `date-fns` for consistent date formatting across skill cards and detail pages.",
+        "name": "User settings and persistence",
+        "description": "Create a settings page allowing users to configure basic application preferences (e.g., theme, default player options). Persist these settings using local storage, managed via Zustand.",
         "files": [
-          "src/App.tsx",
-          "src/components/common/ToastNotification.tsx",
-          "src/utils/dateHelpers.ts",
-          "src/components/skills/SkillCard.tsx",
-          "src/pages/SkillDetailPage.tsx"
+          "src/pages/SettingsPage.tsx",
+          "src/components/settings/ThemeToggle.tsx",
+          "src/store/useAppStore.ts"
         ],
         "type": "feature",
-        "status": "done",
-        "commit_sha": "50ffcb20426a84c97ab4b96fb479c00ba8f19214",
-        "completed_at": "2026-06-13T17:49:49.276597+00:00"
+        "status": "pending"
       },
       {
         "id": 10,
-        "name": "Testing & Final Polish",
-        "description": "Write unit and integration tests for key components and Zustand store actions using Vitest and React Testing Library. Conduct a final review of responsiveness, accessibility, and overall styling. Prepare `public` assets and finalize `netlify.toml`.",
+        "name": "Refinement and testing",
+        "description": "Perform UI/UX polish, ensure accessibility, add comprehensive unit tests for core components and Zustand store. Set up basic integration tests for routing and critical user flows. Prepare for deployment.",
         "files": [
-          "src/components/skills/__tests__/SkillCard.test.tsx",
-          "src/store/__tests__/useSkillStore.test.ts",
-          "src/pages/__tests__/SkillsListPage.test.tsx",
-          "public/favicon.ico",
+          "src/**/*.test.ts",
+          "src/**/*.test.tsx",
+          "src/App.tsx",
           "src/index.css"
         ],
-        "type": "testing",
-        "status": "done",
-        "commit_sha": "c3c8d0dc033f522cf258df840dd3f801e35f3fdc",
-        "completed_at": "2026-06-14T08:25:11.046454+00:00"
+        "type": "setup",
+        "status": "pending"
       }
     ],
-    "created_at": "2026-06-10T14:38:51.236584+00:00",
-    "github_url": "https://github.com/Ajain0311/agent-craft-ai-skill-hub",
-    "netlify_site_id": "d845dd1e-bbf1-4f71-b0ed-195850c1922b",
-    "netlify_url": "https://agent-craft-ai-skill-hub.netlify.app"
+    "created_at": "2026-06-14T11:09:48.006263+00:00",
+    "github_url": null,
+    "netlify_site_id": null,
+    "netlify_url": null
   },
-  "completed_projects": [],
+  "completed_projects": [
+    {
+      "name": "agent-craft-ai-skill-hub",
+      "title": "AgentCraft: AI Skill Hub",
+      "github_url": "https://github.com/Ajain0311/agent-craft-ai-skill-hub",
+      "netlify_url": "https://agent-craft-ai-skill-hub.netlify.app",
+      "archived_at": "2026-06-14T11:09:48.006247+00:00"
+    }
+  ],
   "total_commits": 10,
   "trending_cache": {
-    "date": "2026-06-10",
-    "fetched_at": "2026-06-10T14:37:24.777063+00:00",
+    "date": "2026-06-14",
+    "fetched_at": "2026-06-14T11:09:26.201775+00:00",
     "data": {
       "github_trending": [
         {
-          "name": "addyosmani /agent-skills",
-          "description": "Production-grade engineering skills for AI coding agents.",
-          "language": "Shell",
-          "stars": "50,677",
-          "source": "github_trending"
-        },
-        {
-          "name": "phuryn /pm-skills",
-          "description": "PM Skills Marketplace: 100+ agentic skills, commands, and plugins \u2014 from discovery to strategy, execution, launch, and growth.",
-          "language": "",
-          "stars": "14,191",
-          "source": "github_trending"
-        },
-        {
-          "name": "refactoringhq /tolaria",
-          "description": "Desktop app to manage markdown knowledge bases",
+          "name": "iptv-org /iptv",
+          "description": "Collection of publicly available IPTV channels from all over the world",
           "language": "TypeScript",
-          "stars": "14,710",
+          "stars": "119,724",
           "source": "github_trending"
         },
         {
-          "name": "mvanhorn /last30days-skill",
-          "description": "AI agent skill that researches any topic across Reddit, X, YouTube, HN, Polymarket, and the web - then synthesizes a grounded summary",
-          "language": "Python",
-          "stars": "38,770",
-          "source": "github_trending"
-        },
-        {
-          "name": "soxoj /maigret",
-          "description": "\ud83d\udd75\ufe0f\u200d\u2642\ufe0f Collect a dossier on a person by username from 3000+ sites",
-          "language": "Python",
-          "stars": "31,777",
-          "source": "github_trending"
-        },
-        {
-          "name": "x1xhlol /system-prompts-and-models-of-ai-tools",
-          "description": "FULL Augment Code, Claude Code, Cluely, CodeBuddy, Comet, Cursor, Devin AI, Junie, Kiro, Leap.new, Lovable, Manus, NotionAI, Orchids.app, Perplexity, Poke, Qoder, Replit, Same.dev, Trae, Traycer AI, VSCode Agent, Warp.dev, Windsurf, Xcode, Z.ai Code, Dia & v0. (And other Open Sourced) System Prompts, Internal Tools & AI Models",
-          "language": "",
-          "stars": "139,415",
-          "source": "github_trending"
-        },
-        {
-          "name": "obra /superpowers",
-          "description": "An agentic skills framework & software development methodology that works.",
-          "language": "Shell",
-          "stars": "223,236",
-          "source": "github_trending"
-        },
-        {
-          "name": "masterking32 /MasterDnsVPN",
-          "description": "Advanced DNS tunneling VPN for censorship bypass, optimized beyond DNSTT and SlipStream with low-overhead ARQ, resolver load balancing, high packet-loss stability and speed.",
-          "language": "Go",
-          "stars": "5,015",
-          "source": "github_trending"
-        },
-        {
-          "name": "harry0703 /MoneyPrinterTurbo",
-          "description": "\u5229\u7528AI\u5927\u6a21\u578b\uff0c\u4e00\u952e\u751f\u6210\u9ad8\u6e05\u77ed\u89c6\u9891 Generate short videos with one click using AI LLM.",
-          "language": "Python",
-          "stars": "84,579",
-          "source": "github_trending"
-        },
-        {
-          "name": "maziyarpanahi /openmed",
-          "description": "open-source healthcare ai",
-          "language": "Python",
-          "stars": "2,151",
-          "source": "github_trending"
-        },
-        {
-          "name": "luongnv89 /claude-howto",
-          "description": "A visual, example-driven guide to Claude Code \u2014 from basic concepts to advanced agents, with copy-paste templates that bring immediate value.",
-          "language": "Python",
-          "stars": "36,378",
-          "source": "github_trending"
-        },
-        {
-          "name": "activeloopai /hivemind",
-          "description": "One brain for all your agents",
+          "name": "freeCodeCamp /freeCodeCamp",
+          "description": "freeCodeCamp.org's open-source codebase and curriculum. Learn math, programming, and computer science for free.",
           "language": "TypeScript",
-          "stars": "677",
+          "stars": "446,870",
+          "source": "github_trending"
+        },
+        {
+          "name": "pytest-dev /pytest",
+          "description": "The pytest framework makes it easy to write small tests, yet scales to support complex functional testing",
+          "language": "Python",
+          "stars": "13,931",
+          "source": "github_trending"
+        },
+        {
+          "name": "swc-project /swc",
+          "description": "Rust-based platform for the Web",
+          "language": "Rust",
+          "stars": "33,701",
+          "source": "github_trending"
+        },
+        {
+          "name": "chatwoot /chatwoot",
+          "description": "Open-source live-chat, email support, omni-channel desk. An alternative to Intercom, Zendesk, Salesforce Service Cloud etc. \ud83d\udd25\ud83d\udcac",
+          "language": "Ruby",
+          "stars": "31,022",
+          "source": "github_trending"
+        },
+        {
+          "name": "NVIDIA /SkillSpector",
+          "description": "Security scanner for AI agent skills. Detect vulnerabilities, malicious patterns, and security risks.",
+          "language": "Python",
+          "stars": "4,791",
+          "source": "github_trending"
+        },
+        {
+          "name": "meshery /meshery",
+          "description": "Meshery, the cloud native manager",
+          "language": "TypeScript",
+          "stars": "10,282",
+          "source": "github_trending"
+        },
+        {
+          "name": "cypress-io /cypress",
+          "description": "Fast, easy and reliable testing for anything that runs in a browser.",
+          "language": "TypeScript",
+          "stars": "49,752",
+          "source": "github_trending"
+        },
+        {
+          "name": "GorvGoyl /Clone-Wars",
+          "description": "100+ open-source clones of popular sites like Airbnb, Amazon, Instagram, Netflix, Tiktok, Spotify, Whatsapp, Youtube etc. See source code, demo links, tech stack, github stars.",
+          "language": "",
+          "stars": "35,052",
+          "source": "github_trending"
+        },
+        {
+          "name": "Introduction-to-Autonomous-Robots /Introduction-to-Autonomous-Robots",
+          "description": "Introduction to Autonomous Robots",
+          "language": "TeX",
+          "stars": "2,435",
+          "source": "github_trending"
+        },
+        {
+          "name": "shiyu-coder /Kronos",
+          "description": "Kronos: A Foundation Model for the Language of Financial Markets",
+          "language": "Python",
+          "stars": "29,701",
+          "source": "github_trending"
+        },
+        {
+          "name": "music-assistant /server",
+          "description": "Music Assistant is a free, opensource Media library manager that connects to your streaming services and a wide range of connected speakers. The server is the beating heart, the core of Music Assistant and must run on an always-on device like a Raspberry Pi, a NAS or an Intel NUC or alike.",
+          "language": "Python",
+          "stars": "2,087",
           "source": "github_trending"
         }
       ],
       "hackernews": [
         {
-          "name": "Claude Fable 5",
-          "description": "Claude Fable 5",
-          "score": 2418,
+          "name": "Noise infusion banned from statistical products published by Census Bureau",
+          "description": "Noise infusion banned from statistical products published by Census Bureau",
+          "score": 830,
           "source": "hackernews"
         },
         {
-          "name": "macOS Container Machines",
-          "description": "macOS Container Machines",
-          "score": 977,
+          "name": "Every Frame Perfect",
+          "description": "Every Frame Perfect",
+          "score": 733,
           "source": "hackernews"
         },
         {
-          "name": "German ruling declares Google liable for false answers in AI Overviews",
-          "description": "German ruling declares Google liable for false answers in AI Overviews",
-          "score": 780,
+          "name": "Amazon CEO's talks with U.S. officials triggered crackdown on Anthropic models",
+          "description": "Amazon CEO's talks with U.S. officials triggered crackdown on Anthropic models",
+          "score": 698,
           "source": "hackernews"
         },
         {
-          "name": "Upcoming breaking changes for npm v12",
-          "description": "Upcoming breaking changes for npm v12",
-          "score": 435,
+          "name": "GLM 5.2 Is Out",
+          "description": "GLM 5.2 Is Out",
+          "score": 611,
           "source": "hackernews"
         },
         {
-          "name": "What it feels like to work with Mythos",
-          "description": "What it feels like to work with Mythos",
-          "score": 329,
+          "name": "Treating pancreatic tumours may have revealed cancer's master switch",
+          "description": "Treating pancreatic tumours may have revealed cancer's master switch",
+          "score": 378,
           "source": "hackernews"
         },
         {
-          "name": "Mercedes\u2011Benz starts large\u2011scale production of electric axial flux motor",
-          "description": "Mercedes\u2011Benz starts large\u2011scale production of electric axial flux motor",
-          "score": 304,
+          "name": "A low-carbon computing platform from your retired phones",
+          "description": "A low-carbon computing platform from your retired phones",
+          "score": 298,
           "source": "hackernews"
         },
         {
-          "name": "Surprise, pay $1000",
-          "description": "Surprise, pay $1000",
-          "score": 264,
+          "name": "Honda Civics and the Evil Valet",
+          "description": "Honda Civics and the Evil Valet",
+          "score": 285,
           "source": "hackernews"
         },
         {
-          "name": "Ultrafast machine learning on FPGAs via Kolmogorov-Arnold Networks",
-          "description": "Ultrafast machine learning on FPGAs via Kolmogorov-Arnold Networks",
-          "score": 261,
+          "name": "RTX 5080 and RTX 3090 Setup: 80 Tok/s on Qwen 3.6 27B Q8",
+          "description": "RTX 5080 and RTX 3090 Setup: 80 Tok/s on Qwen 3.6 27B Q8",
+          "score": 254,
           "source": "hackernews"
         }
       ]
@@ -350,8 +328,8 @@
     "key_last_used": {
       "0": "2026-06-14T08:25:00.923016+00:00",
       "1": "2026-06-14T08:24:48.563938+00:00",
-      "2": "2026-06-14T08:23:43.287507+00:00"
+      "2": "2026-06-14T11:09:48.006001+00:00"
     }
   },
-  "last_updated": "2026-06-14T08:25:11.047350+00:00"
+  "last_updated": "2026-06-14T11:09:48.511239+00:00"
 }
