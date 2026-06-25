@@ -1,0 +1,21 @@
+2026-06-25 18:27:48,264 [INFO] __main__: === Daily Code Automation — 2026-06-25 18:27 UTC | tasks_per_run=1 ===
+2026-06-25 18:27:48,264 [INFO] automation.config: Loaded 3 Gemini API key(s)
+2026-06-25 18:27:48,265 [INFO] __main__: Task [1/10]: Project scaffold  (project: ecostream-hub)
+2026-06-25 18:27:48,265 [INFO] __main__: Generating code with Gemini…
+2026-06-25 18:27:48,265 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-25 18:27:48,388 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-25 18:27:48,389 [WARNING] automation.project_planner: key[1] rate-limited (429) on gemini-2.0-flash
+2026-06-25 18:27:48,389 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-25 18:27:48,515 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-25 18:27:48,516 [WARNING] automation.project_planner: key[0] rate-limited (429) on gemini-2.0-flash
+2026-06-25 18:27:48,517 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-25 18:27:48,628 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-06-25 18:27:48,629 [WARNING] automation.project_planner: key[2] rate-limited (429) on gemini-2.0-flash
+2026-06-25 18:27:48,629 [WARNING] automation.project_planner: Every key hit 429 back-to-back on the same model. Free-tier quota is per Google Cloud PROJECT, not per key — keys created in the same project share one quota, so rotation adds nothing. Create each key in a separate project (aistudio.google.com → new project per key) to actually multiply quota.
+2026-06-25 18:27:48,629 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-06-25 18:28:19,823 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent "HTTP/1.1 200 OK"
+2026-06-25 18:28:19,825 [INFO] automation.project_planner: Gemini OK — key[1] model=gemini-2.5-flash
+2026-06-25 18:28:19,825 [INFO] automation.project_planner: Generated 14 file(s) for task: Project scaffold
+2026-06-25 18:28:19,825 [INFO] __main__: Committing 14 file(s) → ecostream-hub
+2026-06-25 18:28:19,984 [INFO] automation.progress_tracker: State saved → /home/runner/work/daily-code/daily-code/automation/state.json
+2026-06-25 18:28:19,984 [ERROR] __main__: Run failed: 404 {"message": "Not Found", "documentation_url": "https://docs.github.com/rest/repos/repos#get-a-repository", "status": "404"}
