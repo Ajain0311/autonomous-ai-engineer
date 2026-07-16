@@ -90,6 +90,52 @@ def _get_trending(state: dict) -> dict:
     return data
 
 
+def _generate_readme_content(project: dict, completed_ids: set, current_task_id: int | None = None) -> str:
+    title = project.get("title", project.get("name", "Daily Project"))
+    desc = project.get("description", "")
+    
+    readme = f"# {title}\n\n"
+    readme += f"{desc}\n\n"
+    
+    # Tech Stack
+    tech = project.get("tech_stack", {})
+    if tech:
+        readme += "## Tech Stack\n"
+        for k, v in tech.items():
+            if isinstance(v, list):
+                readme += f"- **{k.capitalize()}**: {', '.join(v)}\n"
+            else:
+                readme += f"- **{k.capitalize()}**: {v}\n"
+        readme += "\n"
+        
+    # Features
+    features = project.get("features", [])
+    if features:
+        readme += "## Features\n"
+        for f in features:
+            readme += f"- {f}\n"
+        readme += "\n"
+        
+    # Roadmap
+    readme += "## 10-Day Development Roadmap\n\n"
+    tasks = project.get("tasks", [])
+    for t in tasks:
+        t_id = t["id"]
+        t_name = t["name"]
+        t_desc = t["description"]
+        
+        # Check status
+        status_str = "[ ] Pending"
+        if t_id in completed_ids:
+            status_str = "[x] Completed"
+        elif t_id == current_task_id:
+            status_str = "[x] Completed (Today)"
+        
+        readme += f"- **Day {t_id}**: {status_str} | **{t_name}** - {t_desc}\n"
+        
+    return readme
+
+
 def _start_new_project(state: dict, github: GitHubManager) -> dict:
     logger = logging.getLogger(__name__)
 
@@ -120,6 +166,18 @@ def _start_new_project(state: dict, github: GitHubManager) -> dict:
         except Exception as exc:
             logger.warning("Netlify setup skipped: %s", exc)
 
+    # Commit initial README.md (the plan)
+    readme_content = _generate_readme_content(project, set())
+    logger.info("Committing initial project plan to %s", project["name"])
+    try:
+        github.commit_files(
+            repo_name=project["name"],
+            files={"README.md": readme_content},
+            message="chore: initial project plan",
+        )
+    except Exception as exc:
+        logger.error("Failed to commit initial project plan: %s", exc)
+
     _save_state(state)
     return state
 
@@ -127,6 +185,7 @@ def _start_new_project(state: dict, github: GitHubManager) -> dict:
 def _run_one_task(state: dict, github: GitHubManager, logger: logging.Logger) -> dict:
     """Generate and commit code for the next pending task. Returns updated state."""
     project = get_current_project(state)
+    just_created = False
 
     # Archive a fully-complete project, then start fresh
     if is_project_complete(state):
@@ -143,6 +202,11 @@ def _run_one_task(state: dict, github: GitHubManager, logger: logging.Logger) ->
                 except Exception as exc:
                     logger.warning("Could not check Netlify deploy: %s", exc)
         state = _start_new_project(state, github)
+        just_created = True
+
+    if just_created:
+        logger.info("New project created and plan committed — ending this run's task execution.")
+        return state
 
     project = get_current_project(state)
     task = get_next_task(state)
@@ -158,32 +222,57 @@ def _run_one_task(state: dict, github: GitHubManager, logger: logging.Logger) ->
         done_count + 1, total, task["name"], project["name"],
     )
 
-    logger.info("Generating code with Gemini…")
     try:
+        logger.info("Generating code with Gemini…")
         impl = generate_task_code(project, task, get_completed_tasks(state))
-    except RuntimeError as exc:
-        logger.error("Gemini unavailable — skipping task this run: %s", exc)
-        return state
+        
+        files: dict = impl.get("file_contents", {})
+        commit_msg: str = impl.get("commit_message") or f"feat: {task['name']}"
 
-    files: dict = impl.get("file_contents", {})
-    commit_msg: str = impl.get("commit_message") or f"feat: {task['name']}"
+        if not files:
+            logger.warning("Gemini returned no files — skipping commit.")
+            return state
 
-    if not files:
-        logger.warning("Gemini returned no files — skipping commit.")
-        return state
+        # Generate and add/overwrite README.md with the updated plan/roadmap
+        completed_ids = {t["id"] for t in project.get("tasks", []) if t.get("status") == "done"}
+        readme_content = _generate_readme_content(project, completed_ids, current_task_id=task["id"])
+        files["README.md"] = readme_content
 
-    logger.info("Committing %d file(s) → %s", len(files), project["name"])
-    sha = github.commit_files(
-        repo_name=project["name"],
-        files=files,
-        message=commit_msg,
-    )
+        logger.info("Committing %d file(s) (including README.md) → %s", len(files), project["name"])
+        sha = github.commit_files(
+            repo_name=project["name"],
+            files=files,
+            message=commit_msg,
+        )
 
-    state = mark_task_done(state, task["id"], sha)
-    _save_state(state)
+        state = mark_task_done(state, task["id"], sha)
+        _save_state(state)
 
-    remaining = sum(1 for t in project["tasks"] if t.get("status") == "pending")
-    logger.info("Commit %s done | %d task(s) remaining", sha[:7], remaining)
+        remaining = sum(1 for t in project["tasks"] if t.get("status") == "pending")
+        logger.info("Commit %s done | %d task(s) remaining", sha[:7], remaining)
+        
+    except Exception as exc:
+        logger.error("Gemini/build failure during task '%s': %s", task["name"], exc)
+        
+        # Unstaged completed IDs
+        completed_ids = {t["id"] for t in project.get("tasks", []) if t.get("status") == "done"}
+        try:
+            # Generate README.md without marking the current task as done
+            readme_content = _generate_readme_content(project, completed_ids, current_task_id=None)
+            
+            # Append notice about the failure
+            stamp = datetime.now(_UTC).strftime("%Y-%m-%d %H:%M UTC")
+            readme_content += f"\n\n> [!WARNING]\n> **Build attempt on {stamp} postponed**:\n> Gemini API rate-limited or build failed ({exc}). Will retry on the next daily run.\n"
+            
+            logger.info("Committing failure notice to README.md in project repo to keep streak alive")
+            github.commit_files(
+                repo_name=project["name"],
+                files={"README.md": readme_content},
+                message=f"chore: postpone build for '{task['name']}' (Gemini API offline)",
+            )
+        except Exception as commit_exc:
+            logger.error("Failed to commit failure notice to project repo: %s", commit_exc)
+
     return state
 
 

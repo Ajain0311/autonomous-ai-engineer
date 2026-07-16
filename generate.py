@@ -158,6 +158,7 @@ lang, description = random.choice(TOPICS)
 today = datetime.date.today().isoformat()
 ext = EXTENSIONS.get(lang, "txt")
 slug = description.split()[2] if len(description.split()) > 2 else description.split()[0]
+slug = "".join(c for c in slug if c.isalnum() or c in ("-", "_"))
 path = f"{lang}/{today}_{slug}.{ext}"
 
 print(f"Generating {lang}: {description}")

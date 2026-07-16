@@ -2,18 +2,9 @@ name: Daily Code Generation
 
 on:
   schedule:
-    #  4 runs/day — each run commits 1 task, spread across IST hours.
-    #  Odd minutes: GitHub heavily delays :00/:30 crons. Offset from daily.yml
-    #  so the two workflows never race for the same per-project Gemini quota.
-    #
+    #  1 run/day — commits 1 task or plans a new project.
     #  Run 1: 04:17 UTC = 09:47 IST
     - cron: '17 4 * * *'
-    #  Run 2: 08:17 UTC = 13:47 IST
-    - cron: '17 8 * * *'
-    #  Run 3: 12:17 UTC = 17:47 IST
-    - cron: '17 12 * * *'
-    #  Run 4: 16:17 UTC = 21:47 IST
-    - cron: '17 16 * * *'
 
   workflow_dispatch:
     inputs:
