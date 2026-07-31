@@ -29,12 +29,9 @@ PROVIDER_MODELS = {
     "gemini": ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemma-3-27b-it", "gemma-3-12b-it"],
     "groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"],
     "openrouter": [
-        "meta-llama/llama-3-8b-instruct:free", 
-        "google/gemma-2-9b-it:free", 
-        "mistralai/mistral-7b-instruct:free", 
-        "meta-llama/llama-3.1-8b-instruct:free",
+        "openrouter/free",
         "google/gemma-2-9b-it:free",
-        "openchat/openchat-7b:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
         "cohere/north-mini-code:free"
     ],
     "together": ["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", "meta-llama/Llama-3-8b-chat-hf"],
@@ -43,7 +40,7 @@ PROVIDER_MODELS = {
     "sambanova": ["Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-405B-Instruct"],
     "mistral": ["open-mistral-7b"],
     "cohere": ["command-r-plus-08-2024"],
-    "kilo": ["meta-llama/llama-3.1-8b-instruct", "openai/gpt-4o-mini"]
+    "kilo": ["kilo-auto/free", "meta-llama/llama-3.1-8b-instruct", "openai/gpt-4o-mini"]
 }
 
 class APIError(Exception):
