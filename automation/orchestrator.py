@@ -4,16 +4,18 @@ import logging
 import time
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
+
+# Ensure project root is in python path to resolve absolute imports
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from automation import config, state_manager, quality_gates
 from automation.trend_finder import get_trending_topics
 from automation.project_planner import plan_new_project, generate_task_code, repair_task_code
 
 logger = logging.getLogger(__name__)
-ROOT_DIR = Path(__file__).resolve().parent.parent if 'Path' in globals() else None
-if not ROOT_DIR:
-    from pathlib import Path
-    ROOT_DIR = Path(__file__).resolve().parent.parent
 
 def _setup_logging() -> None:
     config.LOGS_DIR.mkdir(parents=True, exist_ok=True)

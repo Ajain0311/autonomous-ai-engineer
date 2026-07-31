@@ -24,6 +24,13 @@ STATE_FILE = ROOT_DIR / "automation" / "project_state.yaml"
 LOGS_DIR = ROOT_DIR / "automation" / "logs"
 ENV_FILE = ROOT_DIR / ".env"
 
+CONFIG_VAR_NAMES = [
+    "DASHBOARD_PASSWORD", "GITHUB_TOKEN", "GITHUB_USERNAME", "NETLIFY_TOKEN", "GEMINI_MODEL",
+    "GEMINI_API_KEYS", "GROQ_API_KEYS", "OPENROUTER_API_KEYS", "TOGETHER_API_KEYS",
+    "MISTRAL_API_KEYS", "COHERE_API_KEYS", "HUGGINGFACE_API_KEYS", "GITHUB_MODELS_KEYS",
+    "SAMBANOVA_API_KEYS", "KILO_API_KEYS"
+]
+
 app = FastAPI(title="Autonomous AI Software Engineer Dashboard")
 
 # Enable CORS for development
@@ -289,8 +296,15 @@ def start_from_scratch(payload: ResetRequest):
 
 @app.get("/api/config/keys")
 def get_config_keys():
-    """Reads current API keys from .env file."""
+    """Reads current API keys from environment variables and local .env file."""
     keys = {}
+    # 1. Read from OS environment variables first (important for Render deployment)
+    for var in CONFIG_VAR_NAMES:
+        val = os.environ.get(var)
+        if val:
+            keys[var] = val
+            
+    # 2. Supplementary/Override with .env file if it exists
     if ENV_FILE.exists():
         try:
             with open(ENV_FILE, "r", encoding="utf-8") as f:
