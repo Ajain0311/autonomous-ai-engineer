@@ -10,7 +10,11 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 _PLAN_PROMPT = """\
 You are an elite software architect and small software company CEO. Design a high-utility, production-grade commercial SaaS application.
-This application must be built incrementally over 6-12 months, featuring a modular architecture with React + TS frontend, Node.js + Express backend, and a GitHub-backed JSON database (storing database tables as JSON array files inside a `db/` folder in the repository, and automatically committed and pushed by the backend API on write operations).
+This application must be built incrementally over 6-12 months, featuring a modular architecture with React + TS frontend, Node.js + Express backend, and a GitHub-backed JSON database.
+We do NOT use external databases (like PostgreSQL, MySQL, Supabase, or SQLite). Instead:
+- Every database table must be stored as its own individual JSON file inside a `db/` folder in the repository (e.g. `db/users.json`, `db/tasks.json`).
+- Each file must contain a JSON array of objects representing rows.
+- The Node.js/Express backend must read, parse, query, update, delete, and write back objects in these JSON files directly on disk, automatically committing and pushing the changes via git commands to remote on every write operation.
 
 Trending data / themes to inspire you:
 {trending}
@@ -70,7 +74,13 @@ _CODE_PROMPT = """\
 You are an expert full-stack developer writing production-grade, maintainable code.
 We are building a SaaS application called "{title}" (Description: {description}).
 
-Tech Stack: React 18, TypeScript, TailwindCSS, Zustand state management, React Router v6, Express backend, and GitHub-backed JSON Database (table objects stored as JSON files, read/write updates committed and pushed by the Express backend API).
+Tech Stack and Database Architecture:
+- Frontend: React 18, TypeScript, TailwindCSS, Zustand state management, React Router v6.
+- Backend: Express (Node.js) API.
+- Database: GitHub-backed JSON Database. We do NOT use external/SQL databases (no Supabase, no SQLite).
+- Table Storage: Every database table must be stored as its own individual JSON file containing a list of objects (e.g., `db/users.json`, `db/tasks.json` in the project root).
+- CRUD Operations: Implement database read, write, update, and delete actions directly by reading the corresponding file, parsing the array of objects, performing object mutations (insert, update, delete), writing it back to disk, and automatically calling Git commands (`git add -A`, `git commit`, `git push`) to push changes.
+- Helper Module: Scaffold a clean `db` or `JSONDatabase` helper in the backend to manage these CRUD operations for any table.
 
 Task details to implement:
 - Task ID: {task_id}

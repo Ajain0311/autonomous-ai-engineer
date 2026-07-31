@@ -92,6 +92,15 @@ export default function App() {
   const [editorCommitMsg, setEditorCommitMsg] = useState<string>('');
   const [isCommittingEditor, setIsCommittingEditor] = useState<boolean>(false);
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
   
   // Credentials & test connection state
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
@@ -237,15 +246,15 @@ export default function App() {
     try {
       const res = await fetch('/api/run', { method: 'POST' });
       const data = await res.json();
-      alert(data.message);
+      showToast(data.message);
       setPipeline(p => ({ ...p, running: true }));
     } catch (e) {
-      alert("Failed to start pipeline.");
+      showToast("Failed to start pipeline.", 'error');
     }
   };
 
   const gitCommit = async () => {
-    if (!commitMessage.trim()) return alert("Message cannot be empty.");
+    if (!commitMessage.trim()) return showToast("Message cannot be empty.", 'error');
     try {
       const res = await fetch('/api/git/commit', {
         method: 'POST',
@@ -253,12 +262,12 @@ export default function App() {
         body: JSON.stringify({ message: commitMessage })
       });
       const data = await res.json();
-      alert(data.message || "Committed successfully!");
+      showToast(data.message || "Committed successfully!");
       setCommitMessage('');
       fetchGitStatus();
       fetchGitLog();
     } catch (e) {
-      alert("Commit failed.");
+      showToast("Commit failed.", 'error');
     }
   };
 
@@ -266,10 +275,10 @@ export default function App() {
     try {
       const res = await fetch('/api/git/push', { method: 'POST' });
       const data = await res.json();
-      alert(data.message || "Pushed successfully!");
+      showToast(data.message || "Pushed successfully!");
       fetchGitStatus();
     } catch (e) {
-      alert("Push failed.");
+      showToast("Push failed.", 'error');
     }
   };
 
@@ -277,10 +286,10 @@ export default function App() {
     try {
       const res = await fetch('/api/git/pull', { method: 'POST' });
       const data = await res.json();
-      alert(data.message || "Pulled successfully!");
+      showToast(data.message || "Pulled successfully!");
       fetchGitStatus();
     } catch (e) {
-      alert("Pull failed.");
+      showToast("Pull failed.", 'error');
     }
   };
 
@@ -304,11 +313,11 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state: updatedState })
       });
-      alert("Specs saved successfully!");
+      showToast("Specs saved successfully!");
       setIsEditingSpecs(false);
       fetchState();
     } catch (e) {
-      alert("Failed to save specs.");
+      showToast("Failed to save specs.", 'error');
     }
   };
 
@@ -326,6 +335,7 @@ export default function App() {
   const selectFile = async (path: string) => {
     try {
       setSelectedFile(path);
+      setEditorCommitMsg(`feat(workspace): update ${path}`);
       setFileContent('Loading file content...');
       const res = await fetch(`/api/files/read?path=${encodeURIComponent(path)}`);
       if (!res.ok) throw new Error('Failed to read file');
@@ -346,9 +356,9 @@ export default function App() {
         body: JSON.stringify({ path: selectedFile, content: fileContent })
       });
       if (!res.ok) throw new Error('Failed to save file');
-      alert('File saved successfully!');
+      showToast('File saved successfully!');
     } catch (e) {
-      alert('Error saving file.');
+      showToast('Error saving file.', 'error');
     } finally {
       setIsSavingFile(false);
     }
@@ -368,7 +378,7 @@ export default function App() {
       await fetchFiles();
       selectFile(newFilePath);
     } catch (e) {
-      alert('Error creating file.');
+      showToast('Error creating file.', 'error');
     }
   };
 
@@ -459,26 +469,34 @@ export default function App() {
   };
 
   const deleteFile = async (path: string) => {
-    if (!confirm(`Are you sure you want to delete ${path}?`)) return;
-    try {
-      const res = await fetch('/api/files/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path })
-      });
-      if (!res.ok) throw new Error('Failed to delete file');
-      alert('File deleted successfully!');
-      setSelectedFile('');
-      setFileContent('');
-      fetchFiles();
-    } catch (e) {
-      alert('Error deleting file.');
-    }
+    setConfirmModal({
+      show: true,
+      title: 'Delete File?',
+      message: `Are you sure you want to permanently delete the file "${path}"? This will remove it from the workspace.`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          const res = await fetch('/api/files/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path })
+          });
+          if (!res.ok) throw new Error('Failed to delete file');
+          showToast('File deleted successfully!');
+          setEditorCommitMsg(`chore(workspace): delete ${path}`);
+          setSelectedFile('');
+          setFileContent('');
+          fetchFiles();
+        } catch (e) {
+          showToast('Error deleting file.', 'error');
+        }
+      }
+    });
   };
 
   const editorCommitAndPush = async () => {
     if (!editorCommitMsg) {
-      alert('Please enter a commit message.');
+      showToast('Please enter a commit message.', 'error');
       return;
     }
     setIsCommittingEditor(true);
@@ -493,12 +511,12 @@ export default function App() {
       const pushRes = await fetch('/api/git/push', { method: 'POST' });
       if (!pushRes.ok) throw new Error('Failed to push');
       
-      alert('Changes Committed and Pushed successfully!');
+      showToast('Changes Committed and Pushed successfully!');
       setEditorCommitMsg('');
       fetchGitStatus();
       fetchGitLog();
     } catch (e) {
-      alert('Error during Commit & Push.');
+      showToast('Error during Commit & Push.', 'error');
     } finally {
       setIsCommittingEditor(false);
     }
@@ -577,13 +595,13 @@ export default function App() {
         body: JSON.stringify({ reason: resetReason })
       });
       const data = await res.json();
-      alert(data.message);
+      showToast(data.message);
       setResetReason('');
       fetchState();
       fetchGitStatus();
       fetchGitLog();
     } catch (e) {
-      alert("Reset failed.");
+      showToast("Reset failed.", 'error');
     }
   };
 
@@ -595,10 +613,10 @@ export default function App() {
         body: JSON.stringify({ keys: envKeys })
       });
       const data = await res.json();
-      alert(data.message || "Keys saved successfully!");
+      showToast(data.message || "Keys saved successfully!");
       fetchEnvKeys();
     } catch (e) {
-      alert("Failed to save credentials.");
+      showToast("Failed to save credentials.", 'error');
     }
   };
 
@@ -662,7 +680,7 @@ export default function App() {
       });
       fetchState();
     } catch (e) {
-      alert("Failed to update status.");
+      showToast("Failed to update status.", 'error');
     }
   };
 
@@ -692,32 +710,41 @@ export default function App() {
       setEditingTask({ id: '', name: '', description: '', files: [], type: 'feature', status: 'pending' });
       fetchState();
     } catch (e) {
-      alert("Failed to save task.");
+      showToast("Failed to save task.", 'error');
     }
   };
 
   const deleteTask = async (milestoneId: number, taskId: string) => {
-    if (!state || !confirm("Are you sure you want to delete this task?")) return;
-    const updatedMilestones = state.milestones.map(m => {
-      if (m.id === milestoneId) {
-        return {
-          ...m,
-          tasks: m.tasks.filter(t => t.id !== taskId)
-        };
+    if (!state) return;
+    setConfirmModal({
+      show: true,
+      title: 'Delete Task?',
+      message: `Are you sure you want to permanently delete the task "${taskId}"? This will remove it from the backlog.`,
+      onConfirm: async () => {
+        setConfirmModal(null);
+        const updatedMilestones = state.milestones.map(m => {
+          if (m.id === milestoneId) {
+            return {
+              ...m,
+              tasks: m.tasks.filter(t => t.id !== taskId)
+            };
+          }
+          return m;
+        });
+        const updatedState = { ...state, milestones: updatedMilestones };
+        try {
+          await fetch('/api/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: updatedState })
+          });
+          fetchState();
+          showToast("Task deleted successfully!");
+        } catch (e) {
+          showToast("Failed to delete task.", 'error');
+        }
       }
-      return m;
     });
-    const updatedState = { ...state, milestones: updatedMilestones };
-    try {
-      await fetch('/api/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: updatedState })
-      });
-      fetchState();
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   if (!isAuthenticated) {
@@ -1241,7 +1268,7 @@ export default function App() {
                               });
                               fetchState();
                             } catch (e) {
-                              alert("Failed to update priority.");
+                              showToast("Failed to update priority.", 'error');
                             }
                           }}
                           className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg disabled:opacity-20 disabled:hover:bg-transparent"
@@ -1264,7 +1291,7 @@ export default function App() {
                               });
                               fetchState();
                             } catch (e) {
-                              alert("Failed to update priority.");
+                              showToast("Failed to update priority.", 'error');
                             }
                           }}
                           className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg disabled:opacity-20 disabled:hover:bg-transparent"
@@ -1469,9 +1496,7 @@ export default function App() {
               </div>
 
               {/* Code Editor (3/4 column) */}
-              <div className={isMaximized ? 
-                "fixed inset-4 z-50 bg-black/95 border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col backdrop-blur-md" : 
-                "glass-card rounded-2xl p-6 shadow-xl lg:col-span-3 flex flex-col min-h-[500px]"}>
+              <div className="glass-card rounded-2xl p-6 shadow-xl lg:col-span-3 flex flex-col min-h-[500px]">
                 {selectedFile ? (
                   <div className="flex-1 flex flex-col">
                     <div className="flex justify-between items-center mb-4">
@@ -1481,16 +1506,16 @@ export default function App() {
                       </div>
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => setIsMaximized(!isMaximized)}
+                          onClick={() => setIsMaximized(true)}
                           className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
-                          title={isMaximized ? "Minimize/Exit Full Screen" : "Maximize/Full Screen"}
+                          title="Maximize/Full Screen"
                         >
-                          {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                          <span>{isMaximized ? 'Minimize' : 'Maximize'}</span>
+                          <Maximize2 className="h-3.5 w-3.5" />
+                          <span>Maximize</span>
                         </button>
                         <button
                           onClick={() => deleteFile(selectedFile)}
-                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-450 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
                           title="Delete File"
                         >
                           <Trash className="h-3.5 w-3.5" />
@@ -1535,7 +1560,7 @@ export default function App() {
                           paddingBottom: '16px',
                           paddingLeft: '16px',
                           paddingRight: '16px',
-                          height: isMaximized ? 'calc(100vh - 180px)' : '450px'
+                          height: '450px'
                         }}
                       />
                     </div>
@@ -1682,6 +1707,127 @@ export default function App() {
                 Create File
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[100] pointer-events-none select-none">
+          <div className={`glass-card flex items-center space-x-3 px-5 py-3 rounded-2xl shadow-2xl border backdrop-blur-md ${toast.type === 'error' ? 'border-rose-500/25 text-rose-300 bg-rose-950/40' : 'border-emerald-500/25 text-emerald-300 bg-emerald-950/40'}`}>
+            {toast.type === 'error' ? (
+              <XCircle className="h-4 w-4 text-rose-400 shrink-0" />
+            ) : (
+              <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+            )}
+            <span className="font-outfit text-xs font-semibold">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirmation Modal */}
+      {confirmModal && confirmModal.show && (
+        <div className="fixed inset-0 z-[110] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setConfirmModal(null)}>
+          <div className="glass-card rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-rose-500/20" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center space-x-3 text-rose-400 mb-4">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-rose-400" />
+              <h3 className="text-sm font-bold text-white">{confirmModal.title}</h3>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed mb-6 font-outfit">
+              {confirmModal.message}
+            </p>
+            <div className="flex space-x-3 justify-end text-xs font-semibold font-outfit">
+              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl transition-all">Cancel</button>
+              <button onClick={confirmModal.onConfirm} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-all flex items-center space-x-1.5">
+                <Trash className="h-3.5 w-3.5" />
+                <span>Confirm</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Maximized Full Screen Editor Overlay */}
+      {isMaximized && selectedFile && (
+        <div className="fixed inset-0 z-[120] bg-black/95 p-6 flex flex-col backdrop-blur-md">
+          <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5">
+            <div className="flex items-center space-x-2">
+              <FileCode className="h-5 w-5 text-violet-400" />
+              <span className="code-font text-sm font-semibold text-white">{selectedFile}</span>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setIsMaximized(false)}
+                className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5"
+                title="Minimize/Exit Full Screen"
+              >
+                <Minimize2 className="h-4 w-4" />
+                <span>Minimize</span>
+              </button>
+              <button
+                onClick={() => deleteFile(selectedFile)}
+                className="px-4 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5"
+                title="Delete File"
+              >
+                <Trash className="h-4 w-4" />
+                <span>Delete</span>
+              </button>
+              <button
+                onClick={saveFile}
+                disabled={isSavingFile}
+                className="px-5 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                <Save className="h-4 w-4" />
+                <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1 flex border border-white/5 rounded-xl overflow-hidden bg-black/60 shadow-inner">
+            {/* Line Numbers Gutter */}
+            <div
+              id="line-numbers-maximized"
+              className="bg-black/30 border-r border-white/5 text-right text-[11px] text-gray-650 font-mono select-none overflow-y-hidden"
+              style={{ 
+                minWidth: '46px', 
+                paddingTop: '20px', 
+                paddingBottom: '20px',
+                paddingRight: '10px'
+              }}
+            >
+              {Array.from({ length: fileContent.split('\n').length || 1 }).map((_, i) => (
+                <div key={i} style={{ height: '22px', lineHeight: '22px' }}>{i + 1}</div>
+              ))}
+            </div>
+            
+            {/* Textarea Code Space */}
+            <textarea
+              value={fileContent}
+              onChange={e => setFileContent(e.target.value)}
+              onScroll={(e) => {
+                const lineNumbersDiv = document.getElementById('line-numbers-maximized');
+                if (lineNumbersDiv) {
+                  lineNumbersDiv.scrollTop = e.currentTarget.scrollTop;
+                }
+              }}
+              className="flex-1 code-font text-sm text-gray-300 bg-transparent outline-none resize-none overflow-y-auto"
+              style={{ 
+                lineHeight: '22px', 
+                paddingTop: '20px', 
+                paddingBottom: '20px',
+                paddingLeft: '20px',
+                paddingRight: '20px',
+                height: '100%'
+              }}
+            />
+          </div>
+          
+          {/* Status Bar */}
+          <div className="mt-3 flex justify-between items-center text-xs text-gray-500 font-outfit px-1 shrink-0">
+            <div className="flex space-x-6">
+              <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
+              <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
+              <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
+            </div>
+            <span className="text-xs bg-white/5 px-2 py-0.5 rounded border border-white/5 text-gray-400 font-outfit">UTF-8</span>
           </div>
         </div>
       )}
