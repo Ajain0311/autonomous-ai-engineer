@@ -51,6 +51,11 @@ def _get_trending(state: dict) -> dict:
 def run_git_command(args: list[str]) -> tuple[bool, str]:
     """Runs a git command in the root repository."""
     try:
+        # Configure git identity locally if not already set (important for cloud environments like Render)
+        username = config.GITHUB_USERNAME or "Ajain0311"
+        subprocess.run(["git", "config", "user.name", username], cwd=str(ROOT_DIR), capture_output=True)
+        subprocess.run(["git", "config", "user.email", f"{username}@users.noreply.github.com"], cwd=str(ROOT_DIR), capture_output=True)
+
         result = subprocess.run(
             ["git"] + args,
             cwd=str(ROOT_DIR),

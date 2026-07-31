@@ -78,6 +78,11 @@ class ConnectionTestRequest(BaseModel):
 def run_git_command(args: list[str]) -> tuple[bool, str]:
     """Helper to run git commands in root repo."""
     try:
+        # Configure git identity locally if not already set (important for cloud environments like Render)
+        username = os.environ.get("GITHUB_USERNAME", "Ajain0311")
+        subprocess.run(["git", "config", "user.name", username], cwd=str(ROOT_DIR), capture_output=True)
+        subprocess.run(["git", "config", "user.email", f"{username}@users.noreply.github.com"], cwd=str(ROOT_DIR), capture_output=True)
+
         result = subprocess.run(
             ["git"] + args,
             cwd=str(ROOT_DIR),
