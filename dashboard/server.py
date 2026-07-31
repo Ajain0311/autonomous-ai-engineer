@@ -48,6 +48,17 @@ class CommitRequest(BaseModel):
 class CheckoutRequest(BaseModel):
     branch: str
 
+class LoginRequest(BaseModel):
+    password: str
+
+@app.post("/api/auth/login")
+def login(payload: LoginRequest):
+    expected_password = os.environ.get("DASHBOARD_PASSWORD", "admin")
+    if payload.password == expected_password:
+        return {"success": True, "token": "auth_token_v2"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid password pin.")
+
 class ResetRequest(BaseModel):
     reason: Optional[str] = "User requested reset"
 
@@ -335,7 +346,12 @@ def test_connection(payload: ConnectionTestRequest):
     reload(config)
     
     # Grab keys for this provider
-    env_var_name = f"{provider.upper()}_API_KEYS"
+    if provider == "github":
+        env_var_name = "GITHUB_MODELS_KEYS"
+    elif provider == "huggingface":
+        env_var_name = "HUGGINGFACE_API_KEYS"
+    else:
+        env_var_name = f"{provider.upper()}_API_KEYS"
     keys_raw = os.environ.get(env_var_name, "") or os.environ.get(f"{provider.upper()}_API_KEY", "")
     keys = [k.strip() for k in keys_raw.split(",") if k.strip()]
     

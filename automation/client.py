@@ -32,12 +32,12 @@ PROVIDER_MODELS = {
         "meta-llama/llama-3-8b-instruct:free", 
         "google/gemma-2-9b-it:free", 
         "mistralai/mistral-7b-instruct:free", 
-        "openchat/openchat-7b:free", 
-        "inclusionai/ling-3.0-flash:free",
-        "poolside/laguna-s-2.1:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "google/gemma-2-9b-it:free",
+        "openchat/openchat-7b:free",
         "cohere/north-mini-code:free"
     ],
-    "together": ["meta-llama/Llama-3-8b-chat-hf"],
+    "together": ["meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", "meta-llama/Llama-3-8b-chat-hf"],
     "github": ["openai/gpt-4o", "meta/llama-3.1-8b-instruct"],
     "huggingface": ["meta-llama/Llama-3.2-1B-Instruct", "google/gemma-2-2b-it"],
     "sambanova": ["Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-405B-Instruct"],
@@ -58,11 +58,11 @@ class LLMClient:
         self.api_key = api_key
         self.index = index
 
-    def generate(self, model: str, prompt: str, temperature: float) -> str:
+    def generate(self, model: str, prompt: str, temperature: float, require_json: bool = False) -> str:
         if self.provider == "gemini":
             try:
                 client = genai.Client(api_key=self.api_key)
-                if model.startswith("gemma"):
+                if model.startswith("gemma") or not require_json:
                     config_opts = types.GenerateContentConfig(
                         temperature=temperature,
                         max_output_tokens=8192,
@@ -127,7 +127,7 @@ class LLMClient:
             
             # JSON mode configuration
             is_small_llama = "8b" in model.lower() or "7b" in model.lower() or "3.2-1b" in model.lower()
-            if not (model.startswith("gemma") or is_small_llama):
+            if require_json and not (model.startswith("gemma") or is_small_llama):
                 payload["response_format"] = {"type": "json_object"}
                 
             try:
@@ -237,7 +237,7 @@ def generate_with_failover(prompt: str, temperature: float = 0.5, require_json: 
                     try:
                         logger.info("Running: provider=%s key_idx=%d model=%s attempt=%d", 
                                     provider, key_idx, model, attempt)
-                        response_text = client.generate(model, prompt, temperature)
+                        response_text = client.generate(model, prompt, temperature, require_json=require_json)
                         
                         if not response_text:
                             raise APIError(500, "Empty response from API")

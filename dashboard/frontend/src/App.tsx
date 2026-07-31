@@ -52,6 +52,10 @@ interface ProjectState {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(sessionStorage.getItem('dashboard_auth') === 'true');
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys'>('overview');
   const [state, setState] = useState<ProjectState | null>(null);
   const [gitStatus, setGitStatus] = useState<{
@@ -81,12 +85,47 @@ export default function App() {
   const [showTaskModal, setShowTaskModal] = useState<boolean>(false);
   const [editingTask, setEditingTask] = useState<Partial<Task>>({ id: '', name: '', description: '', files: [], type: 'feature', status: 'pending' });
 
-  const providersList = [
-    'gemini', 'groq', 'openrouter', 'together', 'github', 
-    'huggingface', 'sambanova', 'mistral', 'cohere', 'kilo'
+  const providersConfig = [
+    { id: 'gemini', name: 'Google Gemini', envVar: 'GEMINI_API_KEYS' },
+    { id: 'groq', name: 'Groq Cloud', envVar: 'GROQ_API_KEYS' },
+    { id: 'openrouter', name: 'OpenRouter', envVar: 'OPENROUTER_API_KEYS' },
+    { id: 'together', name: 'Together AI', envVar: 'TOGETHER_API_KEYS' },
+    { id: 'github', name: 'GitHub Models', envVar: 'GITHUB_MODELS_KEYS' },
+    { id: 'huggingface', name: 'Hugging Face', envVar: 'HUGGINGFACE_API_KEYS' },
+    { id: 'sambanova', name: 'SambaNova Cloud', envVar: 'SAMBANOVA_API_KEYS' },
+    { id: 'mistral', name: 'Mistral AI', envVar: 'MISTRAL_API_KEYS' },
+    { id: 'cohere', name: 'Cohere', envVar: 'COHERE_API_KEYS' },
+    { id: 'kilo', name: 'Kilo AI', envVar: 'KILO_API_KEYS' }
   ];
 
+  const handleLogin = async () => {
+    setAuthError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput })
+      });
+      if (res.ok) {
+        sessionStorage.setItem('dashboard_auth', 'true');
+        setIsAuthenticated(true);
+        setPasswordInput('');
+      } else {
+        const err = await res.json();
+        setAuthError(err.detail || 'Access denied.');
+      }
+    } catch (e) {
+      setAuthError('Connection failed.');
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('dashboard_auth');
+    setIsAuthenticated(false);
+  };
+
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchState();
     fetchGitStatus();
     fetchGitLog();
@@ -97,7 +136,7 @@ export default function App() {
       pollPipelineStatus();
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchState = async () => {
     try {
@@ -390,6 +429,43 @@ export default function App() {
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0c0a0f] p-4 text-gray-200">
+        <div className="glass-card rounded-3xl max-w-md w-full p-8 shadow-2xl border border-violet-500/20 text-center relative overflow-hidden">
+          <div className="absolute -right-20 -top-20 w-44 h-44 bg-violet-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute -left-20 -bottom-20 w-44 h-44 bg-indigo-600/10 rounded-full blur-3xl"></div>
+          
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/25 mb-6">
+            <Cpu className="h-7 w-7 text-white" />
+          </div>
+          
+          <h2 className="text-2xl font-bold text-white mb-2">Antigravity V2 Console</h2>
+          <p className="text-xs text-gray-500 mb-6">Autonomous Software Engineer Control Dashboard. Enter access PIN or password to unlock control gate.</p>
+          
+          <div className="space-y-4">
+            <input type="password" value={passwordInput} 
+                   onChange={e => setPasswordInput(e.target.value)}
+                   onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                   placeholder="Enter Console PIN..." 
+                   className="w-full glass-input text-sm rounded-xl px-4 py-3 text-white outline-none font-mono text-center tracking-widest border border-white/10 focus:border-violet-500/50" />
+            
+            {authError && (
+              <p className="text-xs text-rose-400 font-medium">{authError}</p>
+            )}
+
+            <button onClick={handleLogin}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-violet-600/25 transition-all duration-300">
+              Unlock Controller
+            </button>
+          </div>
+          
+          <p className="text-[10px] text-gray-600 mt-8 font-mono">Status: Locked • Engine Active</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!state) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0c0a0f] text-gray-400">
@@ -425,6 +501,10 @@ export default function App() {
             <GitBranch className="h-3.5 w-3.5" />
             <span>{gitStatus.branch}</span>
           </div>
+          <button onClick={handleLogout}
+                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-350 rounded-lg text-xs font-bold font-outfit transition-all cursor-pointer">
+            Logout
+          </button>
         </div>
       </nav>
 
@@ -740,28 +820,73 @@ export default function App() {
           {/* TAB CONTENT: API Keys Config */}
           {activeTab === 'keys' && (
             <div className="space-y-6">
+              {/* General Platform Config */}
               <div className="glass-card rounded-2xl p-6 shadow-xl">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-white">LLM Credentials & Connection Diagnostics</h2>
-                    <p className="text-xs text-gray-500 mt-1">Configure your LLM API keys. Keys are saved in local .env, keeping them safe from git pushes.</p>
+                    <h2 className="text-lg font-bold text-white">General Platform Settings</h2>
+                    <p className="text-xs text-gray-500 mt-1">Configure GitHub authentication tokens, user accounts details, and default deployment providers.</p>
                   </div>
                   <button onClick={saveEnvKeys}
                           className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-violet-500/20">
                     <Save className="h-4 w-4" />
-                    <span>Save Key Credentials</span>
+                    <span>Save Config Settings</span>
                   </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* GitHub PAT */}
+                  <div className="p-4 bg-black/25 rounded-2xl border border-white/5">
+                    <label className="text-sm font-bold text-gray-250 block mb-2">GitHub Token (GH_PAT)</label>
+                    <input type="password" value={envKeys['GITHUB_TOKEN'] || envKeys['GH_PAT'] || ''} 
+                           onChange={e => setEnvKeys(prev => ({ ...prev, GITHUB_TOKEN: e.target.value }))}
+                           placeholder="Enter GITHUB_TOKEN / GH_PAT..."
+                           className="w-full glass-input text-xs rounded-xl px-3 py-2 text-white outline-none font-mono" />
+                  </div>
+                  {/* GitHub Username */}
+                  <div className="p-4 bg-black/25 rounded-2xl border border-white/5">
+                    <label className="text-sm font-bold text-gray-250 block mb-2">GitHub Username</label>
+                    <input type="text" value={envKeys['GITHUB_USERNAME'] || ''} 
+                           onChange={e => setEnvKeys(prev => ({ ...prev, GITHUB_USERNAME: e.target.value }))}
+                           placeholder="Enter GITHUB_USERNAME..."
+                           className="w-full glass-input text-xs rounded-xl px-3 py-2 text-white outline-none" />
+                  </div>
+                  {/* Netlify Token */}
+                  <div className="p-4 bg-black/25 rounded-2xl border border-white/5">
+                    <label className="text-sm font-bold text-gray-250 block mb-2">Netlify API Token</label>
+                    <input type="password" value={envKeys['NETLIFY_TOKEN'] || ''} 
+                           onChange={e => setEnvKeys(prev => ({ ...prev, NETLIFY_TOKEN: e.target.value }))}
+                           placeholder="Enter NETLIFY_TOKEN..."
+                           className="w-full glass-input text-xs rounded-xl px-3 py-2 text-white outline-none font-mono" />
+                  </div>
+                  {/* Gemini Model Override */}
+                  <div className="p-4 bg-black/25 rounded-2xl border border-white/5">
+                    <label className="text-sm font-bold text-gray-250 block mb-2">Gemini Model Override</label>
+                    <input type="text" value={envKeys['GEMINI_MODEL'] || ''} 
+                           onChange={e => setEnvKeys(prev => ({ ...prev, GEMINI_MODEL: e.target.value }))}
+                           placeholder="e.g. gemini-2.0-flash..."
+                           className="w-full glass-input text-xs rounded-xl px-3 py-2 text-white outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* LLM Providers Config */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-white">LLM Credentials & Connection Diagnostics</h2>
+                    <p className="text-xs text-gray-500 mt-1">Configure your LLM API keys. Keys are saved in local .env, keeping them safe from git pushes.</p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {providersList.map(provider => {
-                    const envVar = `${provider.toUpperCase()}_API_KEYS`;
-                    const status = providerStatus[provider] || { status: 'idle', message: '' };
+                  {providersConfig.map(provider => {
+                    const envVar = provider.envVar;
+                    const status = providerStatus[provider.id] || { status: 'idle', message: '' };
                     return (
-                      <div key={provider} className="p-4 bg-black/25 rounded-2xl border border-white/5 flex flex-col justify-between">
+                      <div key={provider.id} className="p-4 bg-black/25 rounded-2xl border border-white/5 flex flex-col justify-between">
                         <div>
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-bold text-gray-200 capitalize">{provider}</span>
+                            <span className="text-sm font-bold text-gray-200">{provider.name}</span>
                             
                             {/* Connection Indicator */}
                             <span className="flex items-center space-x-1.5 text-[10px] font-semibold uppercase tracking-wider">
@@ -773,14 +898,14 @@ export default function App() {
                           </div>
                           <input type="password" value={envKeys[envVar] || ''} 
                                  onChange={e => setEnvKeys(prev => ({ ...prev, [envVar]: e.target.value }))}
-                                 placeholder={`Input comma-separated keys for ${provider}...`}
+                                 placeholder={`Input comma-separated keys for ${provider.name}...`}
                                  className="w-full glass-input text-xs rounded-xl px-3 py-2 text-white outline-none font-mono" />
                           {status.message && (
                             <p className="text-[10px] mt-2 text-gray-500 leading-normal max-h-16 overflow-y-auto whitespace-pre-wrap">{status.message}</p>
                           )}
                         </div>
                         <div className="mt-4 flex justify-end">
-                          <button onClick={() => testProviderConnection(provider)}
+                          <button onClick={() => testProviderConnection(provider.id)}
                                   className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-lg text-[10px] font-bold transition-all">
                             Test Call
                           </button>
