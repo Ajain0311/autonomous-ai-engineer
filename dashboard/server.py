@@ -191,6 +191,52 @@ def get_commit_diff(sha: str):
         raise HTTPException(status_code=500, detail=diff)
     return {"diff": diff}
 
+class FileWriteRequest(BaseModel):
+    path: str
+    content: str
+
+@app.get("/api/files/list")
+def list_files():
+    files = []
+    ignore_dirs = {".git", "node_modules", "__pycache__", "dist", ".vite", ".netlify"}
+    for root, dirs, filenames in os.walk(ROOT_DIR):
+        dirs[:] = [d for d in dirs if d not in ignore_dirs]
+        for f in filenames:
+            full_path = Path(root) / f
+            rel_path = full_path.relative_to(ROOT_DIR)
+            if f == ".env" or f.endswith((".pyc", ".png", ".jpg", ".ico", ".svg")):
+                continue
+            files.append(str(rel_path).replace("\\", "/"))
+    return {"files": sorted(files)}
+
+@app.get("/api/files/read")
+def read_file(path: str):
+    try:
+        # Prevent traversal
+        safe_path = (ROOT_DIR / path).resolve()
+        if not str(safe_path).startswith(str(ROOT_DIR.resolve())):
+            raise HTTPException(status_code=403, detail="Path traversal detected.")
+        if not safe_path.exists() or not safe_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found.")
+        with open(safe_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/files/write")
+def write_file(payload: FileWriteRequest):
+    try:
+        safe_path = (ROOT_DIR / payload.path).resolve()
+        if not str(safe_path).startswith(str(ROOT_DIR.resolve())):
+            raise HTTPException(status_code=403, detail="Path traversal detected.")
+        safe_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(safe_path, "w", encoding="utf-8") as f:
+            f.write(payload.content)
+        return {"status": "success", "message": f"File {payload.path} saved successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/git/commit")
 def git_commit(payload: CommitRequest):
     run_git_command(["add", "."])

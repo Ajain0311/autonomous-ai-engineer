@@ -3,7 +3,7 @@ import {
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
   Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search
 } from 'lucide-react';
 
 interface Task {
@@ -57,7 +57,7 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor'>('overview');
   const [state, setState] = useState<ProjectState | null>(null);
   const [gitStatus, setGitStatus] = useState<{
     branch: string;
@@ -74,6 +74,13 @@ export default function App() {
   const [selectedCommit, setSelectedCommit] = useState<{ sha: string; message: string } | null>(null);
   const [selectedCommitDiff, setSelectedCommitDiff] = useState<string>('');
   const [showCommitModal, setShowCommitModal] = useState<boolean>(false);
+  const [files, setFiles] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string>('');
+  const [fileContent, setFileContent] = useState<string>('');
+  const [isSavingFile, setIsSavingFile] = useState<boolean>(false);
+  const [showNewFileModal, setShowNewFileModal] = useState<boolean>(false);
+  const [newFilePath, setNewFilePath] = useState<string>('');
+  const [fileSearchQuery, setFileSearchQuery] = useState<string>('');
   
   // Credentials & test connection state
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
@@ -134,6 +141,7 @@ export default function App() {
     fetchGitStatus();
     fetchGitLog();
     fetchEnvKeys();
+    fetchFiles();
     
     // Poll logs & pipeline status
     const interval = setInterval(() => {
@@ -290,6 +298,66 @@ export default function App() {
       fetchState();
     } catch (e) {
       alert("Failed to save specs.");
+    }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const res = await fetch('/api/files/list');
+      if (!res.ok) throw new Error('Failed to load files');
+      const data = await res.json();
+      setFiles(data.files || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const selectFile = async (path: string) => {
+    try {
+      setSelectedFile(path);
+      setFileContent('Loading file content...');
+      const res = await fetch(`/api/files/read?path=${encodeURIComponent(path)}`);
+      if (!res.ok) throw new Error('Failed to read file');
+      const data = await res.json();
+      setFileContent(data.content || '');
+    } catch (e) {
+      setFileContent('Error loading file.');
+    }
+  };
+
+  const saveFile = async () => {
+    if (!selectedFile) return;
+    setIsSavingFile(true);
+    try {
+      const res = await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: selectedFile, content: fileContent })
+      });
+      if (!res.ok) throw new Error('Failed to save file');
+      alert('File saved successfully!');
+    } catch (e) {
+      alert('Error saving file.');
+    } finally {
+      setIsSavingFile(false);
+    }
+  };
+
+  const createNewFile = async () => {
+    if (!newFilePath) return;
+    try {
+      const res = await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: newFilePath, content: '' })
+      });
+      if (!res.ok) throw new Error('Failed to create file');
+      setShowNewFileModal(false);
+      setNewFilePath('');
+      await fetchFiles();
+      selectFile(newFilePath);
+    } catch (e) {
+      alert('Error creating file.');
     }
   };
 
@@ -671,6 +739,10 @@ export default function App() {
             <button onClick={() => setActiveTab('logs')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'logs' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <Terminal className="h-4 w-4" />
               <span>Terminal output</span>
+            </button>
+            <button onClick={() => setActiveTab('editor')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'editor' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <FileCode className="h-4 w-4" />
+              <span>Workspace Editor</span>
             </button>
           </div>
 
@@ -1153,6 +1225,83 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* TAB CONTENT: Workspace Code Editor */}
+          {activeTab === 'editor' && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* File Explorer (1/4 column) */}
+              <div className="glass-card rounded-2xl p-4 shadow-xl flex flex-col max-h-[600px]">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-gray-250 text-xs flex items-center space-x-1.5">
+                    <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
+                    <span>File Explorer</span>
+                  </h3>
+                  <button onClick={() => setShowNewFileModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New File">
+                    <FilePlus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {/* Search query */}
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    value={fileSearchQuery}
+                    onChange={e => setFileSearchQuery(e.target.value)}
+                    placeholder="Search files..."
+                    className="w-full pl-8 pr-3 py-1.5 text-[11px] bg-black/30 border border-white/5 rounded-lg text-white outline-none focus:border-violet-500/30"
+                  />
+                  <Search className="h-3.5 w-3.5 text-gray-500 absolute left-2.5 top-2" />
+                </div>
+                {/* Scrollable File List */}
+                <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-mono text-[10px]">
+                  {files.filter(f => f.toLowerCase().includes(fileSearchQuery.toLowerCase())).map(path => (
+                    <button
+                      key={path}
+                      onClick={() => selectFile(path)}
+                      className={`w-full text-left p-2 rounded-lg truncate block transition-all ${selectedFile === path ? 'bg-violet-600/20 text-violet-300 border border-violet-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white border border-transparent'}`}
+                    >
+                      {path}
+                    </button>
+                  ))}
+                  {files.length === 0 && (
+                    <p className="text-gray-600 text-center py-8">No files found.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Code Editor (3/4 column) */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl lg:col-span-3 flex flex-col min-h-[500px]">
+                {selectedFile ? (
+                  <div className="flex-1 flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex items-center space-x-2">
+                        <FileCode className="h-4 w-4 text-violet-400" />
+                        <span className="code-font text-xs font-semibold text-white">{selectedFile}</span>
+                      </div>
+                      <button
+                        onClick={saveFile}
+                        disabled={isSavingFile}
+                        className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
+                      </button>
+                    </div>
+                    <textarea
+                      value={fileContent}
+                      onChange={e => setFileContent(e.target.value)}
+                      className="w-full flex-1 code-font text-xs bg-black/60 text-gray-300 p-4 border border-white/5 rounded-xl h-[450px] outline-none leading-relaxed resize-none shadow-inner"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col justify-center items-center text-center py-20 text-gray-550">
+                    <FileCode className="h-12 w-12 text-gray-700 mb-4 animate-pulse" />
+                    <h3 className="font-bold text-sm text-gray-400">No File Selected</h3>
+                    <p className="text-xs text-gray-650 max-w-xs mt-1">Select a file from the left explorer to view, edit, and save its source code directly on Render.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1244,6 +1393,35 @@ export default function App() {
             <div className="flex justify-end mt-4">
               <button onClick={() => setShowCommitModal(false)} className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all">
                 Close Viewer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Create New File Modal */}
+      {showNewFileModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowNewFileModal(false)}>
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/5 font-outfit" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-2">Create New Workspace File</h3>
+            <p className="text-xs text-gray-500 mb-6 font-outfit">Enter the path of the new file relative to the project root (e.g. <code>app/src/utils.ts</code>).</p>
+            
+            <div className="space-y-4 mb-6">
+              <label className="text-xs font-semibold text-gray-400 block font-outfit">Relative File Path</label>
+              <input
+                type="text"
+                value={newFilePath}
+                onChange={e => setNewFilePath(e.target.value)}
+                placeholder="e.g. app/src/new-helpers.ts"
+                className="w-full glass-input text-sm rounded-xl px-4 py-2.5 text-white outline-none font-mono"
+              />
+            </div>
+            
+            <div className="flex space-x-3 justify-end font-outfit">
+              <button onClick={() => setShowNewFileModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-semibold transition-all">
+                Cancel
+              </button>
+              <button onClick={createNewFile} className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all">
+                Create File
               </button>
             </div>
           </div>
