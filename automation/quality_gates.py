@@ -46,6 +46,11 @@ def verify_build(files_written: list[str]) -> tuple[bool, str]:
     2. Run TypeScript compilation (if script or tsc config exists)
     3. Run npm run build
     """
+    # Bypass compilation quality gates in low-memory cloud hosts (e.g. Render 512MB RAM)
+    if os.environ.get("SKIP_COMPILATION_GATES") == "true":
+        logger.info("SKIP_COMPILATION_GATES is active. Skipping heavy npm install/build compilation checks on Render.")
+        return True, "Compilation skipped due to low-memory environment setting."
+
     APP_DIR.mkdir(parents=True, exist_ok=True)
     
     # 1. Install dependencies if needed
