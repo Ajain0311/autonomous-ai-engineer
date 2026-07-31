@@ -1,12 +1,12 @@
 import subprocess
 import logging
 from pathlib import Path
+import os
+import sys
 
 logger = logging.getLogger(__name__)
 ROOT_DIR = Path(__file__).resolve().parent.parent
 APP_DIR = ROOT_DIR / "app"
-
-import sys
 
 def run_command_in_app(args: list[str]) -> tuple[bool, str]:
     """Runs a shell command in the app directory, returning success and output."""
@@ -14,6 +14,11 @@ def run_command_in_app(args: list[str]) -> tuple[bool, str]:
         logger.info("Executing quality gate command: %s", " ".join(args))
         # Use shell=True only on Windows for .cmd/.bat resolving compatibility
         is_win = (sys.platform == "win32")
+        
+        # Limit Node memory ceiling to fit within Render 512MB RAM limit
+        env = os.environ.copy()
+        env["NODE_OPTIONS"] = "--max-old-space-size=400"
+        
         result = subprocess.run(
             args,
             cwd=str(APP_DIR),
@@ -21,6 +26,7 @@ def run_command_in_app(args: list[str]) -> tuple[bool, str]:
             stderr=subprocess.PIPE,
             text=True,
             shell=is_win,
+            env=env,
             timeout=300 # 5 minutes max timeout
         )
         output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
@@ -50,7 +56,7 @@ def verify_build(files_written: list[str]) -> tuple[bool, str]:
         is_package_json_modified = any("package.json" in f for f in files_written)
         if is_package_json_modified or not node_modules_exists:
             logger.info("Running npm install...")
-            success, output = run_command_in_app(["npm", "install"])
+            success, output = run_command_in_app(["npm", "install", "--no-audit", "--no-fund", "--loglevel=error"])
             if not success:
                 return False, f"npm install failed:\n{output}"
 
