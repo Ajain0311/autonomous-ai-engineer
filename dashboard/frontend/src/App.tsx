@@ -71,6 +71,9 @@ export default function App() {
   const [pipeline, setPipeline] = useState<{ running: boolean; log: string }>({ running: false, log: '' });
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [resetReason, setResetReason] = useState<string>('');
+  const [selectedCommit, setSelectedCommit] = useState<{ sha: string; message: string } | null>(null);
+  const [selectedCommitDiff, setSelectedCommitDiff] = useState<string>('');
+  const [showCommitModal, setShowCommitModal] = useState<boolean>(false);
   
   // Credentials & test connection state
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
@@ -288,6 +291,41 @@ export default function App() {
     } catch (e) {
       alert("Failed to save specs.");
     }
+  };
+
+  const viewCommitDiff = async (sha: string, message: string) => {
+    try {
+      setSelectedCommit({ sha, message });
+      setSelectedCommitDiff('Loading commit changes...');
+      setShowCommitModal(true);
+      const res = await fetch(`/api/git/commit-diff?sha=${sha}`);
+      if (!res.ok) throw new Error('Failed to load diff');
+      const data = await res.json();
+      setSelectedCommitDiff(data.diff || 'No changes found in this commit.');
+    } catch (e) {
+      setSelectedCommitDiff('Failed to load commit changes.');
+    }
+  };
+
+  const renderDiffLines = (diffText: string) => {
+    if (!diffText) return <span className="text-gray-500">No content.</span>;
+    return diffText.split('\n').map((line, idx) => {
+      let className = "text-gray-300";
+      if (line.startsWith('+') && !line.startsWith('+++')) {
+        className = "text-emerald-400 bg-emerald-500/10";
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        className = "text-rose-400 bg-rose-500/10";
+      } else if (line.startsWith('@@')) {
+        className = "text-cyan-400 bg-cyan-500/5 font-semibold";
+      } else if (line.startsWith('diff --git')) {
+        className = "text-violet-400 font-bold border-t border-white/5 pt-2 mt-2 block";
+      }
+      return (
+        <span key={idx} className={`block px-2 py-0.5 font-mono leading-relaxed whitespace-pre-wrap ${className}`}>
+          {line}
+        </span>
+      );
+    });
   };
 
   const executeReset = async () => {
@@ -704,7 +742,7 @@ export default function App() {
                   <div className="glass-card rounded-2xl p-6 shadow-xl flex flex-col">
                     <h3 className="font-bold text-gray-250 mb-3 flex items-center space-x-2 text-sm">
                       <Database className="h-4 w-4 text-violet-400" />
-                      <span>PostgreSQL Supabase Schema Spec</span>
+                      <span>Git-Backed JSON Database Schema</span>
                     </h3>
                     {isEditingSpecs ? (
                       <textarea value={editedSpecs.db_schema} rows={12}
@@ -1088,12 +1126,15 @@ export default function App() {
                 </h3>
                 <div className="space-y-2.5 max-h-80 overflow-y-auto">
                   {gitLog.map(commit => (
-                    <div key={commit.sha} className="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/5 text-xs">
+                    <div key={commit.sha} 
+                         onClick={() => viewCommitDiff(commit.sha, commit.message)}
+                         title="Click to view code changes for this commit"
+                         className="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/5 text-xs hover:bg-white/5 hover:border-violet-500/30 cursor-pointer transition-all">
                       <div>
                         <span className="code-font bg-white/5 border border-white/10 text-violet-300 px-2 py-0.5 rounded font-medium">{commit.sha}</span>
                         <span className="text-gray-300 font-medium ml-2">{commit.message}</span>
                       </div>
-                      <span className="text-gray-500 text-[10px] font-outfit">{commit.author} on {commit.date}</span>
+                      <span className="text-gray-550 text-[10px] font-outfit">{commit.author} on {commit.date}</span>
                     </div>
                   ))}
                 </div>
@@ -1176,6 +1217,33 @@ export default function App() {
               <button onClick={executeReset} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-semibold transition-all flex items-center space-x-2">
                 <Trash2 className="h-4 w-4" />
                 <span>Confirm Reset</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Git Commit Diff Viewer Modal */}
+      {showCommitModal && selectedCommit && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowCommitModal(false)}>
+          <div className="glass-card rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-violet-500/20 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5">
+              <div className="flex items-center space-x-3 text-violet-400">
+                <GitBranch className="h-5 w-5 text-violet-400" />
+                <h3 className="text-base font-bold text-white max-w-xl truncate">{selectedCommit.message}</h3>
+              </div>
+              <span className="code-font bg-white/5 border border-white/10 text-violet-300 px-2 py-0.5 rounded text-xs">{selectedCommit.sha.slice(0, 7)}</span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto bg-black/50 p-4 rounded-xl border border-white/5 shadow-inner select-text">
+              <pre className="code-font text-xs leading-relaxed">
+                {renderDiffLines(selectedCommitDiff)}
+              </pre>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <button onClick={() => setShowCommitModal(false)} className="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all">
+                Close Viewer
               </button>
             </div>
           </div>

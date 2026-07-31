@@ -184,6 +184,13 @@ def get_git_diff():
         raise HTTPException(status_code=500, detail=diff)
     return {"diff": diff}
 
+@app.get("/api/git/commit-diff")
+def get_commit_diff(sha: str):
+    ok, diff = run_git_command(["show", sha])
+    if not ok:
+        raise HTTPException(status_code=500, detail=diff)
+    return {"diff": diff}
+
 @app.post("/api/git/commit")
 def git_commit(payload: CommitRequest):
     run_git_command(["add", "."])
