@@ -141,6 +141,7 @@ export default function App() {
   const fetchState = async () => {
     try {
       const res = await fetch('/api/state');
+      if (!res.ok) throw new Error('Failed to fetch state');
       const data = await res.json();
       setState(data);
       if (data) {
@@ -155,9 +156,10 @@ export default function App() {
   const fetchGitStatus = async () => {
     try {
       const res = await fetch('/api/git/status');
+      if (!res.ok) throw new Error('Failed to fetch Git status');
       const data = await res.json();
-      setGitStatus(data);
-      if (data.uncommitted_changes.length > 0) {
+      setGitStatus(data || { branch: 'main', behind: 0, ahead: 0, uncommitted_changes: [] });
+      if (data && data.uncommitted_changes && data.uncommitted_changes.length > 0) {
         fetchGitDiff();
       }
     } catch (e) {
@@ -168,8 +170,9 @@ export default function App() {
   const fetchGitDiff = async () => {
     try {
       const res = await fetch('/api/git/diff');
+      if (!res.ok) throw new Error('Failed to fetch Git diff');
       const data = await res.json();
-      setGitDiff(data.diff);
+      setGitDiff(data?.diff || '');
     } catch (e) {
       console.error(e);
     }
@@ -178,8 +181,9 @@ export default function App() {
   const fetchGitLog = async () => {
     try {
       const res = await fetch('/api/git/log');
+      if (!res.ok) throw new Error('Failed to fetch Git log');
       const data = await res.json();
-      setGitLog(data.commits);
+      setGitLog(data?.commits || []);
     } catch (e) {
       console.error(e);
     }
@@ -188,8 +192,9 @@ export default function App() {
   const fetchEnvKeys = async () => {
     try {
       const res = await fetch('/api/config/keys');
+      if (!res.ok) throw new Error('Failed to fetch config keys');
       const data = await res.json();
-      setEnvKeys(data.keys);
+      setEnvKeys(data?.keys || {});
     } catch (e) {
       console.error(e);
     }
