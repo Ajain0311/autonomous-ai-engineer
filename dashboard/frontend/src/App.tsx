@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
   Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
@@ -89,12 +89,19 @@ export default function App() {
   const [newFilePath, setNewFilePath] = useState<string>('');
   const [fileSearchQuery, setFileSearchQuery] = useState<string>('');
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
-  const [editorCommitMsg, setEditorCommitMsg] = useState<string>('');
-  const [isCommittingEditor, setIsCommittingEditor] = useState<boolean>(false);
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
-
+  const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
+  const lastSavedContent = useRef<string>('');
+  
+  // Custom Git Commit Modal States
+  const [showGitCommitModal, setShowGitCommitModal] = useState<boolean>(false);
+  const [gitChanges, setGitChanges] = useState<{ file: string; type: 'modified' | 'added' | 'deleted' | 'untracked'; status: string }[]>([]);
+  const [gitCommitMessage, setGitCommitMessage] = useState<string>('');
+  const [hoveredFile, setHoveredFile] = useState<string | null>(null);
+  const [hoveredFileDiff, setHoveredFileDiff] = useState<string>('');
+  const [isSubmittingCommit, setIsSubmittingCommit] = useState<boolean>(false);
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => {
@@ -102,6 +109,37 @@ export default function App() {
     }, 3000);
   };
   
+  // Autosave file content effect
+  useEffect(() => {
+    if (!selectedFile) {
+      setAutosaveStatus(null);
+      return;
+    }
+    
+    // Ignore if content hasn't changed or it's the loading state placeholder
+    if (fileContent === 'Loading file content...' || fileContent === 'Error loading file.' || fileContent === lastSavedContent.current) {
+      return;
+    }
+    
+    setAutosaveStatus('saving');
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/files/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: selectedFile, content: fileContent })
+        });
+        if (!res.ok) throw new Error('Failed to autosave');
+        lastSavedContent.current = fileContent;
+        setAutosaveStatus('saved');
+      } catch (e) {
+        setAutosaveStatus('error');
+      }
+    }, 1000); // 1000ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [fileContent, selectedFile]);
+
   // Credentials & test connection state
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
   const [providerStatus, setProviderStatus] = useState<Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; message: string }>>({});
@@ -335,14 +373,18 @@ export default function App() {
   const selectFile = async (path: string) => {
     try {
       setSelectedFile(path);
-      setEditorCommitMsg(`feat(workspace): update ${path}`);
+      setGitCommitMessage(`feat(workspace): update ${path}`);
       setFileContent('Loading file content...');
+      setAutosaveStatus(null);
       const res = await fetch(`/api/files/read?path=${encodeURIComponent(path)}`);
       if (!res.ok) throw new Error('Failed to read file');
       const data = await res.json();
+      lastSavedContent.current = data.content || '';
       setFileContent(data.content || '');
+      setAutosaveStatus('saved');
     } catch (e) {
       setFileContent('Error loading file.');
+      setAutosaveStatus('error');
     }
   };
 
@@ -483,7 +525,7 @@ export default function App() {
           });
           if (!res.ok) throw new Error('Failed to delete file');
           showToast('File deleted successfully!');
-          setEditorCommitMsg(`chore(workspace): delete ${path}`);
+          setGitCommitMessage(`chore(workspace): delete ${path}`);
           setSelectedFile('');
           setFileContent('');
           fetchFiles();
@@ -494,31 +536,71 @@ export default function App() {
     });
   };
 
-  const editorCommitAndPush = async () => {
-    if (!editorCommitMsg) {
-      showToast('Please enter a commit message.', 'error');
+  const openCommitDialog = async () => {
+    try {
+      const res = await fetch('/api/git/unstaged-changes');
+      if (!res.ok) throw new Error('Failed to load changes');
+      const data = await res.json();
+      const changes = data.changes || [];
+      setGitChanges(changes);
+      setHoveredFile(null);
+      setHoveredFileDiff('');
+      
+      if (changes.length > 0) {
+        const mainChange = changes[0];
+        const action = mainChange.type === 'deleted' ? 'delete' : 'update';
+        const parts = mainChange.file.split('/');
+        const filename = parts[parts.length - 1];
+        setGitCommitMessage(`${mainChange.type === 'deleted' ? 'chore' : 'feat'}(workspace): ${action} ${filename}`);
+      } else {
+        setGitCommitMessage('feat(workspace): update modifications');
+      }
+      
+      setShowGitCommitModal(true);
+    } catch (e) {
+      showToast('Failed to load modifications list.', 'error');
+    }
+  };
+
+  const handleFileHover = async (file: string) => {
+    setHoveredFile(file);
+    setHoveredFileDiff('Loading diff preview...');
+    try {
+      const res = await fetch(`/api/git/unstaged-diff?file=${encodeURIComponent(file)}`);
+      if (!res.ok) throw new Error('Failed to load diff');
+      const data = await res.json();
+      setHoveredFileDiff(data.diff || 'No text changes.');
+    } catch (e) {
+      setHoveredFileDiff('Error loading diff preview.');
+    }
+  };
+
+  const submitCommitAndPush = async () => {
+    if (!gitCommitMessage.trim()) {
+      showToast('Commit message is required.', 'error');
       return;
     }
-    setIsCommittingEditor(true);
+    setIsSubmittingCommit(true);
     try {
       const commitRes = await fetch('/api/git/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: editorCommitMsg })
+        body: JSON.stringify({ message: gitCommitMessage })
       });
-      if (!commitRes.ok) throw new Error('Failed to commit');
+      if (!commitRes.ok) throw new Error('Commit failed');
       
       const pushRes = await fetch('/api/git/push', { method: 'POST' });
-      if (!pushRes.ok) throw new Error('Failed to push');
+      if (!pushRes.ok) throw new Error('Push failed');
       
-      showToast('Changes Committed and Pushed successfully!');
-      setEditorCommitMsg('');
+      showToast('All changes committed and pushed successfully!');
+      setShowGitCommitModal(false);
+      setGitCommitMessage('');
       fetchGitStatus();
       fetchGitLog();
     } catch (e) {
-      showToast('Error during Commit & Push.', 'error');
+      showToast('Error during direct commit and push.', 'error');
     } finally {
-      setIsCommittingEditor(false);
+      setIsSubmittingCommit(false);
     }
   };
 
@@ -1474,23 +1556,12 @@ export default function App() {
 
                 {/* Git Source Control Panel */}
                 <div className="border-t border-white/5 pt-4 mt-4 flex flex-col shrink-0">
-                  <h4 className="text-[11px] font-bold text-gray-300 mb-2 flex items-center space-x-1.5">
-                    <GitBranch className="h-3.5 w-3.5 text-violet-400" />
-                    <span>Quick Git Commit & Push</span>
-                  </h4>
-                  <input
-                    type="text"
-                    value={editorCommitMsg}
-                    onChange={e => setEditorCommitMsg(e.target.value)}
-                    placeholder="Commit msg (e.g. fix UI)..."
-                    className="w-full px-3 py-1.5 text-[11px] bg-black/30 border border-white/5 rounded-lg text-white outline-none focus:border-violet-500/30 mb-2 font-mono"
-                  />
                   <button
-                    onClick={editorCommitAndPush}
-                    disabled={isCommittingEditor}
-                    className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[10px] font-bold transition-all disabled:opacity-50 flex items-center justify-center space-x-1"
+                    onClick={openCommitDialog}
+                    className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[10px] font-bold transition-all flex items-center justify-center space-x-1.5 shadow-lg shadow-violet-900/10"
                   >
-                    <span>{isCommittingEditor ? 'Committing...' : 'Commit & Push Changes'}</span>
+                    <GitBranch className="h-3.5 w-3.5 text-violet-200" />
+                    <span>Commit & Push Changes</span>
                   </button>
                 </div>
               </div>
@@ -1567,10 +1638,29 @@ export default function App() {
                     
                     {/* Status Bar */}
                     <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
-                      <div className="flex space-x-4">
+                      <div className="flex space-x-4 items-center">
                         <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
                         <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
                         <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
+                        {autosaveStatus && <span className="text-gray-700">|</span>}
+                        {autosaveStatus === 'saving' && (
+                          <span className="text-amber-400 font-semibold animate-pulse flex items-center space-x-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                            <span>Autosaving...</span>
+                          </span>
+                        )}
+                        {autosaveStatus === 'saved' && (
+                          <span className="text-emerald-400 font-semibold flex items-center space-x-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            <span>All changes saved</span>
+                          </span>
+                        )}
+                        {autosaveStatus === 'error' && (
+                          <span className="text-rose-400 font-semibold flex items-center space-x-1 animate-bounce">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse" />
+                            <span>Save Error</span>
+                          </span>
+                        )}
                       </div>
                       <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded border border-white/5 text-gray-400">UTF-8</span>
                     </div>
@@ -1710,6 +1800,142 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Git Commit & Push Dialog Modal */}
+      {showGitCommitModal && (
+        <div className="fixed inset-0 z-[115] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm" onClick={() => setShowGitCommitModal(false)}>
+          <div className="glass-card rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-white/5 font-outfit flex flex-col max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5 shrink-0">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <GitBranch className="h-4 w-4 text-violet-400" />
+                  <span>Commit & Push Workspace Changes</span>
+                </h3>
+                <p className="text-[10px] text-gray-500 mt-0.5">Review your staged/unstaged updates before pushing to remote.</p>
+              </div>
+              <button
+                onClick={() => setShowGitCommitModal(false)}
+                className="text-gray-400 hover:text-white text-xs font-semibold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Split Screen Workspace */}
+            <div className="flex-1 flex gap-6 overflow-hidden min-h-0 mb-6">
+              {/* Left Column: Changes list */}
+              <div className="w-1/3 flex flex-col space-y-2 overflow-y-auto pr-1">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0 mb-2">Changed Files ({gitChanges.length})</h4>
+                {gitChanges.length === 0 ? (
+                  <div className="flex-1 flex flex-col justify-center items-center text-center p-4 border border-dashed border-white/5 rounded-xl text-gray-600">
+                    <CheckCircle className="h-8 w-8 text-gray-700 mb-2" />
+                    <span className="text-[11px] font-semibold">No changes detected</span>
+                    <span className="text-[9px] mt-0.5">Workspace matches git head.</span>
+                  </div>
+                ) : (
+                  gitChanges.map(change => {
+                    const statusColor = 
+                      change.type === 'added' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+                      change.type === 'deleted' ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' :
+                      change.type === 'untracked' ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' :
+                      'text-amber-400 bg-amber-500/10 border-amber-500/20';
+                    return (
+                      <div
+                        key={change.file}
+                        onMouseEnter={() => handleFileHover(change.file)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all select-none cursor-pointer ${hoveredFile === change.file ? 'bg-white/5 border-white/10' : 'bg-transparent border-transparent hover:bg-white/3'}`}
+                      >
+                        <div className="flex items-center space-x-2 truncate">
+                          <FileCode className="h-3.5 w-3.5 text-gray-555 shrink-0" />
+                          <span className="code-font text-[11px] text-gray-300 truncate" title={change.file}>{change.file}</span>
+                        </div>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border shrink-0 uppercase tracking-wider ${statusColor}`}>
+                          {change.type}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Right Column: Diff Preview Panel */}
+              <div className="flex-1 flex flex-col overflow-hidden bg-black/60 rounded-xl border border-white/5 p-4 shadow-inner min-h-0">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0 mb-2">Diff Preview</h4>
+                <div className="flex-1 overflow-auto pr-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap select-text">
+                  {hoveredFile ? (
+                    hoveredFileDiff ? (
+                      hoveredFileDiff.split('\n').map((line, idx) => {
+                        let lineClass = 'text-gray-400';
+                        if (line.startsWith('+') && !line.startsWith('+++')) {
+                          lineClass = 'text-emerald-450 bg-emerald-950/20';
+                        } else if (line.startsWith('-') && !line.startsWith('---')) {
+                          lineClass = 'text-rose-455 bg-rose-950/20';
+                        } else if (line.startsWith('@@')) {
+                          lineClass = 'text-cyan-400 border-t border-b border-white/5 py-0.5 my-1 block';
+                        } else if (line.startsWith('diff --git')) {
+                          lineClass = 'text-violet-400 font-bold border-t border-white/5 pt-1 mt-1 block';
+                        }
+                        return (
+                          <span key={idx} className={`block px-1.5 py-0.5 rounded-sm ${lineClass}`}>
+                            {line}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="text-gray-600 italic">No text changes.</span>
+                    )
+                  ) : (
+                    <div className="h-full flex flex-col justify-center items-center text-center text-gray-600 py-12">
+                      <Search className="h-8 w-8 text-gray-700 mb-2" />
+                      <span className="text-[10px]">Hover over any changed file on the left to preview its specific modifications in real-time.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Commit Message Panel & Submit */}
+            <div className="border-t border-white/5 pt-4 flex flex-col space-y-3 shrink-0 font-outfit">
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Commit Message</label>
+                <input
+                  type="text"
+                  value={gitCommitMessage}
+                  onChange={e => setGitCommitMessage(e.target.value)}
+                  placeholder="Describe your adjustments (e.g. feat(workspace): fix layout)..."
+                  className="w-full glass-input text-xs rounded-xl px-4 py-2.5 text-white outline-none font-mono"
+                />
+              </div>
+              <div className="flex space-x-3 justify-end text-xs font-semibold">
+                <button
+                  onClick={() => setShowGitCommitModal(false)}
+                  className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitCommitAndPush}
+                  disabled={isSubmittingCommit || gitChanges.length === 0}
+                  className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:hover:bg-violet-600 text-white rounded-xl transition-all flex items-center justify-center space-x-1.5 shadow-lg shadow-violet-900/20"
+                >
+                  {isSubmittingCommit ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Pushing changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <GitMerge className="h-3.5 w-3.5 text-violet-200" />
+                      <span>Commit & Push Directly</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-6 right-6 z-[100] pointer-events-none select-none">
@@ -1745,89 +1971,188 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Maximized Full Screen Editor Overlay */}
-      {isMaximized && selectedFile && (
-        <div className="fixed inset-0 z-[120] bg-black/95 p-6 flex flex-col backdrop-blur-md">
-          <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5">
-            <div className="flex items-center space-x-2">
-              <FileCode className="h-5 w-5 text-violet-400" />
-              <span className="code-font text-sm font-semibold text-white">{selectedFile}</span>
+      {/* Maximized Full Screen Workspace IDE Overlay */}
+      {isMaximized && (
+        <div className="fixed inset-0 z-[120] bg-black/95 p-6 flex flex-col backdrop-blur-md font-outfit overflow-hidden">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-6 pb-3 border-b border-white/5 shrink-0">
+            <div className="flex items-center space-x-2.5">
+              <div className="h-2.5 w-2.5 rounded-full bg-violet-500 animate-pulse" />
+              <h2 className="text-xs font-bold text-white tracking-wide uppercase font-outfit">Cloud Workspace IDE</h2>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setIsMaximized(false)}
-                className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5"
-                title="Minimize/Exit Full Screen"
-              >
-                <Minimize2 className="h-4 w-4" />
-                <span>Minimize</span>
-              </button>
-              <button
-                onClick={() => deleteFile(selectedFile)}
-                className="px-4 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5"
-                title="Delete File"
-              >
-                <Trash className="h-4 w-4" />
-                <span>Delete</span>
-              </button>
-              <button
-                onClick={saveFile}
-                disabled={isSavingFile}
-                className="px-5 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1.5"
-              >
-                <Save className="h-4 w-4" />
-                <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex-1 flex border border-white/5 rounded-xl overflow-hidden bg-black/60 shadow-inner">
-            {/* Line Numbers Gutter */}
-            <div
-              id="line-numbers-maximized"
-              className="bg-black/30 border-r border-white/5 text-right text-[11px] text-gray-650 font-mono select-none overflow-y-hidden"
-              style={{ 
-                minWidth: '46px', 
-                paddingTop: '20px', 
-                paddingBottom: '20px',
-                paddingRight: '10px'
-              }}
+            <button
+              onClick={() => setIsMaximized(false)}
+              className="px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1.5"
+              title="Exit Full Screen"
             >
-              {Array.from({ length: fileContent.split('\n').length || 1 }).map((_, i) => (
-                <div key={i} style={{ height: '22px', lineHeight: '22px' }}>{i + 1}</div>
-              ))}
-            </div>
-            
-            {/* Textarea Code Space */}
-            <textarea
-              value={fileContent}
-              onChange={e => setFileContent(e.target.value)}
-              onScroll={(e) => {
-                const lineNumbersDiv = document.getElementById('line-numbers-maximized');
-                if (lineNumbersDiv) {
-                  lineNumbersDiv.scrollTop = e.currentTarget.scrollTop;
-                }
-              }}
-              className="flex-1 code-font text-sm text-gray-300 bg-transparent outline-none resize-none overflow-y-auto"
-              style={{ 
-                lineHeight: '22px', 
-                paddingTop: '20px', 
-                paddingBottom: '20px',
-                paddingLeft: '20px',
-                paddingRight: '20px',
-                height: '100%'
-              }}
-            />
+              <Minimize2 className="h-4 w-4" />
+              <span>Exit Full Screen</span>
+            </button>
           </div>
-          
-          {/* Status Bar */}
-          <div className="mt-3 flex justify-between items-center text-xs text-gray-500 font-outfit px-1 shrink-0">
-            <div className="flex space-x-6">
-              <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
-              <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
-              <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
+
+          {/* Grid Layout */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-hidden min-h-0">
+            {/* Sidebar (File Explorer & Git) */}
+            <div className="glass-card rounded-2xl p-6 border border-white/5 flex flex-col space-y-6 overflow-y-auto max-h-full">
+              {/* File Explorer Header */}
+              <div className="flex justify-between items-center shrink-0">
+                <h3 className="text-xs font-bold text-gray-300 flex items-center space-x-1.5">
+                  <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
+                  <span>File Explorer</span>
+                </h3>
+                <button onClick={() => setShowNewFileModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New File">
+                  <FilePlus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              
+              {/* Search query */}
+              <div className="relative shrink-0">
+                <input
+                  type="text"
+                  value={fileSearchQuery}
+                  onChange={e => setFileSearchQuery(e.target.value)}
+                  placeholder="Search files..."
+                  className="w-full pl-8 pr-3 py-1.5 text-[11px] bg-black/30 border border-white/5 rounded-lg text-white outline-none focus:border-violet-500/30"
+                />
+                <Search className="h-3.5 w-3.5 text-gray-500 absolute left-2.5 top-2" />
+              </div>
+              
+              {/* Scrollable File List */}
+              <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-outfit text-[11px] min-h-0">
+                {fileSearchQuery ? (
+                  files
+                    .filter(f => f.toLowerCase().includes(fileSearchQuery.toLowerCase()))
+                    .map(f => (
+                      <button
+                        key={f}
+                        onClick={() => selectFile(f)}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-all font-mono truncate border ${selectedFile === f ? 'bg-violet-500/10 border-violet-500/20 text-violet-300' : 'bg-transparent border-transparent text-gray-400 hover:bg-white/5'}`}
+                      >
+                        {f}
+                      </button>
+                    ))
+                ) : (
+                  renderTreeNodes(buildFileTree(files))
+                )}
+              </div>
+
+              {/* Git Source Control Panel */}
+              <div className="border-t border-white/5 pt-4 flex flex-col shrink-0">
+                <button
+                  onClick={openCommitDialog}
+                  className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[10px] font-bold transition-all flex items-center justify-center space-x-1.5 shadow-lg shadow-violet-900/10"
+                >
+                  <GitBranch className="h-3.5 w-3.5 text-violet-200" />
+                  <span>Commit & Push Changes</span>
+                </button>
+              </div>
             </div>
-            <span className="text-xs bg-white/5 px-2 py-0.5 rounded border border-white/5 text-gray-400 font-outfit">UTF-8</span>
+
+            {/* Code Editor */}
+            <div className="glass-card rounded-2xl p-6 border border-white/5 lg:col-span-3 flex flex-col overflow-hidden max-h-full">
+              {selectedFile ? (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="flex justify-between items-center mb-4 shrink-0">
+                    <div className="flex items-center space-x-2">
+                      <FileCode className="h-4 w-4 text-violet-400" />
+                      <span className="code-font text-xs font-semibold text-white">{selectedFile}</span>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => deleteFile(selectedFile)}
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                        title="Delete File"
+                      >
+                        <Trash className="h-3.5 w-3.5" />
+                        <span>Delete</span>
+                      </button>
+                      <button
+                        onClick={saveFile}
+                        disabled={isSavingFile}
+                        className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 flex border border-white/5 rounded-xl overflow-hidden bg-black/60 shadow-inner">
+                    {/* Line Numbers Gutter */}
+                    <div
+                      id="line-numbers-maximized"
+                      className="bg-black/30 border-r border-white/5 text-right text-[10px] text-gray-655 font-mono select-none overflow-y-hidden"
+                      style={{ 
+                        minWidth: '42px', 
+                        paddingTop: '16px', 
+                        paddingBottom: '16px',
+                        paddingRight: '8px'
+                      }}
+                    >
+                      {Array.from({ length: fileContent.split('\n').length || 1 }).map((_, i) => (
+                        <div key={i} style={{ height: '20px', lineHeight: '20px' }}>{i + 1}</div>
+                      ))}
+                    </div>
+                    
+                    {/* Textarea Code Space */}
+                    <textarea
+                      value={fileContent}
+                      onChange={e => setFileContent(e.target.value)}
+                      onScroll={(e) => {
+                        const lineNumbersDiv = document.getElementById('line-numbers-maximized');
+                        if (lineNumbersDiv) {
+                          lineNumbersDiv.scrollTop = e.currentTarget.scrollTop;
+                        }
+                      }}
+                      className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-y-auto"
+                      style={{ 
+                        lineHeight: '20px', 
+                        paddingTop: '16px', 
+                        paddingBottom: '16px',
+                        paddingLeft: '16px',
+                        paddingRight: '16px',
+                        height: '100%'
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Status Bar */}
+                  <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
+                    <div className="flex space-x-4 items-center">
+                      <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
+                      <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
+                      <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
+                      {autosaveStatus && <span className="text-gray-700">|</span>}
+                      {autosaveStatus === 'saving' && (
+                        <span className="text-amber-400 font-semibold animate-pulse flex items-center space-x-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                          <span>Autosaving...</span>
+                        </span>
+                      )}
+                      {autosaveStatus === 'saved' && (
+                        <span className="text-emerald-400 font-semibold flex items-center space-x-1">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          <span>All changes saved</span>
+                        </span>
+                      )}
+                      {autosaveStatus === 'error' && (
+                        <span className="text-rose-400 font-semibold flex items-center space-x-1 animate-bounce">
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse" />
+                          <span>Save Error</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded border border-white/5 text-gray-400">UTF-8</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col justify-center items-center text-center py-20 text-gray-550">
+                  <FileCode className="h-12 w-12 text-gray-700 mb-4 animate-pulse" />
+                  <h3 className="font-bold text-sm text-gray-400">No File Selected</h3>
+                  <p className="text-xs text-gray-650 max-w-xs mt-1">Select a file from the left explorer to view, edit, and save its source code directly on Render.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

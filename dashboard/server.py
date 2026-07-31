@@ -275,6 +275,68 @@ def git_pull():
         raise HTTPException(status_code=500, detail=output)
     return {"status": "success", "message": "Pulled from remote repository.", "output": output}
 
+@app.get("/api/git/unstaged-changes")
+def get_unstaged_changes():
+    ok, output = run_git_command(["status", "--porcelain"])
+    if not ok:
+        raise HTTPException(status_code=500, detail=output)
+    
+    changes = []
+    for line in output.split("\n"):
+        if len(line) > 3:
+            status = line[:2].strip()
+            filepath = line[3:].strip()
+            # If renamed, git status displays "R  old -> new"
+            if " -> " in filepath:
+                filepath = filepath.split(" -> ")[-1].strip()
+            
+            change_type = "modified"
+            if status == "A":
+                change_type = "added"
+            elif status == "D":
+                change_type = "deleted"
+            elif status in ["??", "?"]:
+                change_type = "untracked"
+                
+            changes.append({
+                "file": filepath,
+                "type": change_type,
+                "status": status
+            })
+    return {"changes": changes}
+
+@app.get("/api/git/unstaged-diff")
+def get_unstaged_diff(file: str):
+    # Sanitize path to prevent traversal
+    safe_path = (ROOT_DIR / file).resolve()
+    if not str(safe_path).startswith(str(ROOT_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Path traversal detected.")
+        
+    # Get status of file
+    ok, status_out = run_git_command(["status", "--porcelain", "--", file])
+    is_untracked = False
+    if ok and status_out.startswith("??"):
+        is_untracked = True
+
+    if is_untracked:
+        try:
+            if safe_path.exists() and safe_path.is_file():
+                with open(safe_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                diff_lines = [f"+{line}" for line in content.splitlines()]
+                diff = "\n".join(diff_lines)
+                return {"diff": diff}
+            else:
+                return {"diff": "File deleted or not found."}
+        except Exception as e:
+            return {"diff": f"Error loading content: {e}"}
+            
+    ok, diff = run_git_command(["diff", "HEAD", "--", file])
+    if not ok or not diff.strip():
+        ok, diff = run_git_command(["diff", "--", file])
+        
+    return {"diff": diff}
+
 @app.post("/api/git/checkout")
 def git_checkout(payload: CheckoutRequest):
     ok, output = run_git_command(["checkout", payload.branch])
