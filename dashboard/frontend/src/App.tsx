@@ -3,7 +3,7 @@ import {
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
   Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
-  CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search
+  CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search, Maximize2, Minimize2
 } from 'lucide-react';
 
 interface Task {
@@ -89,6 +89,9 @@ export default function App() {
   const [newFilePath, setNewFilePath] = useState<string>('');
   const [fileSearchQuery, setFileSearchQuery] = useState<string>('');
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+  const [editorCommitMsg, setEditorCommitMsg] = useState<string>('');
+  const [isCommittingEditor, setIsCommittingEditor] = useState<boolean>(false);
+  const [isMaximized, setIsMaximized] = useState<boolean>(false);
   
   // Credentials & test connection state
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
@@ -453,6 +456,52 @@ export default function App() {
         );
       }
     });
+  };
+
+  const deleteFile = async (path: string) => {
+    if (!confirm(`Are you sure you want to delete ${path}?`)) return;
+    try {
+      const res = await fetch('/api/files/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      });
+      if (!res.ok) throw new Error('Failed to delete file');
+      alert('File deleted successfully!');
+      setSelectedFile('');
+      setFileContent('');
+      fetchFiles();
+    } catch (e) {
+      alert('Error deleting file.');
+    }
+  };
+
+  const editorCommitAndPush = async () => {
+    if (!editorCommitMsg) {
+      alert('Please enter a commit message.');
+      return;
+    }
+    setIsCommittingEditor(true);
+    try {
+      const commitRes = await fetch('/api/git/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: editorCommitMsg })
+      });
+      if (!commitRes.ok) throw new Error('Failed to commit');
+      
+      const pushRes = await fetch('/api/git/push', { method: 'POST' });
+      if (!pushRes.ok) throw new Error('Failed to push');
+      
+      alert('Changes Committed and Pushed successfully!');
+      setEditorCommitMsg('');
+      fetchGitStatus();
+      fetchGitLog();
+    } catch (e) {
+      alert('Error during Commit & Push.');
+    } finally {
+      setIsCommittingEditor(false);
+    }
   };
 
   const viewCommitDiff = async (sha: string, message: string) => {
@@ -1324,7 +1373,7 @@ export default function App() {
           {activeTab === 'editor' && (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* File Explorer (1/4 column) */}
-              <div className="glass-card rounded-2xl p-4 shadow-xl flex flex-col max-h-[600px]">
+              <div className="glass-card rounded-2xl p-4 shadow-xl flex flex-col max-h-[680px]">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-gray-250 text-xs flex items-center space-x-1.5">
                     <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
@@ -1346,7 +1395,7 @@ export default function App() {
                   <Search className="h-3.5 w-3.5 text-gray-500 absolute left-2.5 top-2" />
                 </div>
                 {/* Scrollable File List */}
-                <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-outfit text-[11px]">
+                <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-outfit text-[11px] max-h-[320px]">
                   {fileSearchQuery ? (
                     // Flat matching list for search queries
                     files.filter(f => f.toLowerCase().includes(fileSearchQuery.toLowerCase())).map(path => (
@@ -1366,10 +1415,34 @@ export default function App() {
                     <p className="text-gray-600 text-center py-8">No files found.</p>
                   )}
                 </div>
+
+                {/* Git Source Control Panel */}
+                <div className="border-t border-white/5 pt-4 mt-4 flex flex-col shrink-0">
+                  <h4 className="text-[11px] font-bold text-gray-300 mb-2 flex items-center space-x-1.5">
+                    <GitBranch className="h-3.5 w-3.5 text-violet-400" />
+                    <span>Quick Git Commit & Push</span>
+                  </h4>
+                  <input
+                    type="text"
+                    value={editorCommitMsg}
+                    onChange={e => setEditorCommitMsg(e.target.value)}
+                    placeholder="Commit msg (e.g. fix UI)..."
+                    className="w-full px-3 py-1.5 text-[11px] bg-black/30 border border-white/5 rounded-lg text-white outline-none focus:border-violet-500/30 mb-2 font-mono"
+                  />
+                  <button
+                    onClick={editorCommitAndPush}
+                    disabled={isCommittingEditor}
+                    className="w-full py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[10px] font-bold transition-all disabled:opacity-50 flex items-center justify-center space-x-1"
+                  >
+                    <span>{isCommittingEditor ? 'Committing...' : 'Commit & Push Changes'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Code Editor (3/4 column) */}
-              <div className="glass-card rounded-2xl p-6 shadow-xl lg:col-span-3 flex flex-col min-h-[500px]">
+              <div className={isMaximized ? 
+                "fixed inset-4 z-50 bg-black/95 border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col backdrop-blur-md" : 
+                "glass-card rounded-2xl p-6 shadow-xl lg:col-span-3 flex flex-col min-h-[500px]"}>
                 {selectedFile ? (
                   <div className="flex-1 flex flex-col">
                     <div className="flex justify-between items-center mb-4">
@@ -1377,14 +1450,32 @@ export default function App() {
                         <FileCode className="h-4 w-4 text-violet-400" />
                         <span className="code-font text-xs font-semibold text-white">{selectedFile}</span>
                       </div>
-                      <button
-                        onClick={saveFile}
-                        disabled={isSavingFile}
-                        className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
-                      >
-                        <Save className="h-3.5 w-3.5" />
-                        <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setIsMaximized(!isMaximized)}
+                          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                          title={isMaximized ? "Minimize/Exit Full Screen" : "Maximize/Full Screen"}
+                        >
+                          {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                          <span>{isMaximized ? 'Minimize' : 'Maximize'}</span>
+                        </button>
+                        <button
+                          onClick={() => deleteFile(selectedFile)}
+                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-450 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                          title="Delete File"
+                        >
+                          <Trash className="h-3.5 w-3.5" />
+                          <span>Delete</span>
+                        </button>
+                        <button
+                          onClick={saveFile}
+                          disabled={isSavingFile}
+                          className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={fileContent}
