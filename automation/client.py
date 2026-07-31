@@ -197,6 +197,21 @@ def _parse_json(text: str) -> dict:
         return json.loads(match.group(0))
     raise ValueError(f"Cannot parse JSON from response: {text[:300]}")
 
+def get_dynamic_provider_priority() -> list[str]:
+    """Helper to dynamically resolve LLM provider call priority from the saved state."""
+    try:
+        from automation import state_manager
+        state = state_manager.load_state()
+        p_list = state.get("provider_priority", [])
+        if p_list:
+            # Ensure elements are valid and merge in case any are missing
+            valid = [p for p in p_list if p in PROVIDER_PRIORITY]
+            remaining = [p for p in PROVIDER_PRIORITY if p not in valid]
+            return valid + remaining
+    except Exception:
+        pass
+    return PROVIDER_PRIORITY
+
 def generate_with_failover(prompt: str, temperature: float = 0.5, require_json: bool = True) -> dict | str:
     """
     Tries to generate completion rotating through providers in priority order.
@@ -210,7 +225,8 @@ def generate_with_failover(prompt: str, temperature: float = 0.5, require_json: 
     if total_clients == 0:
         raise RuntimeError("No LLM API keys configured.")
         
-    for provider in PROVIDER_PRIORITY:
+    priority_list = get_dynamic_provider_priority()
+    for provider in priority_list:
         # Get active clients for this provider
         active_indices = [
             idx for idx in quota_tracker.active_keys(total_clients) 

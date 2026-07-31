@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
-  Play, Terminal, BarChart2, ChevronRight, CheckCircle2, Circle, AlertTriangle, 
+  Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
   CheckCircle, XCircle
 } from 'lucide-react';
@@ -49,6 +49,7 @@ interface ProjectState {
     daily_budget: number;
     total_used: number;
   };
+  provider_priority?: string[];
 }
 
 export default function App() {
@@ -263,9 +264,16 @@ export default function App() {
 
   const saveSpecs = async () => {
     if (!state || !editedSpecs || !editedProject) return;
+    
+    // Auto-promote status to selected if it was idle so that the engine bypasses automated project selection
+    const nextStatus = state.project.status === 'idle' ? 'selected' : state.project.status;
+    
     const updatedState = {
       ...state,
-      project: { ...editedProject },
+      project: { 
+        ...editedProject,
+        status: nextStatus 
+      },
       architecture: { ...editedSpecs }
     };
     try {
@@ -676,7 +684,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {state.project.vision && (
+                {(state.project.vision || isEditingSpecs) && (
                   <div className="mt-6 border-t border-white/5 pt-4">
                     <h4 className="text-sm font-semibold text-violet-300 mb-2">Product Vision Strategy</h4>
                     {isEditingSpecs ? (
@@ -684,13 +692,13 @@ export default function App() {
                                 onChange={e => setEditedProject(prev => prev ? { ...prev, vision: e.target.value } : null)}
                                 className="w-full text-sm bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white" />
                     ) : (
-                      <p className="text-gray-450 text-sm leading-relaxed">{state.project.vision}</p>
+                      <p className="text-gray-450 text-sm leading-relaxed">{state.project.vision || 'No vision defined yet. Click Edit Vision & Spec to add one.'}</p>
                     )}
                   </div>
                 )}
               </div>
 
-              {state.project.status !== 'idle' && editedSpecs && (
+              {editedSpecs && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Database Schema */}
                   <div className="glass-card rounded-2xl p-6 shadow-xl flex flex-col">
@@ -918,6 +926,72 @@ export default function App() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* LLM Provider Priority Settings */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <div>
+                  <h2 className="text-lg font-bold text-white">LLM Gateway Provider Priority Order</h2>
+                  <p className="text-xs text-gray-500 mt-1">Configure the failover precedence of the AI models. The engine will query models in this priority order, falling back dynamically on rate limits or errors.</p>
+                </div>
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                  {((state?.provider_priority as string[]) || ["gemini", "groq", "openrouter", "together", "github", "huggingface", "sambanova", "mistral", "cohere", "kilo"]).map((provider: string, index: number, arr: string[]) => (
+                    <div key={provider} className="flex justify-between items-center p-3.5 bg-black/25 border border-white/5 rounded-2xl text-xs">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-gray-500 font-mono font-bold text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/10">{index + 1}</span>
+                        <span className="font-bold text-gray-200 capitalize">{provider === "github" ? "GitHub Models" : provider}</span>
+                      </div>
+                      <div className="flex space-x-1">
+                        <button
+                          disabled={index === 0}
+                          onClick={async () => {
+                            const newPriority = [...arr];
+                            const temp = newPriority[index];
+                            newPriority[index] = newPriority[index - 1];
+                            newPriority[index - 1] = temp;
+                            const updatedState = { ...state, provider_priority: newPriority };
+                            try {
+                              await fetch('/api/state', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ state: updatedState })
+                              });
+                              fetchState();
+                            } catch (e) {
+                              alert("Failed to update priority.");
+                            }
+                          }}
+                          className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg disabled:opacity-20 disabled:hover:bg-transparent"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          disabled={index === arr.length - 1}
+                          onClick={async () => {
+                            const newPriority = [...arr];
+                            const temp = newPriority[index];
+                            newPriority[index] = newPriority[index + 1];
+                            newPriority[index + 1] = temp;
+                            const updatedState = { ...state, provider_priority: newPriority };
+                            try {
+                              await fetch('/api/state', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ state: updatedState })
+                              });
+                              fetchState();
+                            } catch (e) {
+                              alert("Failed to update priority.");
+                            }
+                          }}
+                          className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg disabled:opacity-20 disabled:hover:bg-transparent"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

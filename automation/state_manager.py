@@ -44,7 +44,8 @@ DEFAULT_STATE = {
         "error_message": "",
         "duration_seconds": 0,
         "retry_count": 0
-    }
+    },
+    "provider_priority": ["gemini", "groq", "openrouter", "together", "github", "huggingface", "sambanova", "mistral", "cohere", "kilo"]
 }
 
 def load_state() -> dict:
