@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous AI Engineer Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top right, #1a162b, #0c0a0f);
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass-card {
+            background: rgba(22, 19, 31, 0.45);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-input:focus {
+            border-color: rgba(139, 92, 246, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen pb-12" x-data="dashboard()">
+    <!-- Top Nav -->
+    <nav class="border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+                <i data-lucide="cpu" class="h-5 w-5 text-white"></i>
+            </div>
+            <div>
+                <span class="font-bold text-lg bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">Antigravity V2</span>
+                <span class="text-xs text-violet-400 block -mt-1 font-medium">Autonomous Software Engineer</span>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <!-- Sync Indicator -->
+            <div class="flex items-center space-x-2 text-xs bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                <span class="h-2 w-2 rounded-full" :class="isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'"></span>
+                <span x-text="isConnected ? 'Connected to Repo' : 'Disconnected'"></span>
+            </div>
+            <!-- Git Branch Badge -->
+            <div class="flex items-center space-x-2 text-xs bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20 text-violet-300 font-semibold">
+                <i data-lucide="git-branch" class="h-3.5 w-3.5"></i>
+                <span x-text="gitStatus.branch">main</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="max-w-[1400px] mx-auto px-6 mt-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Sidebar Controls -->
+        <div class="space-y-6 lg:col-span-1">
+            <!-- Execution Control -->
+            <div class="glass-card rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-12 -top-12 w-28 h-28 bg-violet-600/10 rounded-full blur-2xl"></div>
+                <h3 class="font-semibold text-sm text-gray-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+                    <span>Engine Status</span>
+                    <span class="h-2.5 w-2.5 rounded-full" :class="pipeline.running ? 'bg-violet-500 animate-ping' : 'bg-gray-600'"></span>
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-300 text-sm font-medium">Pipeline Running</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                              :class="pipeline.running ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30' : 'bg-gray-800 text-gray-400 border border-white/5'"
+                              x-text="pipeline.running ? 'Running' : 'Idle'">
+                        </span>
+                    </div>
+                    <button @click="triggerPipeline()" :disabled="pipeline.running"
+                            class="w-full py-2.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl font-medium shadow-lg shadow-violet-600/25 transition-all duration-300 flex items-center justify-center space-x-2">
+                        <i data-lucide="play" class="h-4 w-4"></i>
+                        <span>Start Daily Run</span>
+                    </button>
+                    <!-- Run Logs Button -->
+                    <button @click="activeTab = 'logs'"
+                            class="w-full py-2 px-4 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 rounded-xl text-sm font-medium transition-all flex items-center justify-center space-x-2">
+                        <i data-lucide="terminal" class="h-4 w-4"></i>
+                        <span>View Live Output</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Control Actions -->
+            <div class="glass-card rounded-2xl p-6 shadow-xl">
+                <h3 class="font-semibold text-sm text-gray-400 uppercase tracking-wider mb-4">Pipeline Control</h3>
+                <div class="space-y-3">
+                    <button @click="gitPull()"
+                            class="w-full py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded-xl text-sm font-medium transition-all flex items-center justify-between">
+                        <span class="flex items-center space-x-2">
+                            <i data-lucide="git-pull-request" class="h-4 w-4 text-violet-400"></i>
+                            <span>Git Pull</span>
+                        </span>
+                        <i data-lucide="chevron-right" class="h-4 w-4 opacity-50"></i>
+                    </button>
+                    <button @click="gitPush()"
+                            class="w-full py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded-xl text-sm font-medium transition-all flex items-center justify-between">
+                        <span class="flex items-center space-x-2">
+                            <i data-lucide="git-merge" class="h-4 w-4 text-indigo-400"></i>
+                            <span>Git Push</span>
+                        </span>
+                        <i data-lucide="chevron-right" class="h-4 w-4 opacity-50"></i>
+                    </button>
+                    <button @click="showResetModal = true"
+                            class="w-full py-2 px-4 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl text-sm font-medium transition-all flex items-center space-x-2 justify-center">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                        <span>Start From Scratch</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Token Usage Analytics -->
+            <div class="glass-card rounded-2xl p-6 shadow-xl">
+                <h3 class="font-semibold text-sm text-gray-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+                    <span>Token Analytics</span>
+                    <i data-lucide="bar-chart" class="h-4 w-4 text-violet-400"></i>
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>Daily Budget Usage</span>
+                            <span x-text="`${Math.round((state.token_metadata.daily_used / state.token_metadata.daily_budget) * 100)}%`">0%</span>
+                        </div>
+                        <div class="w-full bg-white/5 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-violet-500 to-indigo-500 h-2 rounded-full"
+                                 :style="`width: ${(state.token_metadata.daily_used / state.token_metadata.daily_budget) * 100}%`"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span x-text="`${state.token_metadata.daily_used.toLocaleString()} tokens`">0</span>
+                            <span x-text="`Limit: ${state.token_metadata.daily_budget.toLocaleString()}`">5,000,000</span>
+                        </div>
+                    </div>
+                    <div class="border-t border-white/5 pt-3 flex justify-between items-center text-xs">
+                        <span class="text-gray-400">Total Lifecycle Used</span>
+                        <span class="text-violet-300 font-bold" x-text="state.token_metadata.total_used.toLocaleString()">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace Area -->
+        <div class="space-y-6 lg:col-span-3">
+            <!-- Tabs Menu -->
+            <div class="flex border-b border-white/5 space-x-6 text-sm font-semibold">
+                <button @click="activeTab = 'overview'" class="pb-3 border-b-2" :class="activeTab === 'overview' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-400 hover:text-gray-200'">Overview</button>
+                <button @click="activeTab = 'milestones'" class="pb-3 border-b-2" :class="activeTab === 'milestones' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-400 hover:text-gray-200'">Roadmap & Milestones</button>
+                <button @click="activeTab = 'git'" class="pb-3 border-b-2" :class="activeTab === 'git' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-400 hover:text-gray-200'">Git & Repository</button>
+                <button @click="activeTab = 'logs'" class="pb-3 border-b-2" :class="activeTab === 'logs' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-400 hover:text-gray-200'">Run Output Logs</button>
+            </div>
+
+            <!-- Tab: Overview -->
+            <div x-show="activeTab === 'overview'" class="space-y-6">
+                <!-- Project Status Panel -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-semibold text-violet-400 tracking-wider uppercase" x-text="state.project.status || 'Not Started'">Not Started</span>
+                            <h2 class="text-2xl font-bold text-white mt-1" x-text="state.project.title || 'Welcome back, Architect.'">Project Name</h2>
+                            <p class="text-gray-400 text-sm mt-2 max-w-2xl" x-text="state.project.description || 'Trigger the pipeline to start trending analysis, candidate selection, and building your next SaaS product.'"></p>
+                        </div>
+                        <span class="px-3 py-1 bg-violet-600/20 border border-violet-500/30 text-violet-300 rounded-lg text-xs font-bold uppercase" x-text="state.project.status">status</span>
+                    </div>
+                    
+                    <template x-if="state.project.vision">
+                        <div class="mt-6 border-t border-white/5 pt-4">
+                            <h4 class="text-sm font-semibold text-violet-300 mb-1">Product Vision</h4>
+                            <p class="text-gray-400 text-sm leading-relaxed" x-text="state.project.vision"></p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Specs Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="state.project.status !== 'idle'">
+                    <!-- DB Design -->
+                    <div class="glass-card rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-bold text-gray-200 mb-3 flex items-center space-x-2">
+                            <i data-lucide="database" class="h-4 w-4 text-violet-400"></i>
+                            <span>Supabase Schema</span>
+                        </h3>
+                        <pre class="code-font text-xs text-gray-400 bg-black/40 p-4 rounded-xl max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed" x-text="state.architecture.db_schema"></pre>
+                    </div>
+                    <!-- Folder Layout -->
+                    <div class="glass-card rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-bold text-gray-200 mb-3 flex items-center space-x-2">
+                            <i data-lucide="folder-git-2" class="h-4 w-4 text-indigo-400"></i>
+                            <span>Folder Layout Spec</span>
+                        </h3>
+                        <pre class="code-font text-xs text-gray-400 bg-black/40 p-4 rounded-xl max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed" x-text="state.architecture.folder_structure"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Roadmap & Milestones -->
+            <div x-show="activeTab === 'milestones'" class="space-y-6">
+                <!-- Milestones Timeline -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl">
+                    <h2 class="text-xl font-bold text-white mb-6">Milestones & Tasks</h2>
+                    
+                    <div class="space-y-6 relative border-l border-white/10 pl-6 ml-3">
+                        <template x-for="milestone in state.milestones" :key="milestone.id">
+                            <div class="relative">
+                                <!-- Node indicator -->
+                                <div class="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full border-4 border-black flex items-center justify-center"
+                                     :class="milestone.status === 'completed' ? 'bg-emerald-500' : (milestone.status === 'active' ? 'bg-violet-500' : 'bg-gray-700')"></div>
+                                     
+                                <h3 class="text-lg font-bold text-gray-200" x-text="milestone.title">Milestone Title</h3>
+                                
+                                <div class="space-y-3 mt-3">
+                                    <template x-for="task in milestone.tasks" :key="task.id">
+                                        <div class="flex items-start justify-between p-3.5 bg-black/25 rounded-xl border border-white/5 hover:border-violet-500/20 transition-all">
+                                            <div class="flex items-start space-x-3">
+                                                <i :data-lucide="task.status === 'completed' ? 'check-circle-2' : 'circle'" 
+                                                   class="h-5 w-5 mt-0.5" 
+                                                   :class="task.status === 'completed' ? 'text-emerald-500' : 'text-gray-500'"></i>
+                                                <div>
+                                                    <h4 class="font-semibold text-sm text-gray-300" x-text="task.name">Task Name</h4>
+                                                    <p class="text-xs text-gray-400 mt-1 leading-relaxed" x-text="task.description"></p>
+                                                    
+                                                    <!-- Files touched list -->
+                                                    <template x-if="task.files_touched && task.files_touched.length">
+                                                        <div class="mt-2 flex flex-wrap gap-1.5">
+                                                            <template x-for="file in task.files_touched">
+                                                                <span class="text-[10px] code-font bg-white/5 border border-white/10 text-gray-400 px-2 py-0.5 rounded" x-text="file"></span>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Status pill -->
+                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                                                  :class="task.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (task.status === 'active' ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20' : 'bg-gray-800 text-gray-400 border border-white/5')"
+                                                  x-text="task.status">
+                                            </span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Git & Repository -->
+            <div x-show="activeTab === 'git'" class="space-y-6">
+                <!-- Git Actions and Status -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Uncommitted changes list -->
+                    <div class="glass-card rounded-2xl p-6 shadow-xl md:col-span-2">
+                        <h3 class="font-bold text-gray-200 mb-4 flex items-center space-x-2">
+                            <i data-lucide="git-commit" class="h-5 w-5 text-violet-400"></i>
+                            <span>Uncommitted Modifications</span>
+                        </h3>
+                        <template x-if="gitStatus.uncommitted_changes.length === 0">
+                            <div class="text-sm text-gray-500 py-6 text-center">
+                                Working tree is clean. No modifications.
+                            </div>
+                        </template>
+                        <template x-if="gitStatus.uncommitted_changes.length > 0">
+                            <div class="space-y-2 max-h-60 overflow-y-auto">
+                                <template x-for="change in gitStatus.uncommitted_changes">
+                                    <div class="flex items-center justify-between text-xs p-2.5 bg-black/25 rounded-xl border border-white/5">
+                                        <span class="code-font text-gray-300" x-text="change.file"></span>
+                                        <span class="px-2 py-0.5 rounded font-bold uppercase text-[9px]"
+                                              :class="change.status === 'M' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'"
+                                              x-text="change.status === 'M' ? 'Modified' : 'Added'"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        
+                        <!-- Commit Form -->
+                        <div class="mt-6 border-t border-white/5 pt-4" x-show="gitStatus.uncommitted_changes.length > 0">
+                            <h4 class="text-sm font-semibold text-gray-300 mb-2">Commit Staged Changes</h4>
+                            <div class="flex space-x-2">
+                                <input type="text" x-model="commitMessage" placeholder="feat(scope): conventional commit message" 
+                                       class="flex-1 glass-input text-sm rounded-xl px-4 py-2 text-white outline-none">
+                                <button @click="gitCommit()"
+                                        class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all">
+                                    Commit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Repository Sync Control -->
+                    <div class="glass-card rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-gray-200 mb-4 flex items-center space-x-2">
+                                <i data-lucide="refresh-cw" class="h-4 w-4 text-violet-400"></i>
+                                <span>Sync Controls</span>
+                            </h3>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between border-b border-white/5 pb-2">
+                                    <span class="text-gray-400">Ahead Commits</span>
+                                    <span class="text-indigo-400 font-bold" x-text="gitStatus.ahead">0</span>
+                                </div>
+                                <div class="flex justify-between border-b border-white/5 pb-2">
+                                    <span class="text-gray-400">Behind Remote</span>
+                                    <span class="text-rose-400 font-bold" x-text="gitStatus.behind">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 space-y-2">
+                            <button @click="gitPull()" class="w-full py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-semibold border border-white/5 transition-all">
+                                Pull Remote Changes
+                            </button>
+                            <button @click="gitPush()" class="w-full py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-violet-500/20 transition-all">
+                                Push Local Commits
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diff Viewer -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl" x-show="gitStatus.uncommitted_changes.length > 0">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-200 flex items-center space-x-2">
+                            <i data-lucide="file-diff" class="h-5 w-5 text-indigo-400"></i>
+                            <span>Git Diff Preview</span>
+                        </h3>
+                        <button @click="fetchGitDiff()" class="text-xs text-violet-400 font-semibold hover:underline">Refresh Diff</button>
+                    </div>
+                    <pre class="code-font text-xs text-gray-400 bg-black/40 p-4 rounded-xl max-h-96 overflow-y-auto whitespace-pre leading-relaxed border border-white/5" x-text="gitDiff || 'No changes to diff.'"></pre>
+                </div>
+
+                <!-- Commit Log History -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl">
+                    <h3 class="font-bold text-gray-200 mb-4 flex items-center space-x-2">
+                        <i data-lucide="history" class="h-5 w-5 text-violet-400"></i>
+                        <span>Recent Commit Log</span>
+                    </h3>
+                    <div class="space-y-3 max-h-80 overflow-y-auto">
+                        <template x-for="commit in gitLog" :key="commit.sha">
+                            <div class="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/5 text-xs">
+                                <div>
+                                    <span class="code-font bg-white/5 text-violet-300 px-2 py-0.5 rounded font-medium border border-white/10" x-text="commit.sha"></span>
+                                    <span class="text-gray-300 font-medium ml-2" x-text="commit.message"></span>
+                                </div>
+                                <div class="text-gray-500 text-[10px]" x-text="`${commit.author} on ${commit.date}`"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Run Output Logs -->
+            <div x-show="activeTab === 'logs'" class="space-y-6">
+                <div class="glass-card rounded-2xl p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">Live Execution Terminal</h2>
+                            <p class="text-xs text-gray-500 mt-0.5">Displays real-time logs and output from orchestrator task generations.</p>
+                        </div>
+                        <button @click="fetchLogs()" class="text-xs text-violet-400 font-semibold hover:underline">Fetch Full Run Logs</button>
+                    </div>
+                    <pre class="code-font text-xs text-gray-300 bg-black/60 p-4 rounded-xl h-[450px] overflow-y-auto whitespace-pre-wrap leading-relaxed border border-white/5 shadow-inner" x-text="pipeline.log || 'No run logs fetched yet. Start the run pipeline to view outputs.'"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start From Scratch Reset Confirmation Modal -->
+    <div x-show="showResetModal" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" style="display: none;">
+        <div class="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-500/20" @click.away="showResetModal = false">
+            <div class="flex items-center space-x-3 text-rose-400 mb-4">
+                <i data-lucide="alert-triangle" class="h-6 w-6"></i>
+                <h3 class="text-lg font-bold">Start From Scratch?</h3>
+            </div>
+            <p class="text-sm text-gray-400 leading-relaxed mb-6">
+                This is a destructive action. The engine will branch/archive current code changes to a remote branch, wipe the generated application folders, and clear the spec milestones so that a new project selection research loop can start fresh.
+            </p>
+            <div class="space-y-4 mb-6">
+                <label class="text-xs font-semibold text-gray-400 block">Reset Reason (optional)</label>
+                <input type="text" x-model="resetReason" placeholder="e.g., target project pivot" 
+                       class="w-full glass-input text-sm rounded-xl px-4 py-2.5 text-white outline-none">
+            </div>
+            <div class="flex space-x-3 justify-end">
+                <button @click="showResetModal = false" class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-semibold transition-all">Cancel</button>
+                <button @click="executeReset()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-semibold transition-all flex items-center space-x-2">
+                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    <span>Confirm Reset</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alpine Dashboard Controller Script -->
+    <script>
+        function dashboard() {
+            return {
+                activeTab: 'overview',
+                isConnected: true,
+                showResetModal: false,
+                resetReason: '',
+                commitMessage: '',
+                gitDiff: '',
+                gitStatus: { branch: 'main', behind: 0, ahead: 0, uncommitted_changes: [] },
+                gitLog: [],
+                pipeline: { running: false, log: '' },
+                state: {
+                    project: { name: '', title: '', description: '', status: 'idle', vision: '' },
+                    token_metadata: { daily_used: 0, daily_budget: 5000000, total_used: 0 },
+                    milestones: []
+                },
+                init() {
+                    this.fetchState();
+                    this.fetchGitStatus();
+                    this.fetchGitLog();
+                    this.fetchLogs();
+                    
+                    // Poll running status and logs
+                    setInterval(() => {
+                        this.pollStatus();
+                    }, 3000);
+                    
+                    // Refresh icon renderings
+                    setTimeout(() => { lucide.createIcons(); }, 200);
+                },
+                async fetchState() {
+                    try {
+                        const res = await fetch('/api/state');
+                        this.state = await res.json();
+                    } catch (e) {
+                        console.error("Error fetching state:", e);
+                    }
+                },
+                async fetchGitStatus() {
+                    try {
+                        const res = await fetch('/api/git/status');
+                        this.gitStatus = await res.json();
+                        if (this.gitStatus.uncommitted_changes.length > 0) {
+                            this.fetchGitDiff();
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                async fetchGitDiff() {
+                    try {
+                        const res = await fetch('/api/git/diff');
+                        const data = await res.json();
+                        this.gitDiff = data.diff;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                async fetchGitLog() {
+                    try {
+                        const res = await fetch('/api/git/log');
+                        const data = await res.json();
+                        this.gitLog = data.commits;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                async fetchLogs() {
+                    try {
+                        const res = await fetch('/api/logs');
+                        const data = await res.json();
+                        if (!this.pipeline.running) {
+                            this.pipeline.log = data.latest_log;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                async triggerPipeline() {
+                    try {
+                        const res = await fetch('/api/run', { method: 'POST' });
+                        const data = await res.json();
+                        alert(data.message);
+                        this.pipeline.running = true;
+                    } catch (e) {
+                        alert("Failed to trigger pipeline.");
+                    }
+                },
+                async pollStatus() {
+                    try {
+                        const res = await fetch('/api/run/status');
+                        const data = await res.json();
+                        this.pipeline.running = data.running;
+                        if (data.running) {
+                            this.pipeline.log = data.log;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                async gitCommit() {
+                    if (!this.commitMessage.trim()) {
+                        alert("Commit message is required.");
+                        return;
+                    }
+                    try {
+                        const res = await fetch('/api/git/commit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: this.commitMessage })
+                        });
+                        const data = await res.json();
+                        alert("Changes committed locally!");
+                        this.commitMessage = '';
+                        this.fetchGitStatus();
+                        this.fetchGitLog();
+                    } catch (e) {
+                        alert("Commit failed.");
+                    }
+                },
+                async gitPush() {
+                    try {
+                        const res = await fetch('/api/git/push', { method: 'POST' });
+                        alert("Pushed to remote successfully!");
+                        this.fetchGitStatus();
+                    } catch (e) {
+                        alert("Push failed.");
+                    }
+                },
+                async gitPull() {
+                    try {
+                        const res = await fetch('/api/git/pull', { method: 'POST' });
+                        alert("Pulled remote changes successfully!");
+                        this.fetchGitStatus();
+                    } catch (e) {
+                        alert("Pull failed.");
+                    }
+                },
+                async executeReset() {
+                    this.showResetModal = false;
+                    try {
+                        const res = await fetch('/api/reset', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: this.resetReason })
+                        });
+                        const data = await res.json();
+                        alert(data.message);
+                        this.resetReason = '';
+                        this.fetchState();
+                        this.fetchGitStatus();
+                        this.fetchGitLog();
+                    } catch (e) {
+                        alert("Reset failed.");
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

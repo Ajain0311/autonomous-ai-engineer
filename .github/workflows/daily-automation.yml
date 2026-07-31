@@ -53,6 +53,15 @@ jobs:
         env:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          OPENROUTER_API_KEYS: ${{ secrets.OPENROUTER_API_KEYS }}
+          TOGETHER_API_KEYS: ${{ secrets.TOGETHER_API_KEYS }}
+          MISTRAL_API_KEYS: ${{ secrets.MISTRAL_API_KEYS }}
+          COHERE_API_KEYS: ${{ secrets.COHERE_API_KEYS }}
+          SAMBANOVA_API_KEYS: ${{ secrets.SAMBANOVA_API_KEYS }}
+          KILO_API_KEYS: ${{ secrets.KILO_API_KEYS }}
+          GITHUB_MODELS_KEYS: ${{ secrets.GITHUB_MODELS_KEYS }}
+          HUGGINGFACE_API_KEYS: ${{ secrets.HUGGINGFACE_API_KEYS }}
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           GITHUB_USERNAME: ${{ vars.GH_USERNAME }}
           NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
@@ -70,7 +79,7 @@ jobs:
         run: |
           git config user.name  "Daily Code Bot"
           git config user.email "bot@users.noreply.github.com"
-          git add automation/state.json automation/logs/ || true
+          git add automation/project_state.yaml automation/logs/ || true
           git diff --staged --quiet || \
             git commit -m "chore(state): sync state $(date -u +'%Y-%m-%d %H:%M UTC')"
           # Rebase onto the branch this run checked out (not hardcoded main —
