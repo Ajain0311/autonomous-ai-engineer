@@ -10,7 +10,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 _PLAN_PROMPT = """\
 You are an elite software architect and small software company CEO. Design a high-utility, production-grade commercial SaaS application.
-This application must be built incrementally over 6-12 months, featuring a modular architecture with React + TS frontend, Node.js + Express backend, and Supabase database.
+This application must be built incrementally over 6-12 months, featuring a modular architecture with React + TS frontend, Node.js + Express backend, and a GitHub-backed JSON database (storing database tables as JSON array files inside a `db/` folder in the repository, and automatically committed and pushed by the backend API on write operations).
 
 Trending data / themes to inspire you:
 {trending}
@@ -33,9 +33,9 @@ You must return ONLY a valid JSON object matching this structure:
   }},
   "architecture": {{
     "notes": "Overview of architecture (React Vite frontend, Node.js backend, Zustand, Tailwind).",
-    "db_schema": "Detailed PostgreSQL/Supabase database tables, relationships, and RLS policies.",
+    "db_schema": "Detailed JSON database schemas, describing table objects (stored as JSON arrays in db/) and fields, along with read/write git-push trigger designs.",
     "folder_structure": "Map of key folders and file organization.",
-    "auth_design": "Detailed Supabase Auth integration flow.",
+    "auth_design": "Detailed local JSON/JWT Auth design (storing hashed user records in users.json).",
     "api_contracts": "Key API routes, methods, and request/response payloads."
   }},
   "milestones": [
@@ -55,7 +55,7 @@ You must return ONLY a valid JSON object matching this structure:
       ]
     }}
   ],
-  "priorities": ["Auth setup", "Core UI shell", "Database connection"],
+  "priorities": ["Auth setup", "Core UI shell", "GitHub JSON DB configuration"],
   "dependencies": {{
     "1.2": ["1.1"]
   }},
@@ -70,7 +70,7 @@ _CODE_PROMPT = """\
 You are an expert full-stack developer writing production-grade, maintainable code.
 We are building a SaaS application called "{title}" (Description: {description}).
 
-Tech Stack: React 18, TypeScript, TailwindCSS, Zustand state management, React Router v6, Express backend, and Supabase Database.
+Tech Stack: React 18, TypeScript, TailwindCSS, Zustand state management, React Router v6, Express backend, and GitHub-backed JSON Database (table objects stored as JSON files, read/write updates committed and pushed by the Express backend API).
 
 Task details to implement:
 - Task ID: {task_id}

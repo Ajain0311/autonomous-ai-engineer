@@ -19,9 +19,9 @@ DEFAULT_STATE = {
     },
     "architecture": {
         "notes": "Define core design principles and architectural boundaries.",
-        "db_schema": "Supabase database schema and migrations.",
+        "db_schema": "GitHub JSON database schema (JSON schema for table objects).",
         "folder_structure": "Directory organization mapping.",
-        "auth_design": "Supabase Auth configuration and flow.",
+        "auth_design": "GitHub Auth / Token configuration and JWT session flow.",
         "api_contracts": "REST endpoints and API payload contracts."
     },
     "milestones": [],
