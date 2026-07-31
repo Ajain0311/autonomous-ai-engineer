@@ -24,6 +24,13 @@ interface Milestone {
   tasks: Task[];
 }
 
+interface TreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: TreeNode[];
+}
+
 interface ProjectState {
   project: {
     name: string;
@@ -81,6 +88,7 @@ export default function App() {
   const [showNewFileModal, setShowNewFileModal] = useState<boolean>(false);
   const [newFilePath, setNewFilePath] = useState<string>('');
   const [fileSearchQuery, setFileSearchQuery] = useState<string>('');
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   
   // Credentials & test connection state
   const [envKeys, setEnvKeys] = useState<Record<string, string>>({});
@@ -359,6 +367,92 @@ export default function App() {
     } catch (e) {
       alert('Error creating file.');
     }
+  };
+
+  const buildFileTree = (paths: string[]): TreeNode[] => {
+    const root: TreeNode[] = [];
+    paths.forEach(path => {
+      const parts = path.split('/');
+      let currentLevel = root;
+      let currentPath = '';
+      
+      parts.forEach((part, index) => {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        const isLast = index === parts.length - 1;
+        let existingNode = currentLevel.find(node => node.name === part);
+        
+        if (!existingNode) {
+          existingNode = {
+            name: part,
+            path: currentPath,
+            type: isLast ? 'file' : 'directory',
+            children: isLast ? undefined : []
+          };
+          currentLevel.push(existingNode);
+          currentLevel.sort((a, b) => {
+            if (a.type !== b.type) {
+              return a.type === 'directory' ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+          });
+        }
+        
+        if (!isLast && existingNode.children) {
+          currentLevel = existingNode.children;
+        }
+      });
+    });
+    return root;
+  };
+
+  const toggleFolder = (path: string) => {
+    setOpenFolders(prev => ({
+      ...prev,
+      [path]: !prev[path]
+    }));
+  };
+
+  const renderTreeNodes = (nodes: TreeNode[], depth: number = 0): React.ReactNode => {
+    return nodes.map(node => {
+      const isFolder = node.type === 'directory';
+      const isOpen = !!openFolders[node.path];
+      
+      if (isFolder) {
+        return (
+          <div key={node.path} className="select-none">
+            <button
+              onClick={() => toggleFolder(node.path)}
+              style={{ paddingLeft: `${depth * 12 + 6}px` }}
+              className="w-full text-left py-1 hover:bg-white/5 text-gray-300 font-medium rounded-lg flex items-center space-x-1.5 transition-all text-[11px]"
+            >
+              <span className="text-[8px] text-gray-500 font-bold font-mono">
+                {isOpen ? '▼' : '▶'}
+              </span>
+              <FolderOpen className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+              <span className="truncate">{node.name}</span>
+            </button>
+            
+            {isOpen && node.children && (
+              <div className="mt-0.5">
+                {renderTreeNodes(node.children, depth + 1)}
+              </div>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <button
+            key={node.path}
+            onClick={() => selectFile(node.path)}
+            style={{ paddingLeft: `${depth * 12 + 18}px` }}
+            className={`w-full text-left py-1 hover:bg-white/5 rounded-lg flex items-center space-x-1.5 transition-all text-[11px] border border-transparent ${selectedFile === node.path ? 'bg-violet-600/20 text-violet-300 border-violet-500/20 font-semibold' : 'text-gray-400'}`}
+          >
+            <FileCode className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+            <span className="truncate">{node.name}</span>
+          </button>
+        );
+      }
+    });
   };
 
   const viewCommitDiff = async (sha: string, message: string) => {
@@ -1252,16 +1346,22 @@ export default function App() {
                   <Search className="h-3.5 w-3.5 text-gray-500 absolute left-2.5 top-2" />
                 </div>
                 {/* Scrollable File List */}
-                <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-mono text-[10px]">
-                  {files.filter(f => f.toLowerCase().includes(fileSearchQuery.toLowerCase())).map(path => (
-                    <button
-                      key={path}
-                      onClick={() => selectFile(path)}
-                      className={`w-full text-left p-2 rounded-lg truncate block transition-all ${selectedFile === path ? 'bg-violet-600/20 text-violet-300 border border-violet-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white border border-transparent'}`}
-                    >
-                      {path}
-                    </button>
-                  ))}
+                <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-outfit text-[11px]">
+                  {fileSearchQuery ? (
+                    // Flat matching list for search queries
+                    files.filter(f => f.toLowerCase().includes(fileSearchQuery.toLowerCase())).map(path => (
+                      <button
+                        key={path}
+                        onClick={() => selectFile(path)}
+                        className={`w-full text-left p-2 rounded-lg truncate block font-mono text-[10px] transition-all ${selectedFile === path ? 'bg-violet-600/20 text-violet-300 border border-violet-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white border border-transparent'}`}
+                      >
+                        {path}
+                      </button>
+                    ))
+                  ) : (
+                    // Collapsible tree view
+                    renderTreeNodes(buildFileTree(files))
+                  )}
                   {files.length === 0 && (
                     <p className="text-gray-600 text-center py-8">No files found.</p>
                   )}
