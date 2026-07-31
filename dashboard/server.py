@@ -255,7 +255,7 @@ def delete_file(payload: FileDeleteRequest):
 
 @app.post("/api/git/commit")
 def git_commit(payload: CommitRequest):
-    run_git_command(["add", "."])
+    run_git_command(["add", "-A"])
     ok, output = run_git_command(["commit", "-m", payload.message])
     if not ok:
         raise HTTPException(status_code=500, detail=output)

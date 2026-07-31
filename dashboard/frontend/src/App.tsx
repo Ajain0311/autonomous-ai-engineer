@@ -504,6 +504,35 @@ export default function App() {
     }
   };
 
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    const lineNumbersDiv = document.getElementById('line-numbers');
+    if (lineNumbersDiv) {
+      lineNumbersDiv.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  const detectLanguage = (filename: string): string => {
+    if (!filename) return 'text';
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (!ext) return 'text';
+    const mapping: Record<string, string> = {
+      'ts': 'typescript',
+      'tsx': 'typescript react',
+      'js': 'javascript',
+      'jsx': 'javascript react',
+      'json': 'json',
+      'py': 'python',
+      'css': 'css',
+      'html': 'html',
+      'md': 'markdown',
+      'yml': 'yaml',
+      'yaml': 'yaml',
+      'toml': 'toml',
+      'sh': 'shell'
+    };
+    return mapping[ext] || ext;
+  };
+
   const viewCommitDiff = async (sha: string, message: string) => {
     try {
       setSelectedCommit({ sha, message });
@@ -1477,11 +1506,49 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <textarea
-                      value={fileContent}
-                      onChange={e => setFileContent(e.target.value)}
-                      className="w-full flex-1 code-font text-xs bg-black/60 text-gray-300 p-4 border border-white/5 rounded-xl h-[450px] outline-none leading-relaxed resize-none shadow-inner"
-                    />
+                    <div className="flex-1 flex border border-white/5 rounded-xl overflow-hidden bg-black/60 shadow-inner min-h-[400px]">
+                      {/* Line Numbers Gutter */}
+                      <div
+                        id="line-numbers"
+                        className="bg-black/30 border-r border-white/5 text-right text-[10px] text-gray-600 font-mono select-none overflow-y-hidden"
+                        style={{ 
+                          minWidth: '42px', 
+                          paddingTop: '16px', 
+                          paddingBottom: '16px',
+                          paddingRight: '8px'
+                        }}
+                      >
+                        {Array.from({ length: fileContent.split('\n').length || 1 }).map((_, i) => (
+                          <div key={i} style={{ height: '20px', lineHeight: '20px' }}>{i + 1}</div>
+                        ))}
+                      </div>
+                      
+                      {/* Textarea Code Space */}
+                      <textarea
+                        value={fileContent}
+                        onChange={e => setFileContent(e.target.value)}
+                        onScroll={handleTextareaScroll}
+                        className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-y-auto"
+                        style={{ 
+                          lineHeight: '20px', 
+                          paddingTop: '16px', 
+                          paddingBottom: '16px',
+                          paddingLeft: '16px',
+                          paddingRight: '16px',
+                          height: isMaximized ? 'calc(100vh - 180px)' : '450px'
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Status Bar */}
+                    <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
+                      <div className="flex space-x-4">
+                        <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
+                        <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
+                        <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
+                      </div>
+                      <span className="text-[9px] bg-white/5 px-2 py-0.5 rounded border border-white/5 text-gray-400">UTF-8</span>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col justify-center items-center text-center py-20 text-gray-550">
