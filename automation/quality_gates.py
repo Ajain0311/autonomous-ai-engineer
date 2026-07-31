@@ -6,18 +6,21 @@ logger = logging.getLogger(__name__)
 ROOT_DIR = Path(__file__).resolve().parent.parent
 APP_DIR = ROOT_DIR / "app"
 
+import sys
+
 def run_command_in_app(args: list[str]) -> tuple[bool, str]:
     """Runs a shell command in the app directory, returning success and output."""
     try:
         logger.info("Executing quality gate command: %s", " ".join(args))
-        # Use shell=True on Windows for compatibility with npm/npx commands
+        # Use shell=True only on Windows for .cmd/.bat resolving compatibility
+        is_win = (sys.platform == "win32")
         result = subprocess.run(
             args,
             cwd=str(APP_DIR),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            shell=True,
+            shell=is_win,
             timeout=300 # 5 minutes max timeout
         )
         output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
