@@ -245,14 +245,19 @@ class FileDeleteRequest(BaseModel):
 
 @app.post("/api/files/delete")
 def delete_file(payload: FileDeleteRequest):
+    import shutil
     try:
         safe_path = (ROOT_DIR / payload.path).resolve()
         if not str(safe_path).startswith(str(ROOT_DIR.resolve())):
             raise HTTPException(status_code=403, detail="Path traversal detected.")
-        if safe_path.exists() and safe_path.is_file():
-            safe_path.unlink()
-            return {"status": "success", "message": f"File {payload.path} deleted successfully."}
-        raise HTTPException(status_code=404, detail="File not found.")
+        if safe_path.exists():
+            if safe_path.is_file():
+                safe_path.unlink()
+                return {"status": "success", "message": f"File {payload.path} deleted successfully."}
+            elif safe_path.is_dir():
+                shutil.rmtree(safe_path)
+                return {"status": "success", "message": f"Folder {payload.path} deleted successfully."}
+        raise HTTPException(status_code=404, detail="Path not found.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

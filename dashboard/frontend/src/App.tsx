@@ -3,7 +3,8 @@ import {
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
   Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
-  CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search, Maximize2, Minimize2
+  CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search, Maximize2, Minimize2,
+  FolderPlus, Download, WrapText, Palette
 } from 'lucide-react';
 
 interface Task {
@@ -87,6 +88,8 @@ export default function App() {
   const [isSavingFile, setIsSavingFile] = useState<boolean>(false);
   const [showNewFileModal, setShowNewFileModal] = useState<boolean>(false);
   const [newFilePath, setNewFilePath] = useState<string>('');
+  const [showNewFolderModal, setShowNewFolderModal] = useState<boolean>(false);
+  const [newFolderPath, setNewFolderPath] = useState<string>('');
   const [fileSearchQuery, setFileSearchQuery] = useState<string>('');
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
@@ -94,6 +97,14 @@ export default function App() {
   const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
   const [autosaveStatus, setAutosaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
   const lastSavedContent = useRef<string>('');
+  
+  // Rich Editor settings
+  const [editorFontSize, setEditorFontSize] = useState<number>(13);
+  const [editorWordWrap, setEditorWordWrap] = useState<boolean>(false);
+  const [editorTheme, setEditorTheme] = useState<'midnight' | 'cyberpunk' | 'monokai' | 'dracula'>('midnight');
+  const [showSearchPanel, setShowSearchPanel] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [replaceQuery, setReplaceQuery] = useState<string>('');
   
   // Custom Git Commit Modal States
   const [showGitCommitModal, setShowGitCommitModal] = useState<boolean>(false);
@@ -424,6 +435,25 @@ export default function App() {
     }
   };
 
+  const createNewFolder = async () => {
+    if (!newFolderPath) return;
+    try {
+      const keepFilePath = newFolderPath.endsWith('/') ? `${newFolderPath}.gitkeep` : `${newFolderPath}/.gitkeep`;
+      const res = await fetch('/api/files/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: keepFilePath, content: '' })
+      });
+      if (!res.ok) throw new Error('Failed to create folder');
+      setShowNewFolderModal(false);
+      setNewFolderPath('');
+      await fetchFiles();
+      showToast('Folder created successfully!');
+    } catch (e) {
+      showToast('Error creating folder.', 'error');
+    }
+  };
+
   const buildFileTree = (paths: string[]): TreeNode[] => {
     const root: TreeNode[] = [];
     paths.forEach(path => {
@@ -475,17 +505,29 @@ export default function App() {
       if (isFolder) {
         return (
           <div key={node.path} className="select-none">
-            <button
-              onClick={() => toggleFolder(node.path)}
-              style={{ paddingLeft: `${depth * 12 + 6}px` }}
-              className="w-full text-left py-1 hover:bg-white/5 text-gray-300 font-medium rounded-lg flex items-center space-x-1.5 transition-all text-[11px]"
-            >
-              <span className="text-[8px] text-gray-500 font-bold font-mono">
-                {isOpen ? '▼' : '▶'}
-              </span>
-              <FolderOpen className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-              <span className="truncate">{node.name}</span>
-            </button>
+            <div className="group flex items-center justify-between w-full pr-1 hover:bg-white/5 rounded-lg">
+              <button
+                onClick={() => toggleFolder(node.path)}
+                style={{ paddingLeft: `${depth * 12 + 6}px` }}
+                className="flex-1 text-left py-1 text-gray-300 font-medium flex items-center space-x-1.5 transition-all text-[11px] truncate"
+              >
+                <span className="text-[8px] text-gray-500 font-bold font-mono">
+                  {isOpen ? '▼' : '▶'}
+                </span>
+                <FolderOpen className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                <span className="truncate">{node.name}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deletePath(node.path, true);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded transition-all shrink-0 cursor-pointer"
+                title="Delete Folder"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
             
             {isOpen && node.children && (
               <div className="mt-0.5">
@@ -496,25 +538,36 @@ export default function App() {
         );
       } else {
         return (
-          <button
-            key={node.path}
-            onClick={() => selectFile(node.path)}
-            style={{ paddingLeft: `${depth * 12 + 18}px` }}
-            className={`w-full text-left py-1 hover:bg-white/5 rounded-lg flex items-center space-x-1.5 transition-all text-[11px] border border-transparent ${selectedFile === node.path ? 'bg-violet-600/20 text-violet-300 border-violet-500/20 font-semibold' : 'text-gray-400'}`}
-          >
-            <FileCode className="h-3.5 w-3.5 text-violet-400 shrink-0" />
-            <span className="truncate">{node.name}</span>
-          </button>
+          <div key={node.path} className="group flex items-center justify-between w-full pr-1 hover:bg-white/5 rounded-lg">
+            <button
+              onClick={() => selectFile(node.path)}
+              style={{ paddingLeft: `${depth * 12 + 18}px` }}
+              className={`flex-1 text-left py-1 rounded-lg flex items-center space-x-1.5 transition-all text-[11px] border border-transparent truncate ${selectedFile === node.path ? 'bg-violet-600/10 text-violet-300 border-violet-500/10 font-semibold' : 'text-gray-400'}`}
+            >
+              <FileCode className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+              <span className="truncate">{node.name}</span>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deletePath(node.path, false);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-rose-500/20 text-rose-450 hover:text-rose-300 rounded transition-all shrink-0 cursor-pointer"
+              title="Delete File"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         );
       }
     });
   };
 
-  const deleteFile = async (path: string) => {
+  const deletePath = async (path: string, isFolder: boolean) => {
     setConfirmModal({
       show: true,
-      title: 'Delete File?',
-      message: `Are you sure you want to permanently delete the file "${path}"? This will remove it from the workspace.`,
+      title: isFolder ? 'Delete Folder?' : 'Delete File?',
+      message: `Are you sure you want to permanently delete the ${isFolder ? 'folder' : 'file'} "${path}"? This will delete all its contents from the workspace.`,
       onConfirm: async () => {
         setConfirmModal(null);
         try {
@@ -523,17 +576,72 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path })
           });
-          if (!res.ok) throw new Error('Failed to delete file');
-          showToast('File deleted successfully!');
+          if (!res.ok) throw new Error('Failed to delete path');
+          showToast(`${isFolder ? 'Folder' : 'File'} deleted successfully!`);
           setGitCommitMessage(`chore(workspace): delete ${path}`);
-          setSelectedFile('');
-          setFileContent('');
+          if (!isFolder && selectedFile === path) {
+            setSelectedFile('');
+            setFileContent('');
+          } else if (isFolder && selectedFile.startsWith(path + '/')) {
+            setSelectedFile('');
+            setFileContent('');
+          }
           fetchFiles();
         } catch (e) {
-          showToast('Error deleting file.', 'error');
+          showToast(`Error deleting ${isFolder ? 'folder' : 'file'}.`, 'error');
         }
       }
     });
+  };
+
+  const getSearchMatchesCount = () => {
+    if (!searchQuery) return 0;
+    try {
+      const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'gi');
+      const matches = fileContent.match(regex);
+      return matches ? matches.length : 0;
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const handleReplaceAll = () => {
+    if (!searchQuery) return;
+    try {
+      const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'gi');
+      const updated = fileContent.replace(regex, replaceQuery);
+      setFileContent(updated);
+      showToast('Replaced all occurrences!');
+    } catch (e) {
+      showToast('Error replacing occurrences.', 'error');
+    }
+  };
+
+  const downloadFile = () => {
+    if (!selectedFile) return;
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const parts = selectedFile.split('/');
+    link.download = parts[parts.length - 1];
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('File downloaded successfully!');
+  };
+
+  const formatJSON = () => {
+    try {
+      const formatted = JSON.stringify(JSON.parse(fileContent), null, 2);
+      setFileContent(formatted);
+      showToast('JSON formatted successfully!');
+    } catch (e) {
+      showToast('Invalid JSON structure.', 'error');
+    }
   };
 
   const openCommitDialog = async () => {
@@ -878,6 +986,34 @@ export default function App() {
   }
 
   const dailyUsedPercent = Math.min(100, Math.round((state.token_metadata.daily_used / state.token_metadata.daily_budget) * 100));
+
+  const themeStyles = {
+    midnight: {
+      bg: 'bg-black/60',
+      gutter: 'bg-black/30 border-r border-white/5 text-gray-500',
+      textarea: 'text-gray-300',
+      border: 'border-white/5'
+    },
+    cyberpunk: {
+      bg: 'bg-fuchsia-950/20',
+      gutter: 'bg-fuchsia-950/40 border-r border-pink-500/20 text-pink-400',
+      textarea: 'text-pink-300 font-bold',
+      border: 'border-pink-500/20 shadow-[0_0_15px_rgba(236,72,153,0.05)]'
+    },
+    monokai: {
+      bg: 'bg-amber-950/25',
+      gutter: 'bg-amber-950/45 border-r border-yellow-600/15 text-yellow-500',
+      textarea: 'text-yellow-100',
+      border: 'border-yellow-600/15'
+    },
+    dracula: {
+      bg: 'bg-slate-900/60',
+      gutter: 'bg-slate-950/40 border-r border-purple-500/20 text-purple-400',
+      textarea: 'text-purple-100',
+      border: 'border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.05)]'
+    }
+  };
+  const activeThemeStyle = themeStyles[editorTheme] || themeStyles.midnight;
 
   return (
     <div className="text-gray-100 min-h-screen pb-12">
@@ -1518,9 +1654,14 @@ export default function App() {
                     <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
                     <span>File Explorer</span>
                   </h3>
-                  <button onClick={() => setShowNewFileModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New File">
-                    <FilePlus className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex space-x-1">
+                    <button onClick={() => setShowNewFileModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New File">
+                      <FilePlus className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => setShowNewFolderModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New Folder">
+                      <FolderPlus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
                 {/* Search query */}
                 <div className="relative mb-3">
@@ -1586,7 +1727,7 @@ export default function App() {
                           <span className="hidden sm:inline">Maximize</span>
                         </button>
                         <button
-                          onClick={() => deleteFile(selectedFile)}
+                          onClick={() => deletePath(selectedFile, false)}
                           className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
                           title="Delete File"
                         >
@@ -1604,11 +1745,128 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex-1 flex border border-white/5 rounded-xl overflow-hidden bg-black/60 shadow-inner min-h-[400px]">
+
+                    {/* Rich Settings Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-white/5 border border-white/5 px-4 py-2 rounded-xl mb-3 text-xs shrink-0 font-outfit">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center space-x-1.5">
+                          <Palette className="h-3.5 w-3.5 text-violet-400" />
+                          <span className="text-gray-400 font-medium font-outfit">Theme:</span>
+                          <select 
+                            value={editorTheme} 
+                            onChange={e => setEditorTheme(e.target.value as any)}
+                            className="bg-black/40 border border-white/10 rounded px-1.5 py-0.5 outline-none text-violet-300 font-medium cursor-pointer"
+                          >
+                            <option value="midnight">Midnight Black</option>
+                            <option value="cyberpunk">Cyberpunk Purple</option>
+                            <option value="monokai">Monokai Amber</option>
+                            <option value="dracula">Dracula Slate</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-gray-400 font-medium mr-1 font-outfit">Size:</span>
+                          <button onClick={() => setEditorFontSize(prev => Math.max(10, prev - 1))} className="h-6 w-6 rounded bg-white/5 hover:bg-white/10 border border-white/5 font-bold transition-all">-</button>
+                          <span className="font-mono text-gray-200 px-1 font-semibold">{editorFontSize}px</span>
+                          <button onClick={() => setEditorFontSize(prev => Math.min(24, prev + 1))} className="h-6 w-6 rounded bg-white/5 hover:bg-white/10 border border-white/5 font-bold transition-all">+</button>
+                        </div>
+                        <button 
+                          onClick={() => setEditorWordWrap(prev => !prev)}
+                          className={`px-2 py-1 rounded border transition-all flex items-center space-x-1.5 ${editorWordWrap ? 'bg-violet-600/20 border-violet-500/35 text-violet-300 font-semibold' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                          title="Toggle Word Wrap"
+                        >
+                          <WrapText className="h-3.5 w-3.5" />
+                          <span>Wrap</span>
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button 
+                          onClick={() => setShowSearchPanel(prev => !prev)}
+                          className={`px-2.5 py-1 rounded border transition-all flex items-center space-x-1.5 ${showSearchPanel ? 'bg-violet-600/20 border-violet-500/35 text-violet-300 font-semibold' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                          title="Search & Replace"
+                        >
+                          <Search className="h-3.5 w-3.5" />
+                          <span>Find / Replace</span>
+                        </button>
+                        {selectedFile.endsWith('.json') && (
+                          <button 
+                            onClick={formatJSON}
+                            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded hover:text-white transition-all flex items-center space-x-1.5"
+                            title="Format JSON Code"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                            <span>Format JSON</span>
+                          </button>
+                        )}
+                        <button 
+                          onClick={downloadFile}
+                          className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded hover:text-white transition-all flex items-center space-x-1.5"
+                          title="Download Raw File"
+                        >
+                          <Download className="h-3.5 w-3.5 text-indigo-400" />
+                          <span>Download</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Search & Replace Panel */}
+                    {showSearchPanel && (
+                      <div className="bg-black/45 border border-white/5 rounded-xl p-3 mb-3 flex flex-col sm:flex-row gap-3 items-end sm:items-center justify-between font-outfit text-xs shrink-0">
+                        <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full sm:w-auto">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <span className="text-gray-400 font-medium w-12 shrink-0 font-outfit">Find:</span>
+                            <input 
+                              type="text" 
+                              value={searchQuery} 
+                              onChange={e => setSearchQuery(e.target.value)}
+                              placeholder="Search text..."
+                              className="w-full glass-input rounded px-2.5 py-1 outline-none text-white font-mono"
+                            />
+                          </div>
+                          <div className="flex items-center space-x-2 flex-1">
+                            <span className="text-gray-400 font-medium w-12 shrink-0 font-outfit">Replace:</span>
+                            <input 
+                              type="text" 
+                              value={replaceQuery} 
+                              onChange={e => setReplaceQuery(e.target.value)}
+                              placeholder="Replacement..."
+                              className="w-full glass-input rounded px-2.5 py-1 outline-none text-white font-mono"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0">
+                          {searchQuery && (
+                            <span className="text-[10px] text-violet-400 font-mono px-2 py-0.5 bg-violet-950/20 border border-violet-500/15 rounded">
+                              {getSearchMatchesCount()} match(es)
+                            </span>
+                          )}
+                          <div className="flex space-x-2">
+                            <button 
+                              onClick={handleReplaceAll}
+                              disabled={!searchQuery}
+                              className="px-3 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded transition-all font-semibold"
+                            >
+                              Replace All
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setSearchQuery('');
+                                setReplaceQuery('');
+                                setShowSearchPanel(false);
+                              }}
+                              className="px-2 py-1 bg-white/5 hover:bg-white/10 text-gray-450 rounded transition-all"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={`flex-1 flex border rounded-xl overflow-hidden shadow-inner min-h-[400px] ${activeThemeStyle.bg} ${activeThemeStyle.border}`}>
                       {/* Line Numbers Gutter */}
                       <div
                         id="line-numbers"
-                        className="bg-black/30 border-r border-white/5 text-right text-[10px] text-gray-600 font-mono select-none overflow-y-hidden"
+                        className={`text-right text-[10px] font-mono select-none overflow-y-hidden ${activeThemeStyle.gutter}`}
                         style={{ 
                           minWidth: '42px', 
                           paddingTop: '16px', 
@@ -1626,8 +1884,9 @@ export default function App() {
                         value={fileContent}
                         onChange={e => setFileContent(e.target.value)}
                         onScroll={handleTextareaScroll}
-                        className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-auto whitespace-pre"
+                        className={`flex-1 code-font bg-transparent outline-none resize-none overflow-auto ${activeThemeStyle.textarea} ${editorWordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'}`}
                         style={{ 
+                          fontSize: `${editorFontSize}px`,
                           lineHeight: '20px', 
                           paddingTop: '16px', 
                           paddingBottom: '16px',
@@ -1797,6 +2056,35 @@ export default function App() {
               </button>
               <button onClick={createNewFile} className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all">
                 Create File
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Create New Folder Modal */}
+      {showNewFolderModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowNewFolderModal(false)}>
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/5 font-outfit overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-2">Create New Workspace Folder</h3>
+            <p className="text-xs text-gray-500 mb-6 font-outfit">Enter the path of the new folder relative to the project root (e.g. <code>app/src/components</code>). A <code>.gitkeep</code> file will be created to track it.</p>
+            
+            <div className="space-y-4 mb-6">
+              <label className="text-xs font-semibold text-gray-400 block font-outfit">Relative Folder Path</label>
+              <input
+                type="text"
+                value={newFolderPath}
+                onChange={e => setNewFolderPath(e.target.value)}
+                placeholder="e.g. app/src/components"
+                className="w-full glass-input text-sm rounded-xl px-4 py-2.5 text-white outline-none font-mono"
+              />
+            </div>
+            
+            <div className="flex space-x-3 justify-end font-outfit">
+              <button onClick={() => setShowNewFolderModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-semibold transition-all">
+                Cancel
+              </button>
+              <button onClick={createNewFolder} className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-semibold transition-all">
+                Create Folder
               </button>
             </div>
           </div>
@@ -2002,9 +2290,14 @@ export default function App() {
                   <FolderOpen className="h-3.5 w-3.5 text-violet-400" />
                   <span>File Explorer</span>
                 </h3>
-                <button onClick={() => setShowNewFileModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New File">
-                  <FilePlus className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex space-x-1">
+                  <button onClick={() => setShowNewFileModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New File">
+                    <FilePlus className="h-3.5 w-3.5" />
+                  </button>
+                  <button onClick={() => setShowNewFolderModal(true)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-300 hover:text-white transition-all" title="Create New Folder">
+                    <FolderPlus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
               
               {/* Search query */}
@@ -2061,7 +2354,7 @@ export default function App() {
                     </div>
                     <div className="flex space-x-2 w-full sm:w-auto justify-end shrink-0">
                       <button
-                        onClick={() => deleteFile(selectedFile)}
+                        onClick={() => deletePath(selectedFile, false)}
                         className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
                         title="Delete File"
                       >
@@ -2080,11 +2373,127 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div className="flex-1 flex border border-white/5 rounded-xl overflow-hidden bg-black/60 shadow-inner">
+                  {/* Rich Settings Toolbar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 bg-white/5 border border-white/5 px-4 py-2 rounded-xl mb-3 text-xs shrink-0 font-outfit">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center space-x-1.5">
+                        <Palette className="h-3.5 w-3.5 text-violet-400" />
+                        <span className="text-gray-400 font-medium font-outfit">Theme:</span>
+                        <select 
+                          value={editorTheme} 
+                          onChange={e => setEditorTheme(e.target.value as any)}
+                          className="bg-black/40 border border-white/10 rounded px-1.5 py-0.5 outline-none text-violet-300 font-medium cursor-pointer"
+                        >
+                          <option value="midnight">Midnight Black</option>
+                          <option value="cyberpunk">Cyberpunk Purple</option>
+                          <option value="monokai">Monokai Amber</option>
+                          <option value="dracula">Dracula Slate</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-gray-400 font-medium mr-1 font-outfit">Size:</span>
+                        <button onClick={() => setEditorFontSize(prev => Math.max(10, prev - 1))} className="h-6 w-6 rounded bg-white/5 hover:bg-white/10 border border-white/5 font-bold transition-all">-</button>
+                        <span className="font-mono text-gray-200 px-1 font-semibold">{editorFontSize}px</span>
+                        <button onClick={() => setEditorFontSize(prev => Math.min(24, prev + 1))} className="h-6 w-6 rounded bg-white/5 hover:bg-white/10 border border-white/5 font-bold transition-all">+</button>
+                      </div>
+                      <button 
+                        onClick={() => setEditorWordWrap(prev => !prev)}
+                        className={`px-2 py-1 rounded border transition-all flex items-center space-x-1.5 ${editorWordWrap ? 'bg-violet-600/20 border-violet-500/35 text-violet-300 font-semibold' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                        title="Toggle Word Wrap"
+                      >
+                        <WrapText className="h-3.5 w-3.5" />
+                        <span>Wrap</span>
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button 
+                        onClick={() => setShowSearchPanel(prev => !prev)}
+                        className={`px-2.5 py-1 rounded border transition-all flex items-center space-x-1.5 ${showSearchPanel ? 'bg-violet-600/20 border-violet-500/35 text-violet-300 font-semibold' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                        title="Search & Replace"
+                      >
+                        <Search className="h-3.5 w-3.5" />
+                        <span>Find / Replace</span>
+                      </button>
+                      {selectedFile.endsWith('.json') && (
+                        <button 
+                          onClick={formatJSON}
+                          className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded hover:text-white transition-all flex items-center space-x-1.5"
+                          title="Format JSON Code"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                          <span>Format JSON</span>
+                        </button>
+                      )}
+                      <button 
+                        onClick={downloadFile}
+                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded hover:text-white transition-all flex items-center space-x-1.5"
+                        title="Download Raw File"
+                      >
+                        <Download className="h-3.5 w-3.5 text-indigo-400" />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search & Replace Panel */}
+                  {showSearchPanel && (
+                    <div className="bg-black/45 border border-white/5 rounded-xl p-3 mb-3 flex flex-col sm:flex-row gap-3 items-end sm:items-center justify-between font-outfit text-xs shrink-0">
+                      <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full sm:w-auto">
+                        <div className="flex items-center space-x-2 flex-1">
+                          <span className="text-gray-400 font-medium w-12 shrink-0 font-outfit">Find:</span>
+                          <input 
+                            type="text" 
+                            value={searchQuery} 
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Search text..."
+                            className="w-full glass-input rounded px-2.5 py-1 outline-none text-white font-mono"
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 flex-1">
+                          <span className="text-gray-400 font-medium w-12 shrink-0 font-outfit">Replace:</span>
+                          <input 
+                            type="text" 
+                            value={replaceQuery} 
+                            onChange={e => setReplaceQuery(e.target.value)}
+                            placeholder="Replacement..."
+                            className="w-full glass-input rounded px-2.5 py-1 outline-none text-white font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 border-t sm:border-t-0 border-white/5 pt-2 sm:pt-0">
+                        {searchQuery && (
+                          <span className="text-[10px] text-violet-400 font-mono px-2 py-0.5 bg-violet-950/20 border border-violet-500/15 rounded">
+                            {getSearchMatchesCount()} match(es)
+                          </span>
+                        )}
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={handleReplaceAll}
+                            disabled={!searchQuery}
+                            className="px-3 py-1 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded transition-all font-semibold"
+                          >
+                            Replace All
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSearchQuery('');
+                              setReplaceQuery('');
+                              setShowSearchPanel(false);
+                            }}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 text-gray-455 rounded transition-all"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`flex-1 flex border rounded-xl overflow-hidden shadow-inner min-h-[400px] ${activeThemeStyle.bg} ${activeThemeStyle.border}`}>
                     {/* Line Numbers Gutter */}
                     <div
                       id="line-numbers-maximized"
-                      className="bg-black/30 border-r border-white/5 text-right text-[10px] text-gray-655 font-mono select-none overflow-y-hidden"
+                      className={`text-right text-[10px] font-mono select-none overflow-y-hidden ${activeThemeStyle.gutter}`}
                       style={{ 
                         minWidth: '42px', 
                         paddingTop: '16px', 
@@ -2107,8 +2516,9 @@ export default function App() {
                           lineNumbersDiv.scrollTop = e.currentTarget.scrollTop;
                         }
                       }}
-                      className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-auto whitespace-pre"
+                      className={`flex-1 code-font bg-transparent outline-none resize-none overflow-auto ${activeThemeStyle.textarea} ${editorWordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'}`}
                       style={{ 
+                        fontSize: `${editorFontSize}px`,
                         lineHeight: '20px', 
                         paddingTop: '16px', 
                         paddingBottom: '16px',
