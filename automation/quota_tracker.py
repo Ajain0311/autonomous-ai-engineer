@@ -141,15 +141,21 @@ def _model_ok(model: str) -> bool:
 
 def _looks_like_rpd(exc) -> bool:
     """
-    Google's 429 error message contains the limit name, e.g.:
+    Google's 429 error message contains the limit name or quota error, e.g.:
       "GenerateRequestsPerDayPerProjectPerModel"  → RPD
-      "GenerateRequestsPerMinutePerProjectPerModel" → RPM
+      "You exceeded your current quota, please check your plan and billing details." -> Daily/billing exhausted
     """
-    msg = (getattr(exc, "message", "") or "").lower()
-    return "per_day" in msg or "perday" in msg or "_day_" in msg
+    msg = f"{getattr(exc, 'message', '') or ''} {str(exc)}".lower()
+    return (
+        "per_day" in msg or 
+        "perday" in msg or 
+        "_day_" in msg or 
+        "exceeded your current quota" in msg or 
+        "billing" in msg
+    )
 
 
 def _looks_like_rpm(exc) -> bool:
     """True when the 429 message explicitly names a per-minute quota."""
-    msg = (getattr(exc, "message", "") or "").lower()
-    return "per_minute" in msg or "perminute" in msg or "_minute_" in msg
+    msg = f"{getattr(exc, 'message', '') or ''} {str(exc)}".lower()
+    return "per_minute" in msg or "perminute" in msg or "_minute_" in msg or "queries per minute" in msg
