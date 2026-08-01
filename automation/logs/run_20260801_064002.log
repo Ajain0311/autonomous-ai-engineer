@@ -1,0 +1,56 @@
+2026-08-01 06:40:02,845 [INFO] __main__: === Starting Autonomous Pipeline Run ===
+2026-08-01 06:40:02,847 [INFO] __main__: No active project. Starting project selection & planning...
+2026-08-01 06:40:02,848 [INFO] __main__: Scraping fresh trending topics...
+2026-08-01 06:40:03,881 [INFO] automation.trend_finder: GitHub trending: found 12 repos
+2026-08-01 06:40:08,569 [INFO] automation.trend_finder: HackerNews: found 8 top stories
+2026-08-01 06:40:08,575 [INFO] automation.project_planner: Generating project plan from trends...
+2026-08-01 06:40:08,584 [INFO] automation.client: Attempting provider 'gemini' with 3 active key(s)
+2026-08-01 06:40:08,584 [INFO] automation.client: Running: provider=gemini key_idx=0 model=gemini-2.0-flash attempt=1
+2026-08-01 06:40:08,636 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:08,833 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-01 06:40:08,834 [WARNING] automation.client: Attempt failed: code=429 error=You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini
+2026-08-01 06:40:08,834 [INFO] automation.client: Running: provider=gemini key_idx=0 model=gemini-2.0-flash-lite attempt=1
+2026-08-01 06:40:08,870 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:09,004 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-01 06:40:09,004 [WARNING] automation.client: Attempt failed: code=429 error=You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini
+2026-08-01 06:40:09,005 [INFO] automation.client: Running: provider=gemini key_idx=0 model=gemma-3-27b-it attempt=1
+2026-08-01 06:40:09,040 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:09,167 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent "HTTP/1.1 404 Not Found"
+2026-08-01 06:40:09,168 [WARNING] automation.client: Attempt failed: code=404 error=models/gemma-3-27b-it is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of av
+2026-08-01 06:40:09,168 [INFO] automation.client: Running: provider=gemini key_idx=0 model=gemma-3-12b-it attempt=1
+2026-08-01 06:40:09,204 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:09,320 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-3-12b-it:generateContent "HTTP/1.1 404 Not Found"
+2026-08-01 06:40:09,320 [WARNING] automation.client: Attempt failed: code=404 error=models/gemma-3-12b-it is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of av
+2026-08-01 06:40:09,320 [INFO] automation.client: Running: provider=gemini key_idx=1 model=gemini-2.0-flash attempt=1
+2026-08-01 06:40:09,359 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:09,509 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-01 06:40:09,509 [WARNING] automation.client: Attempt failed: code=429 error=You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini
+2026-08-01 06:40:09,509 [INFO] automation.client: Running: provider=gemini key_idx=1 model=gemini-2.0-flash-lite attempt=1
+2026-08-01 06:40:09,544 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:09,688 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-01 06:40:09,689 [WARNING] automation.client: Attempt failed: code=429 error=You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini
+2026-08-01 06:40:09,689 [INFO] automation.client: Running: provider=gemini key_idx=1 model=gemma-3-27b-it attempt=1
+2026-08-01 06:40:09,724 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:09,860 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent "HTTP/1.1 404 Not Found"
+2026-08-01 06:40:09,860 [WARNING] automation.client: Attempt failed: code=404 error=models/gemma-3-27b-it is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of av
+2026-08-01 06:40:09,860 [INFO] automation.client: Running: provider=gemini key_idx=1 model=gemma-3-12b-it attempt=1
+2026-08-01 06:40:09,901 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:10,025 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-3-12b-it:generateContent "HTTP/1.1 404 Not Found"
+2026-08-01 06:40:10,025 [WARNING] automation.client: Attempt failed: code=404 error=models/gemma-3-12b-it is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of av
+2026-08-01 06:40:10,025 [INFO] automation.client: Running: provider=gemini key_idx=2 model=gemini-2.0-flash attempt=1
+2026-08-01 06:40:10,061 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:10,209 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-01 06:40:10,209 [WARNING] automation.client: Attempt failed: code=429 error=You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini
+2026-08-01 06:40:10,209 [INFO] automation.client: Running: provider=gemini key_idx=2 model=gemini-2.0-flash-lite attempt=1
+2026-08-01 06:40:10,245 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:10,387 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent "HTTP/1.1 429 Too Many Requests"
+2026-08-01 06:40:10,388 [WARNING] automation.client: Attempt failed: code=429 error=You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini
+2026-08-01 06:40:10,388 [INFO] automation.client: Running: provider=gemini key_idx=2 model=gemma-3-27b-it attempt=1
+2026-08-01 06:40:10,428 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:10,564 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent "HTTP/1.1 404 Not Found"
+2026-08-01 06:40:10,565 [WARNING] automation.client: Attempt failed: code=404 error=models/gemma-3-27b-it is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of av
+2026-08-01 06:40:10,565 [INFO] automation.client: Running: provider=gemini key_idx=2 model=gemma-3-12b-it attempt=1
+2026-08-01 06:40:10,600 [INFO] google_genai.models: AFC is enabled with max remote calls: 10.
+2026-08-01 06:40:10,720 [INFO] httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-3-12b-it:generateContent "HTTP/1.1 404 Not Found"
+2026-08-01 06:40:10,721 [WARNING] automation.client: Attempt failed: code=404 error=models/gemma-3-12b-it is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of av
+2026-08-01 06:40:10,721 [ERROR] __main__: Failed to plan project: All LLM providers and keys exhausted or rate-limited.
