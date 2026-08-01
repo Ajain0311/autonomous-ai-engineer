@@ -1099,11 +1099,11 @@ export default function App() {
                       <span>Git-Backed JSON Database Schema</span>
                     </h3>
                     {isEditingSpecs ? (
-                      <textarea value={editedSpecs.db_schema} rows={12}
+                      <textarea value={typeof editedSpecs.db_schema === 'object' ? JSON.stringify(editedSpecs.db_schema, null, 2) : editedSpecs.db_schema} rows={12}
                                 onChange={e => setEditedSpecs(prev => prev ? { ...prev, db_schema: e.target.value } : null)}
                                 className="w-full flex-1 code-font text-xs bg-black/40 border border-white/10 rounded-xl p-3 text-gray-300 outline-none" />
                     ) : (
-                      <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed flex-1 border border-white/5" x-text="state.architecture.db_schema">{state.architecture.db_schema}</pre>
+                      <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed flex-1 border border-white/5" x-text="typeof state.architecture.db_schema === 'object' ? JSON.stringify(state.architecture.db_schema, null, 2) : state.architecture.db_schema">{typeof state.architecture.db_schema === 'object' ? JSON.stringify(state.architecture.db_schema, null, 2) : state.architecture.db_schema}</pre>
                     )}
                   </div>
 
@@ -1114,11 +1114,11 @@ export default function App() {
                       <span>Folder Structure Blueprint</span>
                     </h3>
                     {isEditingSpecs ? (
-                      <textarea value={editedSpecs.folder_structure} rows={12}
+                      <textarea value={typeof editedSpecs.folder_structure === 'object' ? JSON.stringify(editedSpecs.folder_structure, null, 2) : editedSpecs.folder_structure} rows={12}
                                 onChange={e => setEditedSpecs(prev => prev ? { ...prev, folder_structure: e.target.value } : null)}
                                 className="w-full flex-1 code-font text-xs bg-black/40 border border-white/10 rounded-xl p-3 text-gray-300 outline-none" />
                     ) : (
-                      <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed flex-1 border border-white/5">{state.architecture.folder_structure}</pre>
+                      <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed flex-1 border border-white/5">{typeof state.architecture.folder_structure === 'object' ? JSON.stringify(state.architecture.folder_structure, null, 2) : state.architecture.folder_structure}</pre>
                     )}
                   </div>
 
@@ -1129,11 +1129,11 @@ export default function App() {
                       <span>Auth Flow Design & API Contracts</span>
                     </h3>
                     {isEditingSpecs ? (
-                      <textarea value={editedSpecs.auth_design} rows={8}
+                      <textarea value={typeof editedSpecs.auth_design === 'object' ? JSON.stringify(editedSpecs.auth_design, null, 2) : editedSpecs.auth_design} rows={8}
                                 onChange={e => setEditedSpecs(prev => prev ? { ...prev, auth_design: e.target.value } : null)}
                                 className="w-full code-font text-xs bg-black/40 border border-white/10 rounded-xl p-3 text-gray-300 outline-none mb-4" />
                     ) : (
-                      <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed border border-white/5 mb-4">{state.architecture.auth_design}</pre>
+                      <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed border border-white/5 mb-4">{typeof state.architecture.auth_design === 'object' ? JSON.stringify(state.architecture.auth_design, null, 2) : state.architecture.auth_design}</pre>
                     )}
                   </div>
                 </div>
