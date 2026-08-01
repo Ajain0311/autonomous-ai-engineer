@@ -1,26 +1,237 @@
 project:
-  name: ''
-  description: ''
-  vision: ''
-  status: idle
+  name: tech-hub
+  description: A SaaS application for tech professionals to discover, learn, and collaborate
+    on trending technologies and projects.
+  vision: To become the go-to platform for tech professionals to stay updated, network,
+    and grow in their careers.
+  status: selected
   repository_url: ''
   deployment_url: ''
-  created_at: ''
-  updated_at: '2026-08-01T06:40:10.721606'
+  created_at: '2026-08-01T10:29:58.288594+00:00'
+  updated_at: '2026-08-01T15:59:58.288594'
+  title: Tech Hub
 architecture:
-  notes: Define core design principles and architectural boundaries.
-  db_schema: Supabase database schema and migrations.
-  folder_structure: Directory organization mapping.
-  auth_design: Supabase Auth configuration and flow.
-  api_contracts: REST endpoints and API payload contracts.
-milestones: []
+  notes: The application will use a modular architecture with a React Vite frontend,
+    Node.js backend, Zustand for state management, and Tailwind for styling.
+  db_schema:
+    users:
+    - id: string
+      username: string
+      email: string
+      password: string
+      projects: array
+    projects:
+    - id: string
+      name: string
+      description: string
+      tags: array
+      contributors: array
+    trending:
+    - id: string
+      name: string
+      description: string
+      language: string
+      stars: number
+  folder_structure:
+    frontend:
+      src:
+        components: {}
+        pages: {}
+        styles: {}
+    backend:
+      src:
+        api: {}
+        db: {}
+        utils: {}
+    db: {}
+  auth_design:
+    local:
+      users: users.json
+      hashing: bcrypt
+    jwt:
+      secret: random-secret-key
+      expiresIn: 1h
+  api_contracts:
+    auth:
+      login:
+        method: POST
+        route: /api/auth/login
+        request:
+          username: string
+          password: string
+        response:
+          token: string
+      register:
+        method: POST
+        route: /api/auth/register
+        request:
+          username: string
+          email: string
+          password: string
+        response:
+          token: string
+    projects:
+      create:
+        method: POST
+        route: /api/projects
+        request:
+          name: string
+          description: string
+          tags: array
+        response:
+          id: string
+          name: string
+          description: string
+          tags: array
+      get:
+        method: GET
+        route: /api/projects/:id
+        response:
+          id: string
+          name: string
+          description: string
+          tags: array
+milestones:
+- id: 1
+  title: Project Scaffolding and Setup
+  status: pending
+  tasks:
+  - id: '1.1'
+    name: Initialize Directories and Configuration
+    description: Create basic folder layout for frontend and backend, configure package.json,
+      tailwind.config.ts, and vite.config.ts.
+    files:
+    - package.json
+    - vite.config.ts
+    - tsconfig.json
+    - index.html
+    - tailwind.config.js
+    - postcss.config.js
+    - netlify.toml
+    - src/main.tsx
+    - src/App.tsx
+    - src/index.css
+    type: setup
+    status: pending
+  - id: '1.2'
+    name: Install Dependencies
+    description: Install required dependencies for frontend and backend.
+    files:
+    - package.json
+    type: setup
+    status: pending
+- id: 2
+  title: Core UI Shell
+  status: pending
+  tasks:
+  - id: '2.1'
+    name: Create Core Layout Components
+    description: Create core layout components such as header, footer, and sidebar.
+    files:
+    - src/components/Header.tsx
+    - src/components/Footer.tsx
+    - src/components/Sidebar.tsx
+    type: feature
+    status: pending
+  - id: '2.2'
+    name: Implement Routing
+    description: Implement routing for the application using React Router.
+    files:
+    - src/main.tsx
+    - src/App.tsx
+    type: feature
+    status: pending
+- id: 3
+  title: Database Integration
+  status: pending
+  tasks:
+  - id: '3.1'
+    name: Create Database Schemas
+    description: Create database schemas for users, projects, and trending data.
+    files:
+    - db/users.json
+    - db/projects.json
+    - db/trending.json
+    type: feature
+    status: pending
+  - id: '3.2'
+    name: Implement CRUD Operations
+    description: Implement CRUD operations for users, projects, and trending data.
+    files:
+    - src/api/users.ts
+    - src/api/projects.ts
+    - src/api/trending.ts
+    type: feature
+    status: pending
+- id: 4
+  title: Auth Integration
+  status: pending
+  tasks:
+  - id: '4.1'
+    name: Implement Local Auth
+    description: Implement local authentication using bcrypt and JWT.
+    files:
+    - src/api/auth.ts
+    type: feature
+    status: pending
+  - id: '4.2'
+    name: Implement Login and Register Pages
+    description: Create login and register pages for users.
+    files:
+    - src/pages/Login.tsx
+    - src/pages/Register.tsx
+    type: feature
+    status: pending
+- id: 5
+  title: Core Features
+  status: pending
+  tasks:
+  - id: '5.1'
+    name: Implement Project Creation
+    description: Implement project creation feature for users.
+    files:
+    - src/pages/ProjectCreate.tsx
+    type: feature
+    status: pending
+  - id: '5.2'
+    name: Implement Project Listing
+    description: Implement project listing feature for users.
+    files:
+    - src/pages/ProjectList.tsx
+    type: feature
+    status: pending
 backlog: []
-priorities: []
-dependencies: {}
+priorities:
+- Auth setup
+- Core UI shell
+- Database integration
+dependencies:
+  '1.2':
+  - '1.1'
+  '2.1':
+  - '1.2'
+  '2.2':
+  - '2.1'
+  '3.1':
+  - '2.2'
+  '3.2':
+  - '3.1'
+  '4.1':
+  - '3.2'
+  '4.2':
+  - '4.1'
+  '5.1':
+  - '4.2'
+  '5.2':
+  - '5.1'
 known_issues: []
 tech_debt: []
 release_notes: []
-audit_trail: []
+audit_trail:
+- timestamp: '2026-08-01T15:59:58.288594'
+  author: AI
+  action: project_selected
+  details: 'Selected project: Tech Hub'
 token_metadata:
   total_used: 0
   daily_budget: 5000000
@@ -150,3 +361,8 @@ trending_cache:
       description: The most official water costs $120k a gallon
       score: 171
       source: hackernews
+quota:
+  rpd_exhausted: {}
+  model_unavailable: {}
+  key_last_used:
+    '6': '2026-08-01T10:29:58.287989+00:00'
