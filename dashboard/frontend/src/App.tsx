@@ -882,34 +882,35 @@ export default function App() {
   return (
     <div className="text-gray-100 min-h-screen pb-12">
       {/* Top Nav */}
-      <nav className="border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+      <nav className="border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row gap-3 sm:gap-0 items-center justify-between">
+        <div className="flex items-center space-x-3 w-full sm:w-auto">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
             <Cpu className="h-5 w-5 text-white" />
           </div>
           <div>
-            <span className="font-bold text-lg bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">Antigravity V2</span>
-            <span className="text-xs text-violet-400 block -mt-1 font-medium font-outfit">Autonomous Software Engineer</span>
+            <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">Antigravity V2</span>
+            <span className="text-[10px] sm:text-xs text-violet-400 block -mt-1 font-medium font-outfit hidden sm:block">Autonomous Software Engineer</span>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 text-xs bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 font-outfit">
+        <div className="flex items-center justify-between sm:justify-end space-x-3 w-full sm:w-auto">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 font-outfit shrink-0">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Local Node API Running</span>
+            <span className="hidden sm:inline">Local Node API Running</span>
+            <span className="sm:hidden">Local API</span>
           </div>
-          <div className="flex items-center space-x-2 text-xs bg-violet-500/10 px-3 py-1.5 rounded-lg border border-violet-500/20 text-violet-300 font-semibold font-outfit">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs bg-violet-500/10 px-2.5 py-1.5 rounded-lg border border-violet-500/20 text-violet-300 font-semibold font-outfit shrink-0">
             <GitBranch className="h-3.5 w-3.5" />
-            <span>{gitStatus.branch}</span>
+            <span className="max-w-[70px] sm:max-w-none truncate">{gitStatus.branch}</span>
           </div>
           <button onClick={handleLogout}
-                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-350 rounded-lg text-xs font-bold font-outfit transition-all cursor-pointer">
+                  className="px-2.5 sm:px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-350 rounded-lg text-xs font-bold font-outfit transition-all cursor-pointer shrink-0">
             Logout
           </button>
         </div>
       </nav>
 
       {/* Main Grid */}
-      <div className="max-w-[1400px] mx-auto px-6 mt-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
         
         {/* Sidebar */}
         <div className="space-y-6 lg:col-span-1">
@@ -1000,28 +1001,28 @@ export default function App() {
         {/* Workspace panel */}
         <div className="space-y-6 lg:col-span-3">
           {/* Tabs Navigation */}
-          <div className="flex border-b border-white/5 space-x-6 text-sm font-semibold mb-6">
-            <button onClick={() => setActiveTab('overview')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'overview' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+          <div className="flex border-b border-white/5 space-x-4 sm:space-x-6 text-sm font-semibold mb-6 overflow-x-auto scrollbar-none whitespace-nowrap pb-1">
+            <button onClick={() => setActiveTab('overview')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'overview' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <FileText className="h-4 w-4" />
               <span>Project Vision</span>
             </button>
-            <button onClick={() => setActiveTab('milestones')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'milestones' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+            <button onClick={() => setActiveTab('milestones')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'milestones' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <ChevronRight className="h-4 w-4" />
               <span>Roadmap Editor</span>
             </button>
-            <button onClick={() => setActiveTab('keys')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'keys' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+            <button onClick={() => setActiveTab('keys')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'keys' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <Key className="h-4 w-4" />
               <span>API Credentials</span>
             </button>
-            <button onClick={() => setActiveTab('git')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'git' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+            <button onClick={() => setActiveTab('git')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'git' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <GitBranch className="h-4 w-4" />
               <span>Git Workspace</span>
             </button>
-            <button onClick={() => setActiveTab('logs')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'logs' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+            <button onClick={() => setActiveTab('logs')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'logs' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <Terminal className="h-4 w-4" />
               <span>Terminal output</span>
             </button>
-            <button onClick={() => setActiveTab('editor')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 ${activeTab === 'editor' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+            <button onClick={() => setActiveTab('editor')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'editor' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <FileCode className="h-4 w-4" />
               <span>Workspace Editor</span>
             </button>
@@ -1031,8 +1032,8 @@ export default function App() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="glass-card rounded-2xl p-6 shadow-xl">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 mr-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                  <div className="flex-1 w-full">
                     <span className="text-[10px] font-bold text-violet-400 tracking-widest uppercase block mb-1">
                       {state.project.status || 'IDLE'}
                     </span>
@@ -1053,7 +1054,7 @@ export default function App() {
                     )}
                   </div>
                   
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 shrink-0">
                     {isEditingSpecs ? (
                       <>
                         <button onClick={() => { setIsEditingSpecs(false); fetchState(); }}
@@ -1170,13 +1171,13 @@ export default function App() {
 
                       <div className="space-y-3 mt-3">
                         {milestone.tasks.map(task => (
-                          <div key={task.id} className="group flex items-start justify-between p-3.5 bg-black/25 rounded-xl border border-white/5 hover:border-violet-500/20 transition-all">
+                          <div key={task.id} className="group flex flex-col sm:flex-row sm:items-start justify-between p-3.5 bg-black/25 rounded-xl border border-white/5 hover:border-violet-500/20 transition-all gap-3 sm:gap-0">
                             <div className="flex items-start space-x-3">
                               <button onClick={() => toggleTaskStatus(task)} className="mt-0.5 outline-none">
                                 {task.status === 'completed' ? (
-                                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                  <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
                                 ) : (
-                                  <Circle className="h-5 w-5 text-gray-500 hover:text-violet-400" />
+                                  <Circle className="h-5 w-5 text-gray-500 hover:text-violet-400 flex-shrink-0" />
                                 )}
                               </button>
                               <div>
@@ -1194,19 +1195,19 @@ export default function App() {
                               </div>
                             </div>
 
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center justify-between sm:justify-start sm:space-x-3 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-white/5 sm:border-t-0 shrink-0">
                               <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${task.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-gray-800 text-gray-400 border-white/5'}`}>
                                 {task.status}
                               </span>
-                              <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-2 transition-all">
+                              <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center space-x-2 transition-all">
                                 <button onClick={() => {
                                   setSelectedMilestoneId(milestone.id);
                                   setEditingTask({ ...task });
                                   setShowTaskModal(true);
-                                }} className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded">
+                                }} className="p-1 hover:bg-white/10 text-gray-400 hover:text-white rounded" title="Edit Task">
                                   <Settings className="h-3.5 w-3.5" />
                                 </button>
-                                <button onClick={() => deleteTask(milestone.id, task.id)} className="p-1 hover:bg-rose-500/20 text-gray-450 hover:text-rose-400 rounded">
+                                <button onClick={() => deleteTask(milestone.id, task.id)} className="p-1 hover:bg-rose-500/20 text-gray-455 hover:text-rose-400 rounded" title="Delete Task">
                                   <Trash className="h-3.5 w-3.5" />
                                 </button>
                               </div>
@@ -1226,13 +1227,13 @@ export default function App() {
             <div className="space-y-6">
               {/* General Platform Config */}
               <div className="glass-card rounded-2xl p-6 shadow-xl">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                   <div>
                     <h2 className="text-lg font-bold text-white">General Platform Settings</h2>
                     <p className="text-xs text-gray-500 mt-1">Configure GitHub authentication tokens, user accounts details, and default deployment providers.</p>
                   </div>
                   <button onClick={saveEnvKeys}
-                          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-violet-500/20">
+                          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-lg shadow-violet-500/20 shrink-0 w-full sm:w-auto justify-center">
                     <Save className="h-4 w-4" />
                     <span>Save Config Settings</span>
                   </button>
@@ -1467,7 +1468,7 @@ export default function App() {
                     <h3 className="font-bold text-gray-250 text-sm">Workspace Diff Preview</h3>
                     <button onClick={fetchGitDiff} className="text-[10px] text-violet-400 font-semibold hover:underline">Refresh Diff</button>
                   </div>
-                  <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-80 overflow-y-auto whitespace-pre leading-relaxed border border-white/5">{gitDiff || 'No changes staged.'}</pre>
+                  <pre className="code-font text-[11px] text-gray-400 bg-black/40 p-4 rounded-xl max-h-80 overflow-auto whitespace-pre leading-relaxed border border-white/5">{gitDiff || 'No changes staged.'}</pre>
                 </div>
               )}
 
@@ -1482,12 +1483,12 @@ export default function App() {
                     <div key={commit.sha} 
                          onClick={() => viewCommitDiff(commit.sha, commit.message)}
                          title="Click to view code changes for this commit"
-                         className="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/5 text-xs hover:bg-white/5 hover:border-violet-500/30 cursor-pointer transition-all">
-                      <div>
-                        <span className="code-font bg-white/5 border border-white/10 text-violet-300 px-2 py-0.5 rounded font-medium">{commit.sha}</span>
-                        <span className="text-gray-300 font-medium ml-2">{commit.message}</span>
+                         className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5 text-xs hover:bg-white/5 hover:border-violet-500/30 cursor-pointer transition-all gap-2 sm:gap-0">
+                      <div className="flex items-center space-x-2 truncate w-full sm:w-auto">
+                        <span className="code-font bg-white/5 border border-white/10 text-violet-300 px-2 py-0.5 rounded font-medium shrink-0">{commit.sha.slice(0, 7)}</span>
+                        <span className="text-gray-300 font-medium truncate">{commit.message}</span>
                       </div>
-                      <span className="text-gray-550 text-[10px] font-outfit">{commit.author} on {commit.date}</span>
+                      <span className="text-gray-550 text-[10px] font-outfit shrink-0 self-end sm:self-auto">{commit.author} on {commit.date}</span>
                     </div>
                   ))}
                 </div>
@@ -1570,35 +1571,36 @@ export default function App() {
               <div className="glass-card rounded-2xl p-6 shadow-xl lg:col-span-3 flex flex-col min-h-[500px]">
                 {selectedFile ? (
                   <div className="flex-1 flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center space-x-2">
-                        <FileCode className="h-4 w-4 text-violet-400" />
-                        <span className="code-font text-xs font-semibold text-white">{selectedFile}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <FileCode className="h-4 w-4 text-violet-400 shrink-0" />
+                        <span className="code-font text-xs font-semibold text-white truncate" title={selectedFile}>{selectedFile}</span>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 w-full sm:w-auto justify-end shrink-0">
                         <button
                           onClick={() => setIsMaximized(true)}
-                          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                          className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
                           title="Maximize/Full Screen"
                         >
                           <Maximize2 className="h-3.5 w-3.5" />
-                          <span>Maximize</span>
+                          <span className="hidden sm:inline">Maximize</span>
                         </button>
                         <button
                           onClick={() => deleteFile(selectedFile)}
-                          className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                          className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
                           title="Delete File"
                         >
                           <Trash className="h-3.5 w-3.5" />
-                          <span>Delete</span>
+                          <span className="hidden sm:inline">Delete</span>
                         </button>
                         <button
                           onClick={saveFile}
                           disabled={isSavingFile}
-                          className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
+                          className="px-3 sm:px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
                         >
                           <Save className="h-3.5 w-3.5" />
-                          <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
+                          <span>{isSavingFile ? 'Saving...' : 'Save'}</span>
+                          <span className="hidden sm:inline"> File</span>
                         </button>
                       </div>
                     </div>
@@ -1624,7 +1626,7 @@ export default function App() {
                         value={fileContent}
                         onChange={e => setFileContent(e.target.value)}
                         onScroll={handleTextareaScroll}
-                        className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-y-auto"
+                        className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-auto whitespace-pre"
                         style={{ 
                           lineHeight: '20px', 
                           paddingTop: '16px', 
@@ -1637,8 +1639,8 @@ export default function App() {
                     </div>
                     
                     {/* Status Bar */}
-                    <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
-                      <div className="flex space-x-4 items-center">
+                    <div className="mt-2 flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
                         <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
                         <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
                         <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
@@ -1681,7 +1683,7 @@ export default function App() {
       {/* Task Creation & Edit Modal */}
       {showTaskModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="glass-card rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-white/5" onClick={e => e.stopPropagation()}>
+          <div className="glass-card rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-white/5 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white mb-4">Edit Task Specification</h3>
             <div className="space-y-4">
               <div>
@@ -1720,7 +1722,7 @@ export default function App() {
       {/* Start From Scratch Confirmation Modal */}
       {showResetModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-500/20" onClick={e => e.stopPropagation()}>
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-500/20 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center space-x-3 text-rose-450 mb-4">
               <AlertTriangle className="h-6 w-6 text-rose-400" />
               <h3 className="text-lg font-bold text-rose-400">Trigger Destructive Reset?</h3>
@@ -1748,7 +1750,7 @@ export default function App() {
       {/* Git Commit Diff Viewer Modal */}
       {showCommitModal && selectedCommit && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowCommitModal(false)}>
-          <div className="glass-card rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-violet-500/20 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="glass-card rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-violet-500/20 max-h-[90vh] sm:max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5">
               <div className="flex items-center space-x-3 text-violet-400">
                 <GitBranch className="h-5 w-5 text-violet-400" />
@@ -1774,7 +1776,7 @@ export default function App() {
       {/* Create New File Modal */}
       {showNewFileModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowNewFileModal(false)}>
-          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/5 font-outfit" onClick={e => e.stopPropagation()}>
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/5 font-outfit overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-white mb-2">Create New Workspace File</h3>
             <p className="text-xs text-gray-500 mb-6 font-outfit">Enter the path of the new file relative to the project root (e.g. <code>app/src/utils.ts</code>).</p>
             
@@ -1802,8 +1804,8 @@ export default function App() {
       )}
       {/* Git Commit & Push Dialog Modal */}
       {showGitCommitModal && (
-        <div className="fixed inset-0 z-[115] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm" onClick={() => setShowGitCommitModal(false)}>
-          <div className="glass-card rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-white/5 font-outfit flex flex-col max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[115] bg-black/80 flex items-center justify-center p-3 sm:p-6 backdrop-blur-sm" onClick={() => setShowGitCommitModal(false)}>
+          <div className="glass-card rounded-2xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl border border-white/5 font-outfit flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex justify-between items-center mb-4 pb-2 border-b border-white/5 shrink-0">
               <div>
@@ -1822,9 +1824,9 @@ export default function App() {
             </div>
 
             {/* Split Screen Workspace */}
-            <div className="flex-1 flex gap-6 overflow-hidden min-h-0 mb-6">
+            <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 overflow-y-auto lg:overflow-hidden min-h-0 mb-6">
               {/* Left Column: Changes list */}
-              <div className="w-1/3 flex flex-col space-y-2 overflow-y-auto pr-1">
+              <div className="w-full lg:w-1/3 flex flex-col space-y-2 lg:overflow-y-auto shrink-0 lg:shrink max-h-[150px] lg:max-h-none pr-1">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0 mb-2">Changed Files ({gitChanges.length})</h4>
                 {gitChanges.length === 0 ? (
                   <div className="flex-1 flex flex-col justify-center items-center text-center p-4 border border-dashed border-white/5 rounded-xl text-gray-600">
@@ -1859,7 +1861,7 @@ export default function App() {
               </div>
 
               {/* Right Column: Diff Preview Panel */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-black/60 rounded-xl border border-white/5 p-4 shadow-inner min-h-0">
+              <div className="w-full lg:flex-1 flex flex-col overflow-hidden bg-black/60 rounded-xl border border-white/5 p-4 shadow-inner min-h-[200px] lg:min-h-0">
                 <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider shrink-0 mb-2">Diff Preview</h4>
                 <div className="flex-1 overflow-auto pr-1 font-mono text-[10px] leading-relaxed whitespace-pre-wrap select-text">
                   {hoveredFile ? (
@@ -1973,7 +1975,7 @@ export default function App() {
       )}
       {/* Maximized Full Screen Workspace IDE Overlay */}
       {isMaximized && (
-        <div className="fixed inset-0 z-[120] bg-black/95 p-6 flex flex-col backdrop-blur-md font-outfit overflow-hidden">
+        <div className="fixed inset-0 z-[120] bg-black/95 p-3 sm:p-6 flex flex-col backdrop-blur-md font-outfit overflow-hidden">
           {/* Header */}
           <div className="flex justify-between items-center mb-6 pb-3 border-b border-white/5 shrink-0">
             <div className="flex items-center space-x-2.5">
@@ -1991,9 +1993,9 @@ export default function App() {
           </div>
 
           {/* Grid Layout */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-hidden min-h-0">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 overflow-y-auto lg:overflow-hidden min-h-0">
             {/* Sidebar (File Explorer & Git) */}
-            <div className="glass-card rounded-2xl p-6 border border-white/5 flex flex-col space-y-6 overflow-y-auto max-h-full">
+            <div className="glass-card rounded-2xl p-6 border border-white/5 flex flex-col space-y-6 lg:overflow-y-auto h-[350px] lg:h-auto shrink-0 lg:shrink">
               {/* File Explorer Header */}
               <div className="flex justify-between items-center shrink-0">
                 <h3 className="text-xs font-bold text-gray-300 flex items-center space-x-1.5">
@@ -2049,30 +2051,31 @@ export default function App() {
             </div>
 
             {/* Code Editor */}
-            <div className="glass-card rounded-2xl p-6 border border-white/5 lg:col-span-3 flex flex-col overflow-hidden max-h-full">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 border border-white/5 lg:col-span-3 flex flex-col overflow-hidden h-[500px] lg:h-auto lg:max-h-full">
               {selectedFile ? (
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="flex justify-between items-center mb-4 shrink-0">
-                    <div className="flex items-center space-x-2">
-                      <FileCode className="h-4 w-4 text-violet-400" />
-                      <span className="code-font text-xs font-semibold text-white">{selectedFile}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 shrink-0">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <FileCode className="h-4 w-4 text-violet-400 shrink-0" />
+                      <span className="code-font text-xs font-semibold text-white truncate" title={selectedFile}>{selectedFile}</span>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 w-full sm:w-auto justify-end shrink-0">
                       <button
                         onClick={() => deleteFile(selectedFile)}
-                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
+                        className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1"
                         title="Delete File"
                       >
                         <Trash className="h-3.5 w-3.5" />
-                        <span>Delete</span>
+                        <span className="hidden sm:inline">Delete</span>
                       </button>
                       <button
                         onClick={saveFile}
                         disabled={isSavingFile}
-                        className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
+                        className="px-3 sm:px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 flex items-center space-x-1"
                       >
                         <Save className="h-3.5 w-3.5" />
-                        <span>{isSavingFile ? 'Saving...' : 'Save File'}</span>
+                        <span>{isSavingFile ? 'Saving...' : 'Save'}</span>
+                        <span className="hidden sm:inline"> File</span>
                       </button>
                     </div>
                   </div>
@@ -2104,7 +2107,7 @@ export default function App() {
                           lineNumbersDiv.scrollTop = e.currentTarget.scrollTop;
                         }
                       }}
-                      className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-y-auto"
+                      className="flex-1 code-font text-xs text-gray-305 bg-transparent outline-none resize-none overflow-auto whitespace-pre"
                       style={{ 
                         lineHeight: '20px', 
                         paddingTop: '16px', 
@@ -2117,8 +2120,8 @@ export default function App() {
                   </div>
                   
                   {/* Status Bar */}
-                  <div className="mt-2 flex justify-between items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
-                    <div className="flex space-x-4 items-center">
+                  <div className="mt-2 flex flex-col sm:flex-row gap-2 sm:gap-0 justify-between items-start sm:items-center text-[10px] text-gray-500 font-outfit px-1 shrink-0">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
                       <span>Language: <strong className="text-violet-400 uppercase font-mono">{detectLanguage(selectedFile)}</strong></span>
                       <span>Lines: <strong className="text-gray-300 font-mono">{fileContent.split('\n').length}</strong></span>
                       <span>Characters: <strong className="text-gray-300 font-mono">{fileContent.length}</strong></span>
