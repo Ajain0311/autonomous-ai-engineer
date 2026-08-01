@@ -45,7 +45,8 @@ DEFAULT_STATE = {
         "duration_seconds": 0,
         "retry_count": 0
     },
-    "provider_priority": ["gemini", "groq", "openrouter", "together", "github", "huggingface", "sambanova", "mistral", "cohere", "kilo"]
+    "provider_priority": ["gemini", "groq", "openrouter", "together", "github", "huggingface", "sambanova", "mistral", "cohere", "kilo"],
+    "quota": {}
 }
 
 def load_state() -> dict:
@@ -62,6 +63,12 @@ def load_state() -> dict:
             for k, v in DEFAULT_STATE.items():
                 if k not in state:
                     state[k] = v
+            # Load quota tracker state
+            try:
+                from automation import quota_tracker
+                quota_tracker.load(state.get("quota", {}))
+            except Exception:
+                pass
             return state
     except Exception:
         return DEFAULT_STATE.copy()
@@ -75,6 +82,13 @@ def save_state(state: dict) -> None:
         state.setdefault("token_metadata", {})["daily_used"] = 0
         state["token_metadata"]["last_reset_date"] = today
         
+    # Save quota tracker state
+    try:
+        from automation import quota_tracker
+        state["quota"] = quota_tracker.save()
+    except Exception:
+        pass
+
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         yaml.safe_dump(state, f, default_flow_style=False, sort_keys=False, allow_unicode=True)

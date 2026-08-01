@@ -244,7 +244,10 @@ def generate_with_failover(prompt: str, temperature: float = 0.5, require_json: 
         
         for key_idx in active_indices:
             client = _clients[key_idx]
+            skip_key = False
             for model in models:
+                if skip_key:
+                    break
                 # Up to 3 attempts per key/model combination
                 for attempt in range(1, 4):
                     try:
@@ -276,10 +279,12 @@ def generate_with_failover(prompt: str, temperature: float = 0.5, require_json: 
                         if code == 429:
                             quota_tracker.mark_key_rate_limited(key_idx, exc)
                             # Move to next key immediately on rate limit
+                            skip_key = True
                             break
                         # Handle dead keys (401/403)
                         elif code in (401, 403):
                             quota_tracker.mark_key_dead(key_idx)
+                            skip_key = True
                             break
                         # 404 Model not found
                         elif code == 404:
