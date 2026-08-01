@@ -93,7 +93,10 @@ def run_git_command(args: list[str]) -> tuple[bool, str]:
         if result.returncode == 0:
             return True, result.stdout.strip()
         else:
-            return False, result.stderr.strip()
+            err = result.stderr.strip()
+            if not err:
+                err = result.stdout.strip()
+            return False, err
     except Exception as e:
         return False, str(e)
 
@@ -258,6 +261,8 @@ def git_commit(payload: CommitRequest):
     run_git_command(["add", "-A"])
     ok, output = run_git_command(["commit", "-m", payload.message])
     if not ok:
+        if "nothing to commit" in output.lower() or "working tree clean" in output.lower():
+            return {"status": "success", "message": "No changes to commit. Working tree is clean.", "output": output}
         raise HTTPException(status_code=500, detail=output)
     return {"status": "success", "message": "Changes committed.", "output": output}
 
