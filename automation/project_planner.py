@@ -149,11 +149,16 @@ def get_existing_files(file_paths: List[str]) -> Dict[str, str]:
                 logger.error("Failed to read file %s: %s", rel_path, e)
     return existing
 
-def plan_new_project(trending_data: Dict) -> Dict[str, Any]:
+def plan_new_project(trending_data: Dict, custom_idea: str = None) -> Dict[str, Any]:
     """Analyze trends and generate a master spec plan for a new target SaaS product."""
     logger.info("Generating project plan from trends...")
-    prompt = _PLAN_PROMPT.format(trending=json.dumps(trending_data, indent=2))
     
+    if custom_idea:
+        custom_instr = f"CRITICAL REQUIREMENT: Instead of picking a random trend, you MUST design the SaaS application specifically around the following user idea/concept:\nCUSTOM USER IDEA: {custom_idea}\n\n"
+        prompt = custom_instr + _PLAN_PROMPT.format(trending=json.dumps(trending_data, indent=2))
+    else:
+        prompt = _PLAN_PROMPT.format(trending=json.dumps(trending_data, indent=2))
+        
     # Generate plan with failover rotation
     result = generate_with_failover(prompt, temperature=0.7, require_json=True)
     if not isinstance(result, dict) or "project" not in result:

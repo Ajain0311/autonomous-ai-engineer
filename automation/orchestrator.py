@@ -84,7 +84,10 @@ def run_pipeline() -> None:
         trending = _get_trending(state)
         
         try:
-            plan = plan_new_project(trending)
+            custom_idea = state["project"].get("custom_idea")
+            if custom_idea:
+                logger.info("Found custom idea in state: '%s'. Customizing project spec...", custom_idea)
+            plan = plan_new_project(trending, custom_idea=custom_idea)
             
             # Populate project state
             state["project"]["name"] = plan["project"]["name"]

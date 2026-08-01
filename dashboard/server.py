@@ -68,6 +68,10 @@ def login(payload: LoginRequest):
 
 class ResetRequest(BaseModel):
     reason: Optional[str] = "User requested reset"
+    custom_idea: Optional[str] = None
+
+class EnhancePromptRequest(BaseModel):
+    prompt: str
 
 class KeysUpdateRequest(BaseModel):
     keys: Dict[str, str]
@@ -461,11 +465,14 @@ def start_from_scratch(payload: ResetRequest):
     # 4. Reset project spec tracking state
     reset_state = state_manager.DEFAULT_STATE.copy()
     reset_state["project"]["status"] = "idle"
+    if payload.custom_idea:
+        reset_state["project"]["custom_idea"] = payload.custom_idea
+        logger.info("Setting custom idea for the next project: '%s'", payload.custom_idea)
     
     state_manager.add_audit_log(
         reset_state, 
         "project_reset", 
-        f"Reset project. Archived {project_name} at branch {archive_branch}. Reason: {payload.reason}", 
+        f"Reset project. Archived {project_name} at branch {archive_branch}. Reason: {payload.reason}. Custom Idea: {payload.custom_idea or 'None'}", 
         author="User"
     )
     state_manager.save_state(reset_state)
@@ -480,6 +487,34 @@ def start_from_scratch(payload: ResetRequest):
         "status": "success",
         "message": f"Wiped successfully. Old project archived at branch: {archive_branch}"
     }
+
+@app.post("/api/prompt/enhance")
+def enhance_prompt(payload: EnhancePromptRequest):
+    if not payload.prompt.strip():
+        return {"original": "", "enhanced": ""}
+    
+    system_prompt = (
+        "You are an elite product manager and prompt engineer. "
+        "Take the user's raw software/SaaS idea (which might be written in raw Hinglish, Hindi, or conversational English) "
+        "and refine it into a highly professional, detailed, and comprehensive English product description. "
+        "Include the core value proposition, key target features, and target users. "
+        "Output ONLY the refined description. Do not include introductory or explanatory text. "
+        "Make it direct, professional, and clear."
+    )
+    
+    try:
+        from automation.client import generate_with_failover
+        refined = generate_with_failover(
+            prompt=f"{system_prompt}\n\nUser Raw Idea: {payload.prompt}",
+            temperature=0.7,
+            require_json=False
+        )
+        if not refined or not refined.strip():
+            refined = payload.prompt
+        return {"original": payload.prompt, "enhanced": refined.strip()}
+    except Exception as e:
+        logger.error("Failed to enhance prompt: %s", e)
+        return {"original": payload.prompt, "enhanced": payload.prompt}
 
 @app.get("/api/config/keys")
 def get_config_keys():

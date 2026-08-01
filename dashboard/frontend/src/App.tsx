@@ -79,6 +79,10 @@ export default function App() {
   const [pipeline, setPipeline] = useState<{ running: boolean; log: string }>({ running: false, log: '' });
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [resetReason, setResetReason] = useState<string>('');
+  const [resetType, setResetType] = useState<'trend' | 'suggested' | 'custom'>('trend');
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string>('Cryptocurrency Trading & Signal Alert Dashboard');
+  const [customResetIdea, setCustomResetIdea] = useState<string>('');
+  const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [selectedCommit, setSelectedCommit] = useState<{ sha: string; message: string } | null>(null);
   const [selectedCommitDiff, setSelectedCommitDiff] = useState<string>('');
   const [showCommitModal, setShowCommitModal] = useState<boolean>(false);
@@ -778,20 +782,56 @@ export default function App() {
 
   const executeReset = async () => {
     setShowResetModal(false);
+    
+    let customIdea = null;
+    if (resetType === 'suggested') {
+      customIdea = selectedSuggestion;
+    } else if (resetType === 'custom') {
+      customIdea = customResetIdea;
+    }
+
     try {
       const res = await fetch('/api/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: resetReason })
+        body: JSON.stringify({ 
+          reason: resetReason || "User reset to build new SaaS",
+          custom_idea: customIdea
+        })
       });
       const data = await res.json();
       showToast(data.message);
       setResetReason('');
+      setCustomResetIdea('');
       fetchState();
       fetchGitStatus();
       fetchGitLog();
     } catch (e) {
       showToast("Reset failed.", 'error');
+    }
+  };
+
+  const enhancePrompt = async () => {
+    const textToEnhance = customResetIdea.trim();
+    if (!textToEnhance) return;
+    
+    setIsEnhancing(true);
+    try {
+      const res = await fetch('/api/prompt/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: textToEnhance })
+      });
+      if (!res.ok) throw new Error("Failed to enhance");
+      const data = await res.json();
+      if (data.enhanced) {
+        setCustomResetIdea(data.enhanced);
+        showToast("Prompt translated & enhanced!");
+      }
+    } catch (e) {
+      showToast("Failed to enhance prompt.", 'error');
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -1981,23 +2021,104 @@ export default function App() {
       {/* Start From Scratch Confirmation Modal */}
       {showResetModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-500/20 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+          <div className="glass-card rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-rose-500/20 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center space-x-3 text-rose-450 mb-4">
               <AlertTriangle className="h-6 w-6 text-rose-400" />
               <h3 className="text-lg font-bold text-rose-400">Trigger Destructive Reset?</h3>
             </div>
-            <p className="text-sm text-gray-405 leading-relaxed mb-6 font-outfit">
-              This action will branch and archive the current workspace project files, clean up generated app files from main branch, and reset the spec backlog configuration. Agle execution run par naya candidate scoring aur design selection trigger ho jayega.
+            
+            <p className="text-sm text-gray-400 leading-relaxed mb-6 font-outfit">
+              This action will branch and archive the current workspace project files, clean up generated app files from the main branch, and reset the spec backlog configuration.
             </p>
+            
+            {/* Project Topic Choice */}
+            <div className="border-t border-white/5 pt-4 mb-4">
+              <label className="text-xs font-semibold text-gray-400 block mb-2 font-outfit">Select Project Subject Strategy</label>
+              
+              <div className="grid grid-cols-3 gap-2 mb-4 font-outfit text-[11px]">
+                <button 
+                  onClick={() => setResetType('trend')}
+                  className={`py-2 px-1 border rounded-xl font-bold transition-all cursor-pointer ${resetType === 'trend' ? 'bg-rose-500/10 border-rose-500/35 text-rose-300' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                >
+                  Auto-Select (Trends)
+                </button>
+                <button 
+                  onClick={() => setResetType('suggested')}
+                  className={`py-2 px-1 border rounded-xl font-bold transition-all cursor-pointer ${resetType === 'suggested' ? 'bg-rose-500/10 border-rose-500/35 text-rose-300' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                >
+                  Suggested Topics
+                </button>
+                <button 
+                  onClick={() => setResetType('custom')}
+                  className={`py-2 px-1 border rounded-xl font-bold transition-all cursor-pointer ${resetType === 'custom' ? 'bg-rose-500/10 border-rose-500/35 text-rose-300' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                >
+                  Custom SaaS Idea
+                </button>
+              </div>
+
+              {resetType === 'suggested' && (
+                <div className="space-y-2 mb-4 font-outfit animate-fadeIn">
+                  <label className="text-xs font-semibold text-gray-405 block">Curated SaaS Ideas</label>
+                  <select 
+                    value={selectedSuggestion} 
+                    onChange={e => setSelectedSuggestion(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-rose-250 outline-none cursor-pointer"
+                  >
+                    <option value="Cryptocurrency Trading & Signal Alert Dashboard">Cryptocurrency Trading & Signal Alert Dashboard</option>
+                    <option value="Real-Time Algorithmic Trading Analytics Engine">Real-Time Algorithmic Trading Analytics Engine</option>
+                    <option value="AI Writing & Content Marketing Automation SaaS">AI Writing & Content Marketing Automation SaaS</option>
+                    <option value="Developer Resume & Interactive Portfolio CMS">Developer Resume & Interactive Portfolio CMS</option>
+                    <option value="Task Management & Team Collaboration Portal">Task Management & Team Collaboration Portal</option>
+                  </select>
+                </div>
+              )}
+
+              {resetType === 'custom' && (
+                <div className="space-y-2 mb-4 font-outfit animate-fadeIn">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-semibold text-gray-405">Describe your SaaS Idea (Hinglish/Hindi/English)</label>
+                    <button 
+                      type="button"
+                      onClick={enhancePrompt} 
+                      disabled={isEnhancing || !customResetIdea.trim()}
+                      className="px-2 py-0.5 bg-violet-600/35 hover:bg-violet-600/50 disabled:opacity-40 text-violet-300 rounded border border-violet-500/20 text-[9px] font-bold transition-all flex items-center space-x-1 cursor-pointer"
+                    >
+                      {isEnhancing ? (
+                        <>
+                          <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                          <span>Enhancing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>✨ AI Enhance Prompt</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <textarea 
+                    value={customResetIdea} 
+                    onChange={e => setCustomResetIdea(e.target.value)}
+                    placeholder="e.g., ek crypto portfolio trading dashboard bana do jisme realtime option rates updates aati ho..."
+                    rows={4}
+                    className="w-full glass-input text-xs rounded-xl px-3 py-2 text-white outline-none font-sans"
+                  />
+                  <p className="text-[9px] text-gray-500 leading-normal">
+                    Type your thoughts in Hinglish or Hindi, then click the <strong>✨ AI Enhance</strong> button to translate, expand, and refine it into a detailed product prompt specification.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4 mb-6">
               <label className="text-xs font-semibold text-gray-400 block">Provide Reset Reason (optional)</label>
               <input type="text" value={resetReason} onChange={e => setResetReason(e.target.value)}
                      placeholder="e.g., target project pivot" 
                      className="w-full glass-input text-sm rounded-xl px-4 py-2.5 text-white outline-none" />
             </div>
+            
             <div className="flex space-x-3 justify-end">
-              <button onClick={() => setShowResetModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-semibold transition-all">Cancel</button>
-              <button onClick={executeReset} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-semibold transition-all flex items-center space-x-2">
+              <button onClick={() => setShowResetModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-semibold transition-all cursor-pointer">Cancel</button>
+              <button onClick={executeReset} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-semibold transition-all flex items-center space-x-2 cursor-pointer">
                 <Trash2 className="h-4 w-4" />
                 <span>Confirm Reset</span>
               </button>
