@@ -149,16 +149,41 @@ def get_existing_files(file_paths: List[str]) -> Dict[str, str]:
                 logger.error("Failed to read file %s: %s", rel_path, e)
     return existing
 
-def plan_new_project(trending_data: Dict, custom_idea: str = None) -> Dict[str, Any]:
+def plan_new_project(trending_data: Dict, custom_idea: str = None,
+                     custom_title: str = None, target_milestones: int = 5,
+                     project_scope: str = "saas", selected_features: List[str] = None,
+                     tech_stack: Dict = None) -> Dict[str, Any]:
     """Analyze trends and generate a master spec plan for a new target SaaS product."""
-    logger.info("Generating project plan from trends...")
+    logger.info("Generating project plan with custom specifications...")
     
+    custom_instr = []
     if custom_idea:
-        custom_instr = f"CRITICAL REQUIREMENT: Instead of picking a random trend, you MUST design the SaaS application specifically around the following user idea/concept:\nCUSTOM USER IDEA: {custom_idea}\n\n"
-        prompt = custom_instr + _PLAN_PROMPT.format(trending=json.dumps(trending_data, indent=2))
+        custom_instr.append(f"- Focus specifically on building this custom concept: {custom_idea}")
+    if custom_title:
+        custom_instr.append(f"- Name the project '{custom_title}' (use clean kebab-case name in project.name and title in project.title).")
+    if target_milestones:
+        custom_instr.append(f"- Plan exactly {target_milestones} milestones in the milestones array, scaling the scope appropriately.")
+    if project_scope == "mvp":
+        custom_instr.append("- Prioritize a rapid prototype backlog, including only essential core workflows to build a working MVP.")
     else:
-        prompt = _PLAN_PROMPT.format(trending=json.dumps(trending_data, indent=2))
+        custom_instr.append("- Design a production-grade, highly structured commercial SaaS backlog featuring tests, setups, and complex routes.")
+    if selected_features:
+        custom_instr.append(f"- Ensure these specific features are planned and built: {', '.join(selected_features)}.")
+    if tech_stack:
+        backend_lang = tech_stack.get("backend_lang", "Node.js")
+        frontend_css = tech_stack.get("frontend_css", "Tailwind CSS")
+        custom_instr.append(f"- Technology Stack preferences: Backend={backend_lang}, CSS/Styling={frontend_css}.")
+        if backend_lang.lower() == "python":
+            custom_instr.append("- IMPORTANT: The backend must be written using Python (FastAPI/Flask) rather than Node.js/Express. Adapt folder structure and package manager to match.")
+        if frontend_css.lower() == "vanilla":
+            custom_instr.append("- IMPORTANT: All styling must use plain Vanilla CSS. Do NOT configure or use Tailwind CSS.")
+            
+    prefix = ""
+    if custom_instr:
+        prefix = "CRITICAL CUSTOM SPECIFICATIONS:\nYou MUST design this SaaS following these strict guidelines:\n" + "\n".join(custom_instr) + "\n\n"
         
+    prompt = prefix + _PLAN_PROMPT.format(trending=json.dumps(trending_data, indent=2))
+    
     # Generate plan with failover rotation
     result = generate_with_failover(prompt, temperature=0.7, require_json=True)
     if not isinstance(result, dict) or "project" not in result:

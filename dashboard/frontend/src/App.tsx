@@ -82,6 +82,12 @@ export default function App() {
   const [resetType, setResetType] = useState<'trend' | 'suggested' | 'custom'>('trend');
   const [selectedSuggestion, setSelectedSuggestion] = useState<string>('Cryptocurrency Trading & Signal Alert Dashboard');
   const [customResetIdea, setCustomResetIdea] = useState<string>('');
+  const [customResetTitle, setCustomResetTitle] = useState<string>('');
+  const [targetMilestones, setTargetMilestones] = useState<number>(5);
+  const [projectScope, setProjectScope] = useState<'mvp' | 'saas'>('saas');
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [backendStack, setBackendStack] = useState<'nodejs' | 'python'>('nodejs');
+  const [stylingStack, setStylingStack] = useState<'vanilla' | 'tailwind'>('tailwind');
   const [isEnhancing, setIsEnhancing] = useState<boolean>(false);
   const [selectedCommit, setSelectedCommit] = useState<{ sha: string; message: string } | null>(null);
   const [selectedCommitDiff, setSelectedCommitDiff] = useState<string>('');
@@ -796,13 +802,22 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           reason: resetReason || "User reset to build new SaaS",
-          custom_idea: customIdea
+          custom_idea: customIdea,
+          custom_title: customResetTitle || null,
+          target_milestones: targetMilestones,
+          project_scope: projectScope,
+          selected_features: selectedFeatures,
+          tech_stack: {
+            frontend_css: stylingStack,
+            backend_lang: backendStack
+          }
         })
       });
       const data = await res.json();
       showToast(data.message);
       setResetReason('');
       setCustomResetIdea('');
+      setCustomResetTitle('');
       fetchState();
       fetchGitStatus();
       fetchGitLog();
@@ -2108,6 +2123,137 @@ export default function App() {
                 </div>
               )}
             </div>
+            
+            {/* Advanced Customizable Form (only for Suggested / Custom ideas) */}
+            {(resetType === 'suggested' || resetType === 'custom') && (
+              <div className="border-t border-white/5 pt-4 mb-4 font-outfit text-xs space-y-4">
+                <h4 className="font-bold text-violet-400 uppercase tracking-wider text-[10px]">⚙️ Advanced SaaS Customization</h4>
+                
+                {/* Custom Branding */}
+                <div className="space-y-1.5">
+                  <label className="text-gray-400 font-semibold block">Custom Project Name / Title (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={customResetTitle} 
+                    onChange={e => setCustomResetTitle(e.target.value)}
+                    placeholder="e.g. CryptoPulse, TechPort CMS"
+                    className="w-full glass-input rounded-xl px-3 py-2 text-xs text-white outline-none"
+                  />
+                </div>
+
+                {/* Backlog details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-gray-400 font-semibold block">Target Milestones Count</label>
+                    <select
+                      value={targetMilestones}
+                      onChange={e => setTargetMilestones(Number(e.target.value))}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-2 py-2 text-xs text-violet-300 outline-none cursor-pointer"
+                    >
+                      <option value={3}>3 Milestones (Rapid MVP)</option>
+                      <option value={5}>5 Milestones (Medium Scale)</option>
+                      <option value={8}>8 Milestones (Comprehensive SaaS)</option>
+                      <option value={10}>10 Milestones (Enterprise Scale)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-gray-400 font-semibold block">Project Scope Complexity</label>
+                    <div className="flex border border-white/10 rounded-xl overflow-hidden text-[10px] h-8">
+                      <button
+                        type="button"
+                        onClick={() => setProjectScope('mvp')}
+                        className={`flex-1 font-bold cursor-pointer ${projectScope === 'mvp' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-500'}`}
+                      >
+                        Core MVP
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProjectScope('saas')}
+                        className={`flex-1 font-bold cursor-pointer ${projectScope === 'saas' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-500'}`}
+                      >
+                        Full SaaS
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tech Stack toggles */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-gray-400 font-semibold block">Backend Framework</label>
+                    <div className="flex border border-white/10 rounded-xl overflow-hidden text-[10px] h-8">
+                      <button
+                        type="button"
+                        onClick={() => setBackendStack('nodejs')}
+                        className={`flex-1 font-bold cursor-pointer ${backendStack === 'nodejs' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-550'}`}
+                      >
+                        Express (Node.js)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBackendStack('python')}
+                        className={`flex-1 font-bold cursor-pointer ${backendStack === 'python' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-555'}`}
+                      >
+                        FastAPI (Python)
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-gray-400 font-semibold block">Styling / CSS</label>
+                    <div className="flex border border-white/10 rounded-xl overflow-hidden text-[10px] h-8">
+                      <button
+                        type="button"
+                        onClick={() => setStylingStack('tailwind')}
+                        className={`flex-1 font-bold cursor-pointer ${stylingStack === 'tailwind' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-550'}`}
+                      >
+                        Tailwind CSS
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStylingStack('vanilla')}
+                        className={`flex-1 font-bold cursor-pointer ${stylingStack === 'vanilla' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-555'}`}
+                      >
+                        Vanilla CSS
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Core Features list */}
+                <div className="space-y-2">
+                  <label className="text-gray-400 font-semibold block">Include Core Features</label>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-300 font-sans">
+                    {[
+                      'JWT User Auth & Roles',
+                      'Stripe Billing & Subscriptions',
+                      'Interactive Data Charts/KPIs',
+                      'Email Notifications System',
+                      'Admin Management Console',
+                      'CSV/JSON Data Backup Export'
+                    ].map(feat => {
+                      const isSelected = selectedFeatures.includes(feat);
+                      return (
+                        <button
+                          type="button"
+                          key={feat}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedFeatures(prev => prev.filter(f => f !== feat));
+                            } else {
+                              setSelectedFeatures(prev => [...prev, feat]);
+                            }
+                          }}
+                          className={`flex items-center space-x-2 p-2 border rounded-xl text-left transition-all cursor-pointer ${isSelected ? 'bg-violet-600/20 border-violet-500/30 text-violet-200 font-semibold' : 'bg-black/35 border-white/5 text-gray-400 hover:bg-white/5'}`}
+                        >
+                          <span className="text-[9px]">{isSelected ? '✅' : '➕'}</span>
+                          <span>{feat}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4 mb-6">
               <label className="text-xs font-semibold text-gray-400 block">Provide Reset Reason (optional)</label>

@@ -85,9 +85,23 @@ def run_pipeline() -> None:
         
         try:
             custom_idea = state["project"].get("custom_idea")
+            custom_title = state["project"].get("custom_title")
+            target_milestones = state["project"].get("target_milestones", 5)
+            project_scope = state["project"].get("project_scope", "saas")
+            selected_features = state["project"].get("selected_features", [])
+            tech_stack = state["project"].get("tech_stack")
+            
             if custom_idea:
                 logger.info("Found custom idea in state: '%s'. Customizing project spec...", custom_idea)
-            plan = plan_new_project(trending, custom_idea=custom_idea)
+            plan = plan_new_project(
+                trending,
+                custom_idea=custom_idea,
+                custom_title=custom_title,
+                target_milestones=target_milestones,
+                project_scope=project_scope,
+                selected_features=selected_features,
+                tech_stack=tech_stack
+            )
             
             # Populate project state
             state["project"]["name"] = plan["project"]["name"]

@@ -66,9 +66,18 @@ def login(payload: LoginRequest):
     else:
         raise HTTPException(status_code=401, detail="Invalid password pin.")
 
+class TechStackConfig(BaseModel):
+    frontend_css: str
+    backend_lang: str
+
 class ResetRequest(BaseModel):
     reason: Optional[str] = "User requested reset"
     custom_idea: Optional[str] = None
+    custom_title: Optional[str] = None
+    target_milestones: Optional[int] = 5
+    project_scope: Optional[str] = "saas"
+    selected_features: Optional[List[str]] = []
+    tech_stack: Optional[TechStackConfig] = None
 
 class EnhancePromptRequest(BaseModel):
     prompt: str
@@ -468,7 +477,14 @@ def start_from_scratch(payload: ResetRequest):
     if payload.custom_idea:
         reset_state["project"]["custom_idea"] = payload.custom_idea
         logger.info("Setting custom idea for the next project: '%s'", payload.custom_idea)
-    
+    if payload.custom_title:
+        reset_state["project"]["custom_title"] = payload.custom_title
+    reset_state["project"]["target_milestones"] = payload.target_milestones
+    reset_state["project"]["project_scope"] = payload.project_scope
+    reset_state["project"]["selected_features"] = payload.selected_features
+    if payload.tech_stack:
+        reset_state["project"]["tech_stack"] = payload.tech_stack.model_dump()
+        
     state_manager.add_audit_log(
         reset_state, 
         "project_reset", 
