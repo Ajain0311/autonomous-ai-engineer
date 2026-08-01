@@ -273,10 +273,24 @@ def git_push():
     token = config.GITHUB_TOKEN or os.environ.get("GITHUB_TOKEN", "")
     username = config.GITHUB_USERNAME or os.environ.get("GITHUB_USERNAME", "Ajain0311")
     
-    # Get current branch
-    ok_branch, branch = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
-    if not ok_branch or not branch:
-        branch = "main"
+    # Get current branch name with fallbacks for detached HEAD on Render
+    branch = os.environ.get("RENDER_GIT_BRANCH", "")
+    if not branch:
+        ok_branch, branch_out = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
+        if ok_branch and branch_out and branch_out.strip() != "HEAD":
+            branch = branch_out.strip()
+            
+    if not branch or branch == "HEAD":
+        # Fallback 2: Parse from git status
+        ok_status, status_out = run_git_command(["status"])
+        if ok_status and "On branch " in status_out:
+            for line in status_out.split("\n"):
+                if "On branch " in line:
+                    branch = line.replace("On branch ", "").strip()
+                    break
+                    
+    if not branch or branch == "HEAD":
+        branch = "main" # default fallback
         
     # Get repo name and remote origin URL
     repo_name = "autonomous-ai-engineer"
@@ -290,11 +304,11 @@ def git_push():
             
     if token:
         authenticated_url = f"https://{token}@github.com/{username}/{repo_name}.git"
-        logger.info("Pushing to GitHub using token URL for repository %s on branch %s", repo_name, branch)
-        ok, output = run_git_command(["push", authenticated_url, branch])
+        logger.info("Pushing to GitHub using token URL for repository %s to branch %s", repo_name, branch)
+        ok, output = run_git_command(["push", authenticated_url, f"HEAD:{branch}"])
     else:
         logger.info("No GITHUB_TOKEN configured. Falling back to standard git push.")
-        ok, output = run_git_command(["push"])
+        ok, output = run_git_command(["push", "origin", f"HEAD:{branch}"])
         
     if not ok:
         raise HTTPException(status_code=500, detail=output)
