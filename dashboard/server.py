@@ -268,7 +268,34 @@ def git_commit(payload: CommitRequest):
 
 @app.post("/api/git/push")
 def git_push():
-    ok, output = run_git_command(["push"])
+    import re
+    from automation import config
+    token = config.GITHUB_TOKEN or os.environ.get("GITHUB_TOKEN", "")
+    username = config.GITHUB_USERNAME or os.environ.get("GITHUB_USERNAME", "Ajain0311")
+    
+    # Get current branch
+    ok_branch, branch = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
+    if not ok_branch or not branch:
+        branch = "main"
+        
+    # Get repo name and remote origin URL
+    repo_name = "autonomous-ai-engineer"
+    ok_remote, remote_url = run_git_command(["remote", "get-url", "origin"])
+    if ok_remote and remote_url:
+        remote_url = remote_url.strip()
+        match = re.search(r"github\.com[:/]([^/]+)/([^.]+)(?:\.git)?", remote_url)
+        if match:
+            username = match.group(1)
+            repo_name = match.group(2)
+            
+    if token:
+        authenticated_url = f"https://{token}@github.com/{username}/{repo_name}.git"
+        logger.info("Pushing to GitHub using token URL for repository %s on branch %s", repo_name, branch)
+        ok, output = run_git_command(["push", authenticated_url, branch])
+    else:
+        logger.info("No GITHUB_TOKEN configured. Falling back to standard git push.")
+        ok, output = run_git_command(["push"])
+        
     if not ok:
         raise HTTPException(status_code=500, detail=output)
     return {"status": "success", "message": "Pushed to remote repository.", "output": output}
