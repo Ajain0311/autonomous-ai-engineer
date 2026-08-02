@@ -82,6 +82,22 @@ class ResetRequest(BaseModel):
 class EnhancePromptRequest(BaseModel):
     prompt: str
 
+class TerminalCommandRequest(BaseModel):
+    command: str
+
+class ChatRequest(BaseModel):
+    message: str
+
+class SettingsRequest(BaseModel):
+    strict_typescript: bool
+    auto_repair_limit: int
+    bypass_compilation_gates: bool
+
+class DBRecordUpdateRequest(BaseModel):
+    match_key: str
+    match_value: str
+    record: dict
+
 class KeysUpdateRequest(BaseModel):
     keys: Dict[str, str]
 
@@ -652,6 +668,280 @@ def get_preview_status():
         "log": preview_build_log,
         "ready": preview_index.exists() and "successfully" in preview_build_log
     }
+
+# =====================================================================
+# NEW USER CONTROLS: TERMINAL, SETTINGS, DB EXPLORER, CHATBOT & MONITOR
+# =====================================================================
+
+terminal_process = None
+terminal_process_output = ""
+
+def run_terminal_command_task(command: str):
+    global terminal_process, terminal_process_output
+    terminal_process_output = f"Executing: {command}\n"
+    try:
+        is_windows = sys.platform == "win32"
+        terminal_process = subprocess.Popen(
+            command,
+            cwd=str(ROOT_DIR),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            shell=True
+        )
+        
+        while True:
+            line = terminal_process.stdout.readline()
+            if not line:
+                break
+            terminal_process_output += line
+            if len(terminal_process_output) > 100000:
+                terminal_process_output = terminal_process_output[-100000:]
+                
+        terminal_process.wait()
+        terminal_process_output += f"\nProcess finished with exit code {terminal_process.returncode}\n"
+    except Exception as e:
+        terminal_process_output += f"\nError: {e}\n"
+    finally:
+        terminal_process = None
+
+@app.post("/api/terminal/run")
+def run_terminal_command(payload: TerminalCommandRequest, background_tasks: BackgroundTasks):
+    global terminal_process
+    if terminal_process is not None:
+        return {"status": "error", "message": "Another terminal command is already running."}
+    background_tasks.add_task(run_terminal_command_task, payload.command)
+    return {"status": "success", "message": "Command started in background."}
+
+@app.get("/api/terminal/status")
+def get_terminal_status():
+    global terminal_process, terminal_process_output
+    return {
+        "running": terminal_process is not None,
+        "log": terminal_process_output
+    }
+
+@app.post("/api/terminal/kill")
+def kill_terminal_command():
+    global terminal_process
+    if terminal_process is not None:
+        try:
+            terminal_process.terminate()
+            terminal_process.kill()
+            return {"status": "success", "message": "Command terminated."}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    return {"status": "error", "message": "No command is currently running."}
+
+@app.get("/api/settings")
+def get_settings():
+    state = state_manager.load_state()
+    settings = state.setdefault("settings", {
+        "strict_typescript": True,
+        "auto_repair_limit": 3,
+        "bypass_compilation_gates": False
+    })
+    return settings
+
+@app.post("/api/settings")
+def save_settings(payload: SettingsRequest):
+    state = state_manager.load_state()
+    state["settings"] = {
+        "strict_typescript": payload.strict_typescript,
+        "auto_repair_limit": payload.auto_repair_limit,
+        "bypass_compilation_gates": payload.bypass_compilation_gates
+    }
+    state_manager.save_state(state)
+    
+    # Commit change
+    run_git_command(["add", "automation/project_state.yaml"])
+    run_git_command(["commit", "-m", "chore(settings): update pipeline settings from dashboard"])
+    run_git_command(["push"])
+    return {"status": "success", "message": "Settings saved and committed."}
+
+@app.get("/api/quota/status")
+def get_quota_status():
+    from automation.client import _clients, init_clients
+    from automation import quota_tracker
+    
+    init_clients()
+    today = quota_tracker._today()
+    
+    keys_status = []
+    for i, client in enumerate(_clients):
+        status = "active"
+        if i in quota_tracker._dead_keys:
+            status = "dead"
+        elif quota_tracker._rpd_exhausted.get(i) == today:
+            status = "exhausted"
+            
+        keys_status.append({
+            "index": i,
+            "provider": client.provider,
+            "status": status,
+            "last_used": quota_tracker._key_last_used.get(i, "Never")
+        })
+        
+    return {
+        "keys": keys_status,
+        "models_unavailable": quota_tracker._model_unavailable
+    }
+
+@app.get("/api/database/tables")
+def get_db_tables():
+    db_dir = ROOT_DIR / "app" / "db"
+    if not db_dir.exists():
+        db_dir.mkdir(parents=True, exist_ok=True)
+        
+    tables = []
+    for file in db_dir.glob("*.json"):
+        tables.append(file.name)
+    return {"tables": tables}
+
+@app.get("/api/database/table/{filename}")
+def get_db_table_records(filename: str):
+    db_path = ROOT_DIR / "app" / "db" / filename
+    if not db_path.exists():
+        return []
+    try:
+        with open(db_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            data = [data]
+        return data
+    except Exception:
+        return []
+
+@app.post("/api/database/table/{filename}/record")
+def add_db_table_record(filename: str, payload: dict):
+    db_path = ROOT_DIR / "app" / "db" / filename
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    data = []
+    if db_path.exists():
+        try:
+            with open(db_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, list):
+                data = [data]
+        except Exception:
+            data = []
+            
+    data.append(payload.get("record", {}))
+    
+    try:
+        with open(db_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return {"status": "success", "message": "Record added."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/database/table/{filename}/record")
+def update_db_table_record(filename: str, payload: DBRecordUpdateRequest):
+    db_path = ROOT_DIR / "app" / "db" / filename
+    if not db_path.exists():
+        raise HTTPException(status_code=404, detail="Table not found")
+        
+    match_key = payload.match_key
+    match_value = payload.match_value
+    new_record = payload.record
+    
+    try:
+        with open(db_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            data = [data]
+            
+        updated = False
+        for i, item in enumerate(data):
+            if isinstance(item, dict) and str(item.get(match_key)) == str(match_value):
+                data[i] = new_record
+                updated = True
+                break
+                
+        if not updated:
+            raise HTTPException(status_code=404, detail="Record to update not found")
+            
+        with open(db_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        return {"status": "success", "message": "Record updated."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/database/table/{filename}/record")
+def delete_db_table_record(filename: str, match_key: str, match_value: str):
+    db_path = ROOT_DIR / "app" / "db" / filename
+    if not db_path.exists():
+        raise HTTPException(status_code=404, detail="Table not found")
+        
+    try:
+        with open(db_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            data = [data]
+            
+        filtered = [item for item in data if not (isinstance(item, dict) and str(item.get(match_key)) == match_value)]
+        
+        with open(db_path, "w", encoding="utf-8") as f:
+            json.dump(filtered, f, indent=2)
+        return {"status": "success", "message": "Record deleted."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/agent/chat")
+def agent_chat(payload: ChatRequest):
+    from automation.client import generate_with_failover
+    
+    project_context = ""
+    context_path = ROOT_DIR / "automation" / "project_context.md"
+    if context_path.exists():
+        try:
+            with open(context_path, "r", encoding="utf-8") as f:
+                project_context = f.read()
+        except Exception:
+            pass
+            
+    system_prompt = (
+        "You are the resident AI Lead Developer of this SaaS workspace. "
+        "The user is chat-communicating with you directly. "
+        "You have access to the entire current codebase context via the manifest below. "
+        "You can answer questions, explain concepts, or write/edit code on behalf of the user. "
+        "If the user asks you to modify code, add a feature, or edit files, you must output a JSON object containing:\n"
+        '1. "message": Your direct conversational response explaining what you did.\n'
+        '2. "file_contents": Optional dictionary mapping relative paths (under app/) to new file contents.\n\n'
+        "If you do not need to modify any files, return an empty dictionary for 'file_contents'.\n"
+        "Return ONLY valid JSON. Structure of response:\n"
+        '{\n'
+        '  "message": "Chat response text...",\n'
+        '  "file_contents": {\n'
+        '    "src/components/Header.tsx": "new content..."\n'
+        '  }\n'
+        '}'
+    )
+    
+    prompt = f"{system_prompt}\n\nProject Context Manifest:\n{project_context}\n\nUser Message: {payload.message}"
+    
+    try:
+        res = generate_with_failover(prompt, temperature=0.5, require_json=True)
+        if not isinstance(res, dict) or "message" not in res:
+            return {"message": str(res), "file_contents": {}}
+            
+        file_contents = res.get("file_contents", {})
+        if isinstance(file_contents, dict) and file_contents:
+            for rel_path, content in file_contents.items():
+                full_path = ROOT_DIR / "app" / rel_path
+                full_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                    
+            run_git_command(["add", "app/"])
+            run_git_command(["commit", "-m", f"feat(chat): applied changes from dashboard agent chat: {payload.message[:50]}"])
+            run_git_command(["push"])
+            
+        return res
+    except Exception as e:
+        logger.error("Agent chat error: %s", e)
+        return {"message": f"Sorry, I encountered an error: {e}", "file_contents": {}}
 
 @app.post("/api/config/test")
 def test_connection(payload: ConnectionTestRequest):

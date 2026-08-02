@@ -46,10 +46,18 @@ def verify_build(files_written: list[str]) -> tuple[bool, str]:
     2. Run TypeScript compilation (if script or tsc config exists)
     3. Run npm run build
     """
+    # Load settings from state
+    try:
+        from automation import state_manager
+        state = state_manager.load_state()
+        settings = state.get("settings", {})
+    except Exception:
+        settings = {}
+
     # Bypass compilation quality gates in low-memory cloud hosts (e.g. Render 512MB RAM)
-    if os.environ.get("SKIP_COMPILATION_GATES") == "true":
-        logger.info("SKIP_COMPILATION_GATES is active. Skipping heavy npm install/build compilation checks on Render.")
-        return True, "Compilation skipped due to low-memory environment setting."
+    if settings.get("bypass_compilation_gates", False) or os.environ.get("SKIP_COMPILATION_GATES") == "true":
+        logger.info("SKIP_COMPILATION_GATES is active or bypassed by settings. Skipping heavy npm install/build compilation checks.")
+        return True, "Compilation skipped due to low-memory/user settings override."
 
     APP_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -67,7 +75,9 @@ def verify_build(files_written: list[str]) -> tuple[bool, str]:
 
     # 2. Check TypeScript compile
     # Check if there is a compile/tsc target or tsconfig.json exists
-    if (APP_DIR / "tsconfig.json").exists():
+    if not settings.get("strict_typescript", True):
+        logger.info("Strict TypeScript checks disabled by settings. Skipping tsc compilation check.")
+    elif (APP_DIR / "tsconfig.json").exists():
         logger.info("Running TypeScript compilation check...")
         # Check package.json to see if 'compile' or 'build' script is defined
         compile_success, compile_output = run_command_in_app(["npx", "tsc", "--noEmit"])

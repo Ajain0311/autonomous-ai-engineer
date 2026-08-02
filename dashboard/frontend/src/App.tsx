@@ -4,7 +4,7 @@ import {
   Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
   CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search, Maximize2, Minimize2,
-  FolderPlus, Download, WrapText, Palette
+  FolderPlus, Download, WrapText, Palette, MessageSquare, Sliders
 } from 'lucide-react';
 
 interface Task {
@@ -66,7 +66,38 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview' | 'terminal' | 'settings' | 'quota' | 'database' | 'chat'>('overview');
+  
+  // Terminal Sandbox States
+  const [terminalCommand, setTerminalCommand] = useState<string>('');
+  const [terminalOutput, setTerminalOutput] = useState<string>('');
+  const [terminalRunning, setTerminalRunning] = useState<boolean>(false);
+  
+  // Pipeline Settings States
+  const [pipelineSettings, setPipelineSettings] = useState<{ strict_typescript: boolean; auto_repair_limit: number; bypass_compilation_gates: boolean }>({
+    strict_typescript: true,
+    auto_repair_limit: 3,
+    bypass_compilation_gates: false
+  });
+  
+  // Quota Status States
+  const [quotaKeys, setQuotaKeys] = useState<{ index: number; provider: string; status: 'active' | 'dead' | 'exhausted'; last_used: string }[]>([]);
+  const [modelsUnavailable, setModelsUnavailable] = useState<Record<string, string>>({});
+  
+  // Database Explorer States
+  const [dbTables, setDbTables] = useState<string[]>([]);
+  const [selectedTable, setSelectedTable] = useState<string>('');
+  const [tableRecords, setTableRecords] = useState<any[]>([]);
+  const [dbFilter, setDbFilter] = useState<string>('');
+  const [showAddRecordModal, setShowAddRecordModal] = useState<boolean>(false);
+  const [newRecordJSON, setNewRecordJSON] = useState<string>('{\n  "id": "1",\n  "name": "example"\n}');
+  const [editingRecord, setEditingRecord] = useState<{ original: any; index: number } | null>(null);
+  
+  // AI Agent Chat States
+  const [chatInput, setChatInput] = useState<string>('');
+  const [chatMessages, setChatMessages] = useState<{ sender: 'user' | 'agent'; text: string; timestamp: string }[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+
   const [state, setState] = useState<ProjectState | null>(null);
   const [gitStatus, setGitStatus] = useState<{
     branch: string;
@@ -140,11 +171,216 @@ export default function App() {
     }
   };
 
+  const fetchTerminalStatus = async () => {
+    try {
+      const res = await fetch('/api/terminal/status');
+      const data = await res.json();
+      setTerminalOutput(data.log);
+      setTerminalRunning(data.running);
+    } catch (e) {
+      console.error("Terminal status error:", e);
+    }
+  };
+
+  const executeTerminalCommand = async () => {
+    if (!terminalCommand.trim()) return;
+    try {
+      const res = await fetch('/api/terminal/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: terminalCommand.trim() })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast("Terminal command started!");
+        setTerminalCommand('');
+        fetchTerminalStatus();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (e) {
+      showToast("Failed to run terminal command.", 'error');
+    }
+  };
+
+  const killTerminalCommand = async () => {
+    try {
+      const res = await fetch('/api/terminal/kill', { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast("Terminal command killed!");
+        fetchTerminalStatus();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (e) {
+      showToast("Failed to kill process.", 'error');
+    }
+  };
+
+  const fetchPipelineSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      setPipelineSettings(data);
+    } catch (e) {
+      console.error("Settings load error:", e);
+    }
+  };
+
+  const savePipelineSettings = async (updates: any) => {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...pipelineSettings, ...updates })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setPipelineSettings(prev => ({ ...prev, ...updates }));
+        showToast("Pipeline settings saved!");
+      }
+    } catch (e) {
+      showToast("Failed to save settings.", 'error');
+    }
+  };
+
+  const fetchQuotaStatus = async () => {
+    try {
+      const res = await fetch('/api/quota/status');
+      const data = await res.json();
+      setQuotaKeys(data.keys);
+      setModelsUnavailable(data.models_unavailable);
+    } catch (e) {
+      console.error("Quota load error:", e);
+    }
+  };
+
+  const fetchDbTables = async () => {
+    try {
+      const res = await fetch('/api/database/tables');
+      const data = await res.json();
+      setDbTables(data.tables);
+      if (data.tables.length > 0 && !selectedTable) {
+        setSelectedTable(data.tables[0]);
+      }
+    } catch (e) {
+      console.error("DB tables load error:", e);
+    }
+  };
+
+  const fetchTableRecords = async (table: string) => {
+    if (!table) return;
+    try {
+      const res = await fetch(`/api/database/table/${table}`);
+      const data = await res.json();
+      setTableRecords(data);
+    } catch (e) {
+      console.error("Table records load error:", e);
+    }
+  };
+
+  const addDbRecord = async () => {
+    if (!selectedTable) return;
+    try {
+      const parsedRecord = JSON.parse(newRecordJSON);
+      const res = await fetch(`/api/database/table/${selectedTable}/record`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record: parsedRecord })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast("Record added successfully!");
+        setShowAddRecordModal(false);
+        fetchTableRecords(selectedTable);
+      }
+    } catch (e) {
+      showToast("Failed to add record. Ensure valid JSON.", 'error');
+    }
+  };
+
+  const deleteDbRecord = async (matchKey: string, matchValue: any) => {
+    if (!selectedTable) return;
+    try {
+      const res = await fetch(`/api/database/table/${selectedTable}/record?match_key=${matchKey}&match_value=${matchValue}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast("Record deleted!");
+        fetchTableRecords(selectedTable);
+      }
+    } catch (e) {
+      showToast("Failed to delete record.", 'error');
+    }
+  };
+
+  const updateDbRecord = async (matchKey: string, matchValue: any, record: any) => {
+    if (!selectedTable) return;
+    try {
+      const res = await fetch(`/api/database/table/${selectedTable}/record`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match_key: matchKey, match_value: matchValue, record })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast("Record updated!");
+        setEditingRecord(null);
+        fetchTableRecords(selectedTable);
+      }
+    } catch (e) {
+      showToast("Failed to update record.", 'error');
+    }
+  };
+
+  const sendAgentChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    const userMsg = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, { sender: 'user', text: userMsg, timestamp: new Date().toLocaleTimeString() }]);
+    setIsChatLoading(true);
+    
+    try {
+      const res = await fetch('/api/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg })
+      });
+      const data = await res.json();
+      setChatMessages(prev => [...prev, { sender: 'agent', text: data.message, timestamp: new Date().toLocaleTimeString() }]);
+      if (data.file_contents && Object.keys(data.file_contents).length > 0) {
+        showToast("AI Engineer modified workspace files!");
+        fetchState();
+      }
+    } catch (e) {
+      showToast("Failed to communicate with AI agent.", 'error');
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPreviewStatus();
-    const interval = setInterval(fetchPreviewStatus, 5000);
+    fetchTerminalStatus();
+    fetchQuotaStatus();
+    fetchPipelineSettings();
+    fetchDbTables();
+    
+    const interval = setInterval(() => {
+      fetchPreviewStatus();
+      fetchTerminalStatus();
+      fetchQuotaStatus();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (selectedTable) {
+      fetchTableRecords(selectedTable);
+    }
+  }, [selectedTable]);
 
   // Custom Git Commit Modal States
   const [showGitCommitModal, setShowGitCommitModal] = useState<boolean>(false);
@@ -1287,6 +1523,26 @@ export default function App() {
               <Play className="h-4 w-4 text-emerald-400 animate-pulse" />
               <span>Live UI Preview</span>
             </button>
+            <button onClick={() => setActiveTab('chat')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'chat' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <MessageSquare className="h-4 w-4 text-sky-400" />
+              <span>AI Developer Chat</span>
+            </button>
+            <button onClick={() => setActiveTab('database')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'database' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <Database className="h-4 w-4 text-amber-400" />
+              <span>JSON DB Explorer</span>
+            </button>
+            <button onClick={() => setActiveTab('terminal')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'terminal' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <Terminal className="h-4 w-4 text-rose-400" />
+              <span>Terminal Sandbox</span>
+            </button>
+            <button onClick={() => setActiveTab('quota')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'quota' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <Cpu className="h-4 w-4 text-indigo-400" />
+              <span>Quota Health Monitor</span>
+            </button>
+            <button onClick={() => setActiveTab('settings')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'settings' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <Sliders className="h-4 w-4 text-teal-400" />
+              <span>Pipeline Settings</span>
+            </button>
           </div>
 
           {/* TAB CONTENT: Overview */}
@@ -2191,8 +2447,491 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* TAB CONTENT: AI Developer Chat */}
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl flex flex-col h-[70vh]">
+                <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-sky-400" />
+                      AI Lead Developer Chat
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">Talk to the resident AI engineer to review code, answer questions, or edit workspace files.</p>
+                  </div>
+                  <button 
+                    onClick={() => setChatMessages([])} 
+                    className="text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Clear History
+                  </button>
+                </div>
+                
+                {/* Messages Box */}
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2 font-sans text-sm">
+                  {chatMessages.length === 0 ? (
+                    <div className="flex flex-col justify-center items-center h-full text-center p-6 text-gray-450">
+                      <MessageSquare className="h-10 w-10 mb-2 animate-bounce" />
+                      <p className="text-sm font-semibold text-gray-400">Workspace developer chat is idle.</p>
+                      <p className="text-xs mt-1">Ask the developer: "Add an authentication helper" or "explain the routing config."</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, idx) => (
+                      <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] rounded-2xl p-4 shadow-md ${
+                          msg.sender === 'user' 
+                            ? 'bg-violet-600 text-white rounded-br-none' 
+                            : 'bg-slate-800 text-gray-200 rounded-bl-none border border-white/5'
+                        }`}>
+                          <div className="flex justify-between items-center text-[10px] text-gray-400 mb-1">
+                            <span className="font-bold">{msg.sender === 'user' ? 'You' : 'AI Engineer'}</span>
+                            <span>{msg.timestamp}</span>
+                          </div>
+                          <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {isChatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-800 text-gray-250 border border-white/5 rounded-2xl rounded-bl-none p-4 max-w-[80%] flex items-center space-x-3">
+                        <RefreshCw className="h-4 w-4 animate-spin text-sky-400" />
+                        <span className="text-xs font-semibold animate-pulse">AI Developer is modifying workspace files...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Bar */}
+                <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendAgentChatMessage()}
+                    placeholder="Type instruction (e.g. 'Add a login controller script')"
+                    disabled={isChatLoading}
+                    className="flex-1 glass-input text-sm rounded-xl px-4 py-3 text-white outline-none border border-white/5 bg-black/30 placeholder-gray-455 focus:border-sky-500 transition-colors"
+                  />
+                  <button
+                    onClick={sendAgentChatMessage}
+                    disabled={isChatLoading || !chatInput.trim()}
+                    className="px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center space-x-1.5 shadow-lg shadow-sky-900/25 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white disabled:opacity-50"
+                  >
+                    <span>Send</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: JSON DB Explorer */}
+          {activeTab === 'database' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                
+                {/* Tables Side List */}
+                <div className="glass-card rounded-2xl p-5 shadow-xl border border-white/5 lg:col-span-1">
+                  <h3 className="text-sm font-bold text-white mb-3 tracking-wider uppercase">Database Tables</h3>
+                  <div className="space-y-1.5">
+                    {dbTables.length === 0 ? (
+                      <p className="text-xs text-gray-450 italic">No database tables generated yet.</p>
+                    ) : (
+                      dbTables.map((tbl) => (
+                        <button
+                          key={tbl}
+                          onClick={() => setSelectedTable(tbl)}
+                          className={`w-full text-left text-xs px-3.5 py-2.5 rounded-xl transition-all flex items-center justify-between border ${
+                            selectedTable === tbl 
+                              ? 'bg-amber-600/10 border-amber-500/30 text-amber-300 font-bold' 
+                              : 'bg-black/25 border-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="truncate">{tbl}</span>
+                          <Database className="h-3 w-3 shrink-0" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Table Content Explorer */}
+                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 lg:col-span-3 flex flex-col min-h-[50vh]">
+                  {selectedTable ? (
+                    <>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-white/5 pb-4 mb-4 gap-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <Database className="h-5 w-5 text-amber-400" />
+                            Table: <span className="text-amber-300">{selectedTable}</span>
+                          </h3>
+                          <p className="text-xs text-gray-400 mt-1">Exposing JSON array entries inside <code>app/db/{selectedTable}</code>.</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setNewRecordJSON(JSON.stringify({ id: (tableRecords.length + 1).toString() }, null, 2));
+                              setEditingRecord(null);
+                              setShowAddRecordModal(true);
+                            }}
+                            className="text-xs px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-semibold rounded-lg hover:from-amber-400 hover:to-yellow-500 shadow-md shadow-amber-955/20 transition-all flex items-center gap-1.5"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add Record
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Filter Search */}
+                      <div className="mb-4">
+                        <input
+                          type="text"
+                          value={dbFilter}
+                          onChange={e => setDbFilter(e.target.value)}
+                          placeholder="Search database records..."
+                          className="w-full glass-input text-xs rounded-xl px-4 py-2 text-white outline-none border border-white/5 bg-black/25"
+                        />
+                      </div>
+
+                      {/* Table Records List */}
+                      <div className="flex-1 overflow-y-auto space-y-3">
+                        {tableRecords.length === 0 ? (
+                          <div className="flex flex-col justify-center items-center h-48 text-center text-gray-450">
+                            <Database className="h-10 w-10 mb-2" />
+                            <p className="text-sm font-semibold">Table is empty.</p>
+                          </div>
+                        ) : (
+                          tableRecords
+                            .filter(record => {
+                              if (!dbFilter) return true;
+                              const contentString = JSON.stringify(record).toLowerCase();
+                              return contentString.includes(dbFilter.toLowerCase());
+                            })
+                            .map((record, index) => {
+                              const matchKey = record.id ? 'id' : Object.keys(record)[0] || '';
+                              const matchValue = record[matchKey] || '';
+                              
+                              return (
+                                <div key={index} className="glass-card rounded-xl p-4 bg-black/25 border border-white/5 flex justify-between items-start hover:border-amber-500/20 transition-all">
+                                  <pre className="text-[11px] font-mono text-gray-300 overflow-x-auto leading-relaxed">{JSON.stringify(record, null, 2)}</pre>
+                                  <div className="flex gap-2 ml-4 shrink-0">
+                                    <button
+                                      onClick={() => {
+                                        setEditingRecord({ original: record, index });
+                                        setNewRecordJSON(JSON.stringify(record, null, 2));
+                                        setShowAddRecordModal(true);
+                                      }}
+                                      className="p-1.5 bg-white/5 rounded hover:bg-amber-500/10 text-gray-400 hover:text-amber-300 transition-colors"
+                                      title="Edit Record"
+                                    >
+                                      <Palette className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm("Are you sure you want to delete this record?")) {
+                                          deleteDbRecord(matchKey, matchValue);
+                                        }
+                                      }}
+                                      className="p-1.5 bg-white/5 rounded hover:bg-rose-500/10 text-gray-400 hover:text-rose-400 transition-colors"
+                                      title="Delete Record"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col justify-center items-center h-64 text-center text-gray-450">
+                      <Database className="h-12 w-12 mb-2 animate-pulse text-amber-500/40" />
+                      <h4 className="font-bold text-sm text-gray-400">Database Explorer Idle</h4>
+                      <p className="text-xs text-gray-500 mt-1 max-w-sm">Select a table in the sidebar to inspect records and add/modify data elements.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: Terminal Sandbox */}
+          {activeTab === 'terminal' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 flex flex-col h-[70vh]">
+                <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <Terminal className="h-5 w-5 text-rose-400 animate-pulse" />
+                      Terminal command sandbox
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">Execute setup, installation, or test scripts inside the server environment.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {terminalRunning && (
+                      <button
+                        onClick={killTerminalCommand}
+                        className="text-xs px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 font-semibold rounded-lg text-white transition-all shadow-md shadow-rose-955/20"
+                      >
+                        Kill Process
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Monospaced CRT Output Display */}
+                <div className="flex-1 bg-black/90 rounded-2xl border border-white/5 p-5 font-mono text-xs text-emerald-400 overflow-y-auto max-h-[45vh] shadow-inner select-text whitespace-pre-wrap leading-relaxed">
+                  {terminalOutput ? terminalOutput : "// Terminal ready. Enter a shell command below to execute."}
+                  {terminalRunning && <span className="inline-block w-2 h-4 bg-emerald-400 animate-ping ml-1" />}
+                </div>
+
+                {/* Custom command presets */}
+                <div className="mt-3 flex flex-wrap gap-2 items-center">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Presets:</span>
+                  {['npm run build', 'npm run dev', 'git status', 'node -v', 'npm list'].map(cmd => (
+                    <button
+                      key={cmd}
+                      onClick={() => setTerminalCommand(cmd)}
+                      className="text-[10px] bg-white/5 border border-white/5 rounded-lg px-2.5 py-1 text-gray-300 hover:bg-rose-500/10 hover:border-rose-500/20 hover:text-rose-300 transition-colors"
+                    >
+                      {cmd}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Execution Input Bar */}
+                <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
+                  <input
+                    type="text"
+                    value={terminalCommand}
+                    onChange={e => setTerminalCommand(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && executeTerminalCommand()}
+                    placeholder="Enter terminal command (e.g. 'npm install lodash')"
+                    disabled={terminalRunning}
+                    className="flex-1 glass-input text-xs font-mono rounded-xl px-4 py-3 text-emerald-300 outline-none border border-white/5 bg-black/40 focus:border-rose-500 transition-colors placeholder-emerald-800"
+                  />
+                  <button
+                    onClick={executeTerminalCommand}
+                    disabled={terminalRunning || !terminalCommand.trim()}
+                    className="px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center space-x-1.5 shadow-lg shadow-rose-900/25 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white disabled:opacity-50"
+                  >
+                    <span>Execute</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: Quota Health Monitor */}
+          {activeTab === 'quota' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+                  <Cpu className="h-5 w-5 text-indigo-400" />
+                  LLM Quota Health Monitor
+                </h3>
+                <p className="text-xs text-gray-400 border-b border-white/5 pb-4 mb-4">
+                  Live diagnostics page tracking LLM key rotations, rate limits, and model health parameters.
+                </p>
+
+                {/* API Keys Table list */}
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">API Key Rotator Status</h4>
+                <div className="overflow-x-auto rounded-xl border border-white/5 mb-6">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 text-gray-300 font-bold border-b border-white/5">
+                        <th className="p-3">Index</th>
+                        <th className="p-3">Provider</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Last Used Successful Call</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {quotaKeys.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-4 text-center text-gray-450 italic">No keys initialized or fetched.</td>
+                        </tr>
+                      ) : (
+                        quotaKeys.map((key) => (
+                          <tr key={key.index} className="hover:bg-white/[0.02] text-gray-300">
+                            <td className="p-3 font-mono font-bold text-violet-400">{key.index}</td>
+                            <td className="p-3 font-semibold capitalize">{key.provider}</td>
+                            <td className="p-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                                key.status === 'active' 
+                                  ? 'bg-emerald-600/10 border-emerald-500/20 text-emerald-400' 
+                                  : key.status === 'exhausted' 
+                                  ? 'bg-rose-600/10 border-rose-500/20 text-rose-400' 
+                                  : 'bg-gray-600/10 border-gray-500/20 text-gray-400'
+                              }`}>
+                                {key.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="p-3 font-mono text-[10px] text-gray-400">{key.last_used}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Cached 404 Models */}
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">Banned / Unavailable Models (404 Cache)</h4>
+                <div className="glass-card rounded-xl p-4 bg-black/25 border border-white/5">
+                  {Object.keys(modelsUnavailable).length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No model failures cached. All systems running.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(modelsUnavailable).map(([model, time]) => (
+                        <div key={model} className="flex justify-between items-center text-xs border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                          <span className="font-mono text-gray-300">{model}</span>
+                          <span className="text-[10px] text-gray-450">Banned at: {time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: Pipeline Settings */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 max-w-2xl">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
+                  <Sliders className="h-5 w-5 text-teal-400" />
+                  Pipeline Settings & Quality Gates Tuner
+                </h3>
+                <p className="text-xs text-gray-400 border-b border-white/5 pb-4 mb-5">
+                  Configure strict compiler checks, auto-repair retry settings, and compilation overrides for Render deployments.
+                </p>
+
+                <div className="space-y-5">
+                  {/* Strict TypeScript Check */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Strict TypeScript Checks</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">Validate strict types check (`tsc --noEmit`) before merging or committing code changes.</p>
+                    </div>
+                    <button
+                      onClick={() => savePipelineSettings({ strict_typescript: !pipelineSettings.strict_typescript })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
+                        pipelineSettings.strict_typescript ? 'bg-teal-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all duration-300 ${
+                        pipelineSettings.strict_typescript ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Bypass Gates */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/5">
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Bypass Compilation Quality Gates</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">Completely skip TypeScript compilation checks. Useful to save cloud container memory.</p>
+                    </div>
+                    <button
+                      onClick={() => savePipelineSettings({ bypass_compilation_gates: !pipelineSettings.bypass_compilation_gates })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 ${
+                        pipelineSettings.bypass_compilation_gates ? 'bg-teal-500' : 'bg-slate-700'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-all duration-300 ${
+                        pipelineSettings.bypass_compilation_gates ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {/* Auto Repair Limit */}
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">Auto-Repair Max Iterations</h4>
+                        <p className="text-xs text-gray-400 mt-0.5">Adjust how many times the AI tries to fix compilation errors during a task execution run.</p>
+                      </div>
+                      <span className="text-sm font-bold text-teal-400 px-3 py-1 bg-teal-500/10 border border-teal-500/20 rounded-lg">
+                        {pipelineSettings.auto_repair_limit} attempts
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={pipelineSettings.auto_repair_limit}
+                      onChange={e => savePipelineSettings({ auto_repair_limit: parseInt(e.target.value) })}
+                      className="w-full accent-teal-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-455 font-semibold px-0.5">
+                      <span>1 (Faster)</span>
+                      <span>5 (Recommended)</span>
+                      <span>10 (Thorough)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* DB Record Add/Edit Modal */}
+      {showAddRecordModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="glass-card rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-white/5 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-2">
+              {editingRecord ? 'Edit Record' : 'Add Database Record'}
+            </h3>
+            <p className="text-xs text-gray-400 mb-4 border-b border-white/5 pb-2">
+              Provide the data payload object structure for table: <code className="text-amber-300 font-bold">{selectedTable}</code>
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-450 block mb-1.5">JSON Data Block</label>
+                <textarea
+                  rows={10}
+                  value={newRecordJSON}
+                  onChange={e => setNewRecordJSON(e.target.value)}
+                  className="w-full glass-input text-xs font-mono rounded-xl px-4 py-3 text-amber-300 outline-none border border-white/5 bg-black/45 focus:border-amber-500 transition-colors"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-3 border-t border-white/5 pt-4">
+              <button
+                onClick={() => setShowAddRecordModal(false)}
+                className="text-xs font-semibold px-4 py-2 border border-white/5 bg-white/5 rounded-lg text-gray-300 hover:bg-white/10 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (editingRecord) {
+                    try {
+                      const matchKey = editingRecord.original.id ? 'id' : Object.keys(editingRecord.original)[0] || '';
+                      const matchValue = editingRecord.original[matchKey];
+                      const parsed = JSON.parse(newRecordJSON);
+                      updateDbRecord(matchKey, matchValue, parsed);
+                      setShowAddRecordModal(false);
+                    } catch (e) {
+                      showToast("Invalid JSON syntax.", "error");
+                    }
+                  } else {
+                    addDbRecord();
+                  }
+                }}
+                className="text-xs font-semibold px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-lg hover:from-amber-400 hover:to-yellow-500 shadow-md shadow-amber-950/20 transition-all"
+              >
+                {editingRecord ? 'Save Changes' : 'Insert Record'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Task Creation & Edit Modal */}
       {showTaskModal && (

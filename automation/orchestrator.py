@@ -297,8 +297,10 @@ def run_pipeline() -> None:
         # Repair Loop
         if not success:
             logger.warning("Quality gates failed. Starting auto-repair loop...")
-            for repair_idx in range(1, 4):
-                logger.info("Repair attempt %d/3...", repair_idx)
+            settings = state.get("settings", {})
+            repair_limit = settings.get("auto_repair_limit", 3)
+            for repair_idx in range(1, repair_limit + 1):
+                logger.info("Repair attempt %d/%d...", repair_idx, repair_limit)
                 
                 # Load current modified files contents
                 modified_contents = {}
