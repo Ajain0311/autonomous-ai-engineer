@@ -102,12 +102,82 @@ def run_git_command(args: list[str]) -> tuple[bool, str]:
     except Exception as e:
         return False, str(e)
 
+def update_project_context(state: dict) -> None:
+    """Scans the generated app codebase and compiles a comprehensive project_context.md file."""
+    context_path = ROOT_DIR / "automation" / "project_context.md"
+    logger.info("Compiling global project context manifest...")
+    
+    lines = []
+    lines.append(f"# Project Context Manifest: {state['project'].get('title', 'SaaS App')}")
+    lines.append(f"Description: {state['project'].get('description', '')}\n")
+    
+    # 1. Project Specifications
+    lines.append("## Core Specifications")
+    lines.append(f"- **Scope:** {state['project'].get('project_scope', 'saas')}")
+    lines.append(f"- **Milestones Count:** {state['project'].get('target_milestones', 5)}")
+    
+    tech_stack = state["project"].get("tech_stack", {})
+    lines.append(f"- **Backend Framework:** {tech_stack.get('backend_lang', 'Node.js')}")
+    lines.append(f"- **Styling Framework:** {tech_stack.get('frontend_css', 'Tailwind CSS')}")
+    
+    features = state["project"].get("selected_features", [])
+    if features:
+        lines.append(f"- **Required Features:** {', '.join(features)}")
+    lines.append("\n")
+    
+    # 2. Database Schema Details
+    lines.append("## JSON Database Schema Design")
+    schema = state.get("architecture", {}).get("db_schema", {})
+    lines.append("```yaml")
+    import yaml
+    lines.append(yaml.dump(schema))
+    lines.append("```\n")
+    
+    # 3. API Contracts
+    lines.append("## API Endpoints & Routes Contracts")
+    contracts = state.get("architecture", {}).get("api_contracts", {})
+    lines.append("```yaml")
+    lines.append(yaml.dump(contracts))
+    lines.append("```\n")
+
+    # 4. Workspace Source Code Directory Scan
+    lines.append("## Workspace Source Code Files")
+    app_dir = ROOT_DIR / "app"
+    if app_dir.exists():
+        for root, dirs, files in os.walk(str(app_dir)):
+            if any(p in root for p in ["node_modules", "dist", ".git"]):
+                continue
+            for file in files:
+                file_path = Path(root) / file
+                rel_path = file_path.relative_to(app_dir).as_posix()
+                
+                # Only include code files
+                if file.split('.')[-1] in ["tsx", "ts", "js", "html", "css", "json", "toml", "config"]:
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+                        lines.append(f"### File: `app/{rel_path}`")
+                        ext = file.split('.')[-1]
+                        lines.append(f"```{ext}")
+                        lines.append(content)
+                        lines.append("```\n")
+                    except Exception as e:
+                        logger.warning("Failed to include %s in context: %s", rel_path, e)
+                        
+    try:
+        with open(context_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        logger.info("Successfully compiled project_context.md")
+    except Exception as e:
+        logger.error("Failed to write project_context.md: %s", e)
+
 def run_pipeline() -> None:
     _setup_logging()
     logger.info("=== Starting Autonomous Pipeline Run ===")
     
     # 1. Load state
     state = state_manager.load_state()
+    update_project_context(state)
     start_time = time.time()
     
     # 2. Check if project is empty/idle
@@ -270,10 +340,14 @@ def run_pipeline() -> None:
                 state_manager.mark_task_status(state, task["id"], "completed", written_paths, sha)
                 state_manager.add_audit_log(state, "task_completed", f"Task: {task['name']} (Commit: {sha[:7]})")
                 
+                # Update context manifest after success
+                update_project_context(state)
+                
                 # Save state and commit it
                 state_manager.save_state(state)
                 run_git_command(["add", "automation/project_state.yaml"])
-                run_git_command(["commit", "-m", f"chore(state): sync state after task {task['id']}"])
+                run_git_command(["add", "automation/project_context.md"])
+                run_git_command(["commit", "-m", f"chore(state): sync state and context after task {task['id']}"])
                 run_git_command(["push"])
                 
                 state["last_run"] = {

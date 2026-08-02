@@ -74,6 +74,9 @@ _CODE_PROMPT = """\
 You are an expert full-stack developer writing production-grade, maintainable code.
 We are building a SaaS application called "{title}" (Description: {description}).
 
+Project Context & Source Code Manifest (Review this carefully to match existing architecture, routes, schemas and styles):
+{project_context}
+
 Tech Stack and Database Architecture:
 - Frontend: React 18, TypeScript, TailwindCSS, Zustand state management, React Router v6.
 - Backend: Express (Node.js) API.
@@ -202,9 +205,23 @@ def generate_task_code(project_title: str, project_desc: str, task: Dict, done_t
     target_files = task.get("files", [])
     existing_code = get_existing_files(target_files)
     
+    # Load compiled project context
+    project_context = ""
+    context_path = ROOT_DIR / "automation" / "project_context.md"
+    if context_path.exists():
+        try:
+            with open(context_path, "r", encoding="utf-8") as f:
+                project_context = f.read()
+        except Exception as e:
+            logger.error("Failed to read project_context.md: %s", e)
+            
+    if not project_context:
+        project_context = "No previous context compiled yet."
+        
     prompt = _CODE_PROMPT.format(
         title=project_title,
         description=project_desc,
+        project_context=project_context,
         task_id=task.get("id"),
         task_name=task.get("name"),
         task_desc=task.get("description"),
