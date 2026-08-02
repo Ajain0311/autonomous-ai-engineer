@@ -41,6 +41,7 @@ interface ProjectState {
     vision: string;
     repository_url?: string;
     deployment_url?: string;
+    custom_idea?: string;
   };
   architecture: {
     notes: string;
@@ -65,7 +66,7 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview'>('overview');
   const [state, setState] = useState<ProjectState | null>(null);
   const [gitStatus, setGitStatus] = useState<{
     branch: string;
@@ -116,6 +117,35 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [replaceQuery, setReplaceQuery] = useState<string>('');
   
+  const [previewStatus, setPreviewStatus] = useState<{ building: boolean; log: string; ready: boolean }>({ building: false, log: '', ready: false });
+
+  const fetchPreviewStatus = async () => {
+    try {
+      const res = await fetch('/api/preview/status');
+      const data = await res.json();
+      setPreviewStatus(data);
+    } catch (e) {
+      console.error("Preview status error:", e);
+    }
+  };
+
+  const triggerPreviewBuild = async () => {
+    try {
+      const res = await fetch('/api/preview/build', { method: 'POST' });
+      if (!res.ok) throw new Error("Failed to trigger build");
+      showToast("App preview build started!");
+      fetchPreviewStatus();
+    } catch (e) {
+      showToast("Failed to start build.", "error");
+    }
+  };
+
+  useEffect(() => {
+    fetchPreviewStatus();
+    const interval = setInterval(fetchPreviewStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Custom Git Commit Modal States
   const [showGitCommitModal, setShowGitCommitModal] = useState<boolean>(false);
   const [gitChanges, setGitChanges] = useState<{ file: string; type: 'modified' | 'added' | 'deleted' | 'untracked'; status: string }[]>([]);
@@ -1042,6 +1072,10 @@ export default function App() {
 
   const dailyUsedPercent = Math.min(100, Math.round((state.token_metadata.daily_used / state.token_metadata.daily_budget) * 100));
 
+  const totalTasks = state?.milestones?.reduce((acc: number, m: any) => acc + (m.tasks?.length || 0), 0) || 0;
+  const completedTasks = state?.milestones?.reduce((acc: number, m: any) => acc + (m.tasks?.filter((t: any) => t.status === 'completed')?.length || 0), 0) || 0;
+  const projectProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   const themeStyles = {
     midnight: {
       bg: 'bg-black/60',
@@ -1187,6 +1221,38 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* SaaS Build Progress */}
+          {state.project.status !== 'idle' && (
+            <div className="glass-card rounded-2xl p-6 shadow-xl bg-gradient-to-br from-violet-650/5 to-indigo-650/5 border border-violet-500/10">
+              <h3 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+                <span>SaaS Build Progress</span>
+                <Play className="h-4 w-4 text-emerald-400 animate-pulse" />
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-[11px] text-gray-450 mb-1 font-outfit">
+                    <span>Task Build Completion</span>
+                    <span className="text-violet-300 font-bold">{projectProgress}%</span>
+                  </div>
+                  <div className="w-full bg-white/5 rounded-full h-2">
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500"
+                         style={{ width: `${projectProgress}%` }}></div>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                    <span>{completedTasks} completed</span>
+                    <span>Total: {totalTasks} tasks</span>
+                  </div>
+                </div>
+                {state.project.custom_idea && (
+                  <div className="border-t border-white/5 pt-3 text-[10px] text-gray-400 leading-normal font-outfit">
+                    <span className="font-bold text-violet-400 block mb-0.5">Custom Topic Concept:</span>
+                    <p className="line-clamp-3 text-gray-300" title={state.project.custom_idea}>{state.project.custom_idea}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Workspace panel */}
@@ -1216,6 +1282,10 @@ export default function App() {
             <button onClick={() => setActiveTab('editor')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'editor' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
               <FileCode className="h-4 w-4" />
               <span>Workspace Editor</span>
+            </button>
+            <button onClick={() => setActiveTab('preview')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'preview' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
+              <Play className="h-4 w-4 text-emerald-400 animate-pulse" />
+              <span>Live UI Preview</span>
             </button>
           </div>
 
@@ -1988,6 +2058,136 @@ export default function App() {
                     <p className="text-xs text-gray-650 max-w-xs mt-1">Select a file from the left explorer to view, edit, and save its source code directly on Render.</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB CONTENT: Live UI Preview */}
+          {activeTab === 'preview' && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
+              {/* Build control sidebar */}
+              <div className="glass-card rounded-2xl p-6 border border-white/5 flex flex-col space-y-6 max-h-[680px]">
+                <div>
+                  <h3 className="font-bold text-gray-300 text-xs flex items-center space-x-1.5 mb-2">
+                    <Play className="h-3.5 w-3.5 text-violet-400" />
+                    <span>Preview Controls</span>
+                  </h3>
+                  <p className="text-[11px] text-gray-400 leading-relaxed font-outfit">
+                    Since building the React workspace is computationally heavy, you can trigger a build on-demand to bundle and run the latest UI.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <button 
+                    onClick={triggerPreviewBuild}
+                    disabled={previewStatus.building}
+                    className="w-full py-2.5 bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 shadow-lg shadow-violet-900/10 cursor-pointer"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${previewStatus.building ? 'animate-spin' : ''}`} />
+                    <span>{previewStatus.building ? 'Building App...' : 'Build & Launch Preview'}</span>
+                  </button>
+                  
+                  {previewStatus.ready && (
+                    <a 
+                      href="/preview/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-emerald-450 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 border border-emerald-500/20 text-center"
+                    >
+                      <span>🚀 Open in New Tab</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Build status banner */}
+                <div className="p-3.5 bg-black/35 rounded-xl border border-white/5 space-y-2 font-outfit text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-450">Build Status:</span>
+                    {previewStatus.building ? (
+                      <span className="text-amber-400 font-bold animate-pulse">BUILDING</span>
+                    ) : previewStatus.ready ? (
+                      <span className="text-emerald-400 font-bold">READY</span>
+                    ) : (
+                      <span className="text-rose-455 font-bold">NOT BUILT</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-gray-500 leading-normal">
+                    {previewStatus.building 
+                      ? "Compiling React source files on Render..." 
+                      : previewStatus.ready 
+                        ? "Preview is ready! View it in the iframe or open in a new tab." 
+                        : "No build found. Click the build button above to compile."}
+                  </div>
+                </div>
+              </div>
+
+              {/* Iframe View & Logs */}
+              <div className="glass-card rounded-2xl p-6 border border-white/5 lg:col-span-3 flex flex-col h-[680px] overflow-hidden">
+                <div className="flex justify-between items-center mb-4 shrink-0">
+                  <div className="flex items-center space-x-2">
+                    <div className={`h-2.5 w-2.5 rounded-full ${previewStatus.building ? 'bg-amber-400 animate-pulse' : previewStatus.ready ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+                    <span className="text-xs font-bold text-white tracking-wide uppercase font-outfit">
+                      {previewStatus.building ? 'Building App Bundle...' : 'Live Workspace Sandbox'}
+                    </span>
+                  </div>
+                  {previewStatus.ready && !previewStatus.building && (
+                    <button 
+                      onClick={() => {
+                        const iframe = document.getElementById('preview-frame') as HTMLIFrameElement;
+                        if (iframe) iframe.src = iframe.src;
+                      }}
+                      className="p-1 px-2.5 bg-white/5 hover:bg-white/10 rounded border border-white/5 text-[10px] text-gray-300 font-bold transition-all flex items-center space-x-1 cursor-pointer"
+                      title="Reload Iframe"
+                    >
+                      <RefreshCw className="h-2.5 w-2.5 text-violet-400" />
+                      <span>Refresh</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-1 bg-black/60 rounded-xl overflow-hidden border border-white/5 relative min-h-0">
+                  {previewStatus.building ? (
+                    /* Building Logs Stream */
+                    <div className="absolute inset-0 p-4 font-mono text-[10px] text-gray-300 overflow-y-auto bg-black/85 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        <span className="text-violet-400 font-bold block mb-2">// Build Log Console Stream</span>
+                        {previewStatus.log.split('\n').map((line, idx) => (
+                          <div key={idx} className="leading-relaxed whitespace-pre-wrap">{line}</div>
+                        ))}
+                      </div>
+                      <div className="flex items-center space-x-2 text-amber-400 font-bold border-t border-white/5 pt-2 mt-4 animate-pulse shrink-0">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        <span>Compiling sources and generating bundle...</span>
+                      </div>
+                    </div>
+                  ) : previewStatus.ready ? (
+                    /* Interactive Iframe */
+                    <iframe 
+                      id="preview-frame"
+                      src="/preview/" 
+                      className="w-full h-full border-0 bg-white"
+                      title="Workspace Preview"
+                      sandbox="allow-scripts allow-same-origin allow-forms"
+                    />
+                  ) : (
+                    /* No Build logs/welcome screen */
+                    <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-6 bg-black/45">
+                      <Play className="h-12 w-12 text-violet-600 mb-4 animate-pulse" />
+                      <h4 className="font-bold text-sm text-gray-300">Workspace Build Required</h4>
+                      <p className="text-xs text-gray-400 max-w-sm mt-1 leading-normal">
+                        To run the SaaS UI, click the <strong>Build & Launch Preview</strong> button in the left sidebar. This will install packages and compile the React bundle.
+                      </p>
+                      {previewStatus.log && (
+                        <div className="w-full max-w-lg mt-6 p-4 bg-black/80 border border-white/5 rounded-xl text-left max-h-48 overflow-y-auto font-mono text-[9px] text-gray-405">
+                          <span className="text-rose-455 block mb-1 font-bold">// Last Build Status Log</span>
+                          {previewStatus.log.split('\n').map((line, idx) => (
+                            <div key={idx} className="leading-relaxed whitespace-pre-wrap">{line}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

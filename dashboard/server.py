@@ -584,6 +584,73 @@ def update_config_keys(payload: KeysUpdateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to write env file: {e}")
 
+preview_building = False
+preview_build_log = ""
+
+def run_preview_build_task():
+    global preview_building, preview_build_log
+    preview_building = True
+    preview_build_log = "Starting app preview build...\n"
+    try:
+        app_path = ROOT_DIR / "app"
+        if not app_path.exists():
+            preview_build_log += "Error: 'app' directory not found.\n"
+            return
+        
+        is_windows = sys.platform == "win32"
+        
+        # 1. npm install
+        preview_build_log += "Installing dependencies (npm install)...\n"
+        proc_inst = subprocess.run(
+            ["npm", "install", "--no-audit", "--no-fund", "--loglevel=error"],
+            cwd=str(app_path),
+            capture_output=True,
+            text=True,
+            shell=is_windows
+        )
+        preview_build_log += proc_inst.stdout + "\n" + proc_inst.stderr + "\n"
+        if proc_inst.returncode != 0:
+            preview_build_log += f"npm install failed with code {proc_inst.returncode}\n"
+            return
+            
+        # 2. npm run build
+        preview_build_log += "Bundling application (npm run build)...\n"
+        proc_build = subprocess.run(
+            ["npm", "run", "build"],
+            cwd=str(app_path),
+            capture_output=True,
+            text=True,
+            shell=is_windows
+        )
+        preview_build_log += proc_build.stdout + "\n" + proc_build.stderr + "\n"
+        if proc_build.returncode != 0:
+            preview_build_log += f"Build failed with code {proc_build.returncode}\n"
+            return
+            
+        preview_build_log += "Application built successfully! Open the Preview tab to test it."
+    except Exception as e:
+        preview_build_log += f"Unexpected error during build: {e}\n"
+    finally:
+        preview_building = False
+
+@app.post("/api/preview/build")
+def trigger_preview_build(background_tasks: BackgroundTasks):
+    global preview_building
+    if preview_building:
+        return {"status": "error", "message": "Preview build already in progress."}
+    background_tasks.add_task(run_preview_build_task)
+    return {"status": "success", "message": "Preview build triggered in background."}
+
+@app.get("/api/preview/status")
+def get_preview_status():
+    global preview_building, preview_build_log
+    preview_index = ROOT_DIR / "app" / "dist" / "index.html"
+    return {
+        "building": preview_building,
+        "log": preview_build_log,
+        "ready": preview_index.exists() and "successfully" in preview_build_log
+    }
+
 @app.post("/api/config/test")
 def test_connection(payload: ConnectionTestRequest):
     """Tests LLM provider connectivity by attempting a 1-token completion call."""
@@ -628,6 +695,19 @@ def test_connection(payload: ConnectionTestRequest):
             return {"status": "error", "message": "API returned empty response."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+# Serve the preview of the generated app
+preview_dir = ROOT_DIR / "app" / "dist"
+preview_dir.mkdir(parents=True, exist_ok=True)
+preview_index = preview_dir / "index.html"
+if not preview_index.exists():
+    try:
+        with open(preview_index, "w") as f:
+            f.write("<html><body style='background:#0f0f13;color:#a78bfa;font-family:sans-serif;padding:40px;text-align:center;'><h2>App is being built...</h2><p style='color:#6b7280;'>Click 'Build & Launch Preview' in the dashboard to generate and run the live UI preview.</p></body></html>")
+    except Exception as e:
+        logger.warning("Could not write default preview index.html: %s", e)
+
+app.mount("/preview", StaticFiles(directory=str(preview_dir), html=True), name="preview")
 
 # Serve the static UI files from the frontend build
 static_dir = ROOT_DIR / "dashboard" / "dist"
