@@ -148,6 +148,8 @@ def update_project_context(state: dict) -> None:
             if any(p in root for p in ["node_modules", "dist", ".git"]):
                 continue
             for file in files:
+                if file in ["package-lock.json", "yarn.lock", "pnpm-lock.yaml"]:
+                    continue
                 file_path = Path(root) / file
                 rel_path = file_path.relative_to(app_dir).as_posix()
                 
@@ -156,6 +158,11 @@ def update_project_context(state: dict) -> None:
                     try:
                         with open(file_path, "r", encoding="utf-8") as f:
                             content = f.read()
+                        
+                        # Guard against reading huge text files
+                        if len(content) > 50000:
+                            content = content[:50000] + "\n\n... [Content Truncated due to size limit] ..."
+                            
                         lines.append(f"### File: `app/{rel_path}`")
                         ext = file.split('.')[-1]
                         lines.append(f"```{ext}")
