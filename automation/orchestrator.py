@@ -49,7 +49,39 @@ def _get_trending(state: dict) -> dict:
     return data
 
 def run_git_command(args: list[str]) -> tuple[bool, str]:
-    """Runs a git command in the root repository."""
+    """Runs a git command in the root repository, handling push robustness."""
+    # If the command is a push without specific destination targets, make it robust
+    if args and args[0] == "push" and len(args) == 1:
+        branch = os.environ.get("RENDER_GIT_BRANCH", "")
+        if not branch:
+            result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip() != "HEAD":
+                branch = result.stdout.strip()
+        if not branch:
+            result = subprocess.run(["git", "status"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+            if result.returncode == 0 and "On branch " in result.stdout:
+                for line in result.stdout.split("\n"):
+                    if "On branch " in line:
+                        branch = line.replace("On branch ", "").strip()
+                        break
+        if not branch:
+            branch = "main"
+
+        token = os.environ.get("GITHUB_TOKEN", "")
+        if token:
+            res_remote = subprocess.run(["git", "remote", "get-url", "origin"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+            if res_remote.returncode == 0:
+                remote_url = res_remote.stdout.strip()
+                import re
+                match = re.search(r"github\.com[:/]([^/]+)/([^.]+)(?:\.git)?", remote_url)
+                if match:
+                    owner = match.group(1)
+                    repo_name = match.group(2)
+                    authenticated_url = f"https://{token}@github.com/{owner}/{repo_name}.git"
+                    args = ["push", authenticated_url, f"HEAD:{branch}"]
+        else:
+            args = ["push", "origin", f"HEAD:{branch}"]
+
     try:
         # Configure git identity locally if not already set (important for cloud environments like Render)
         username = config.GITHUB_USERNAME or "Ajain0311"
