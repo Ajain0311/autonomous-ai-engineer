@@ -111,13 +111,27 @@ export default function App() {
   
   const [dbSchemaDiagram, setDbSchemaDiagram] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [dbExplorerTab, setDbExplorerTab] = useState<'records' | 'er_schema'>('records');
+  const [queryField, setQueryField] = useState<string>('id');
+  const [queryOperator, setQueryOperator] = useState<string>('equals');
+  const [queryValue, setQueryValue] = useState<string>('');
   
   const [apiRoutes, setApiRoutes] = useState<any[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
   const [apiPayload, setApiPayload] = useState<string>('{\n  "username": "admin",\n  "password": "secretPassword"\n}');
   const [apiResponse, setApiResponse] = useState<string>('');
   const [isApiTesting, setIsApiTesting] = useState<boolean>(false);
-  const [showApiPlayground, setShowApiPlayground] = useState<boolean>(false);
+  
+  const [terminalTab, setTerminalTab] = useState<'shell' | 'api' | 'tests'>('shell');
+  const [testResults, setTestResults] = useState<any>(null);
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  
+  const [editorTab, setEditorTab] = useState<'explorer' | 'assets'>('explorer');
+  const [assetFiles, setAssetFiles] = useState<any[]>([]);
+  const [assetPrompt, setAssetPrompt] = useState<string>('');
+  const [assetName, setAssetName] = useState<string>('banner.png');
+  const [isGeneratingAsset, setIsGeneratingAsset] = useState<boolean>(false);
+  
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   
   const [draggedElements, setDraggedElements] = useState<{ id: string; label: string; type: string }[]>([]);
 
@@ -511,6 +525,76 @@ export default function App() {
     recognition.start();
   };
 
+  const executeQueryBuilder = async () => {
+    if (!selectedTable) return;
+    try {
+      const res = await fetch(`/api/database/query?table=${selectedTable}&field=${queryField}&operator=${queryOperator}&value=${encodeURIComponent(queryValue)}`);
+      const data = await res.json();
+      setTableRecords(data);
+      showToast(`Query completed! Found ${data.length} records.`);
+    } catch (e) {
+      showToast("Query builder execution failed.", 'error');
+    }
+  };
+
+  const runTestSuite = async () => {
+    setIsTesting(true);
+    setTestResults(null);
+    try {
+      const res = await fetch('/api/tests/run', { method: 'POST' });
+      const data = await res.json();
+      setTestResults(data);
+      showToast("Test suite run completed!");
+    } catch (e) {
+      showToast("Failed to run test suite.", 'error');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const fetchAssetFiles = async () => {
+    try {
+      const res = await fetch('/api/assets/list');
+      const data = await res.json();
+      setAssetFiles(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const generateAIAsset = async () => {
+    if (!assetPrompt.trim()) return;
+    setIsGeneratingAsset(true);
+    try {
+      const res = await fetch('/api/assets/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: assetName, prompt: assetPrompt })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        showToast("Mock AI Asset generated!");
+        fetchAssetFiles();
+      } else {
+        showToast(data.message, 'error');
+      }
+    } catch (e) {
+      showToast("AI generation failed.", 'error');
+    } finally {
+      setIsGeneratingAsset(false);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    try {
+      const res = await fetch('/api/audit/logs');
+      const data = await res.json();
+      setAuditLogs(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchPreviewStatus();
     fetchTerminalStatus();
@@ -537,6 +621,10 @@ export default function App() {
       fetchDbSchemaDiagram();
     } else if (activeTab === 'git') {
       fetchCodeReview();
+    } else if (activeTab === 'overview') {
+      fetchAuditLogs();
+    } else if (activeTab === 'editor') {
+      fetchAssetFiles();
     }
     discoverApiPlayground();
   }, [activeTab]);
@@ -1870,6 +1958,42 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* Interactive Audit Trail Log */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 space-y-4">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 text-violet-400" />
+                    Interactive Audit Trail Activity Feed
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-1">Live tracking logs of actions performed by developers, users, and AI agents in the workspace.</p>
+                </div>
+                
+                <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                  {auditLogs.length === 0 ? (
+                    <p className="text-xs text-gray-500 italic py-4 text-center">No workspace activity records logged yet.</p>
+                  ) : (
+                    [...auditLogs].reverse().map((log, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-3 bg-black/25 rounded-xl border border-white/5 text-xs">
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            log.author === 'AI' ? 'bg-violet-650/20 text-violet-300 border border-violet-500/20' : 'bg-amber-650/20 text-amber-300 border border-amber-500/20'
+                          }`}>
+                            {log.author || "User"}
+                          </span>
+                          <div>
+                            <span className="text-gray-200 font-semibold block">{log.action}</span>
+                            <span className="text-gray-450 text-[10px]">{log.details}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-mono">
+                          {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ""}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -2292,7 +2416,110 @@ export default function App() {
 
           {/* TAB CONTENT: Workspace Code Editor */}
           {activeTab === 'editor' && (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="space-y-6">
+              {/* Editor Sub-Tabs Switcher */}
+              <div className="flex border-b border-white/5 pb-2 gap-4">
+                <button
+                  onClick={() => setEditorTab('explorer')}
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 ${
+                    editorTab === 'explorer' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-250'
+                  }`}
+                >
+                  📝 Code Workspace Editor
+                </button>
+                <button
+                  onClick={() => {
+                    setEditorTab('assets');
+                    fetchAssetFiles();
+                  }}
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 ${
+                    editorTab === 'assets' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-250'
+                  }`}
+                >
+                  🖼️ Visual Asset Library & Generator
+                </button>
+              </div>
+
+              {editorTab === 'assets' ? (
+                /* Visual Asset Library & AI Image Generator Panel */
+                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 space-y-6 min-h-[60vh]">
+                  <div>
+                    <h3 className="text-base font-bold text-white font-outfit">Workspace Asset Library</h3>
+                    <p className="text-xs text-gray-400 mt-1">Manage project assets, copy visual asset routes, and generate mock components imagery.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Left: AI Mock Image Generator */}
+                    <div className="bg-black/35 rounded-xl border border-white/5 p-5 space-y-4">
+                      <span className="text-[10px] font-bold text-gray-450 uppercase tracking-widest block mb-2 font-mono">AI Asset Generator</span>
+                      
+                      <div className="space-y-3 font-outfit">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-gray-450 block font-mono">Target Filename</label>
+                          <input
+                            type="text"
+                            value={assetName}
+                            onChange={e => setAssetName(e.target.value)}
+                            placeholder="e.g. logo.png"
+                            className="w-full text-xs bg-black/50 border border-white/10 rounded-lg px-2.5 py-2 text-white outline-none focus:border-violet-550/40 font-mono"
+                          />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-gray-450 block font-mono">Generation Prompt</label>
+                          <textarea
+                            value={assetPrompt}
+                            onChange={e => setAssetPrompt(e.target.value)}
+                            rows={4}
+                            placeholder="Describe the image (e.g. 'A futuristic SaaS analytics hero background')"
+                            className="w-full text-xs bg-black/50 border border-white/10 rounded-lg px-2.5 py-2 text-white outline-none focus:border-violet-550/40"
+                          />
+                        </div>
+                        
+                        <button
+                          onClick={generateAIAsset}
+                          disabled={isGeneratingAsset || !assetPrompt.trim()}
+                          className="w-full py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-violet-955/15 cursor-pointer"
+                        >
+                          {isGeneratingAsset ? "Generating Asset..." : "Generate AI Image"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right: Assets Grid */}
+                    <div className="md:col-span-2 space-y-3 bg-black/45 rounded-xl border border-white/5 p-5">
+                      <span className="text-[10px] font-bold text-gray-450 uppercase tracking-widest block mb-2 font-mono">Project Asset Inventory</span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[45vh] overflow-y-auto pr-1">
+                        {assetFiles.map((file, idx) => (
+                          <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2 relative group overflow-hidden">
+                            <div className="h-24 bg-black/40 rounded-lg flex items-center justify-center border border-white/5 text-[10px] text-gray-500 italic font-mono">
+                              Visual File: {file.name}
+                            </div>
+                            <div className="flex justify-between items-center text-[10px]">
+                              <div className="truncate pr-2">
+                                <span className="font-bold text-gray-350 block truncate font-mono">{file.name}</span>
+                                <span className="text-gray-550 font-mono">{(file.size / 1024).toFixed(1)} KB</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(file.path);
+                                  showToast("Asset path copied: " + file.path);
+                                }}
+                                className="px-2 py-1 bg-white/5 hover:bg-violet-650/20 text-gray-450 hover:text-violet-300 rounded border border-white/5 transition-all cursor-pointer"
+                                title="Copy asset path"
+                              >
+                                Copy Path
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* File Explorer (1/4 column) */}
               <div className="glass-card rounded-2xl p-4 shadow-xl flex flex-col max-h-[680px]">
                 <div className="flex justify-between items-center mb-4">
@@ -2582,6 +2809,8 @@ export default function App() {
               </div>
             </div>
           )}
+        </div>
+      )}
 
           {/* TAB CONTENT: Live UI Preview */}
           {activeTab === 'preview' && (
@@ -3062,6 +3291,63 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* Query Builder Section */}
+                      <div className="mb-5 p-4 rounded-xl bg-black/35 border border-white/5 space-y-3">
+                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest block font-outfit">🔍 SQL-Style Visual Query Builder</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center">
+                          <div className="flex flex-col space-y-1">
+                            <span className="text-[8px] text-gray-500 font-mono">Field Key</span>
+                            <input
+                              type="text"
+                              value={queryField}
+                              onChange={e => setQueryField(e.target.value)}
+                              placeholder="e.g. 'username' or 'id'"
+                              className="text-xs bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-white outline-none focus:border-amber-500/40"
+                            />
+                          </div>
+                          <div className="flex flex-col space-y-1">
+                            <span className="text-[8px] text-gray-500 font-mono">Comparison</span>
+                            <select
+                              value={queryOperator}
+                              onChange={e => setQueryOperator(e.target.value)}
+                              className="text-xs bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-amber-300 outline-none cursor-pointer"
+                            >
+                              <option value="equals">Equals (==)</option>
+                              <option value="contains">Contains</option>
+                              <option value="greater_than">Greater Than (&gt;)</option>
+                              <option value="less_than">Less Than (&lt;)</option>
+                            </select>
+                          </div>
+                          <div className="flex flex-col space-y-1">
+                            <span className="text-[8px] text-gray-500 font-mono">Value</span>
+                            <input
+                              type="text"
+                              value={queryValue}
+                              onChange={e => setQueryValue(e.target.value)}
+                              placeholder="Match value"
+                              className="text-xs bg-black/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-white outline-none focus:border-amber-500/40 font-mono"
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-4">
+                            <button
+                              onClick={executeQueryBuilder}
+                              className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-amber-955/10"
+                            >
+                              Run Filter
+                            </button>
+                            <button
+                              onClick={() => {
+                                setQueryValue('');
+                                fetchTableRecords(selectedTable);
+                              }}
+                              className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-xs text-gray-400 transition-all"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Filter Search */}
                       <div className="mb-4">
                         <input
@@ -3141,29 +3427,40 @@ export default function App() {
           {activeTab === 'terminal' && (
             <div className="space-y-6">
               {/* Terminal Tab mode header */}
-              <div className="flex border-b border-white/5 pb-2 gap-4">
+              <div className="flex border-b border-white/5 pb-2 gap-4 overflow-x-auto">
                 <button
-                  onClick={() => setShowApiPlayground(false)}
-                  className={`pb-2 text-xs font-bold transition-all border-b-2 ${
-                    !showApiPlayground ? 'border-rose-500 text-rose-455' : 'border-transparent text-gray-450 hover:text-gray-250'
+                  onClick={() => setTerminalTab('shell')}
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 shrink-0 ${
+                    terminalTab === 'shell' ? 'border-rose-500 text-rose-455' : 'border-transparent text-gray-450 hover:text-gray-250'
                   }`}
                 >
                   💻 Bash Terminal Sandbox
                 </button>
                 <button
                   onClick={() => {
-                    setShowApiPlayground(true);
+                    setTerminalTab('api');
                     discoverApiPlayground();
                   }}
-                  className={`pb-2 text-xs font-bold transition-all border-b-2 ${
-                    showApiPlayground ? 'border-rose-500 text-rose-455' : 'border-transparent text-gray-450 hover:text-gray-250'
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 shrink-0 ${
+                    terminalTab === 'api' ? 'border-rose-500 text-rose-455' : 'border-transparent text-gray-450 hover:text-gray-250'
                   }`}
                 >
-                  🔌 Visual API Tester & Swagger Playground
+                  🔌 Visual API Tester & Swagger
+                </button>
+                <button
+                  onClick={() => {
+                    setTerminalTab('tests');
+                    runTestSuite();
+                  }}
+                  className={`pb-2 text-xs font-bold transition-all border-b-2 shrink-0 ${
+                    terminalTab === 'tests' ? 'border-rose-500 text-rose-455' : 'border-transparent text-gray-450 hover:text-gray-250'
+                  }`}
+                >
+                  🧪 Visual Test Suite & Coverage
                 </button>
               </div>
 
-              {showApiPlayground ? (
+              {terminalTab === 'api' ? (
                 /* Swagger API Playground panel */
                 <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 space-y-6 min-h-[60vh]">
                   <div>
@@ -3250,6 +3547,60 @@ export default function App() {
                       )}
                     </div>
                   </div>
+                </div>
+              ) : terminalTab === 'tests' ? (
+                /* Visual Test Suite & Coverage Panel */
+                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 space-y-6 min-h-[60vh]">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white">Visual Test Suite & Code Coverage</h3>
+                      <p className="text-xs text-gray-400 mt-1">Run unit tests, verify integrations, and inspect source coverage gates.</p>
+                    </div>
+                    <button
+                      onClick={runTestSuite}
+                      disabled={isTesting}
+                      className="px-4 py-2 bg-rose-650 hover:bg-rose-550 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50"
+                    >
+                      {isTesting ? "Running Tests..." : "Run Test Suite"}
+                    </button>
+                  </div>
+
+                  {testResults ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn">
+                      {/* Coverage summary cards */}
+                      <div className="md:col-span-1 space-y-4">
+                        <span className="text-[10px] font-bold text-gray-450 uppercase tracking-widest block">Coverage Rates</span>
+                        {[
+                          { label: 'Statements', rate: testResults.coverage.statements, color: 'from-emerald-500 to-teal-500' },
+                          { label: 'Branches', rate: testResults.coverage.branches, color: 'from-amber-500 to-yellow-500' },
+                          { label: 'Functions', rate: testResults.coverage.functions, color: 'from-emerald-500 to-teal-500' },
+                          { label: 'Lines', rate: testResults.coverage.lines, color: 'from-emerald-500 to-teal-500' }
+                        ].map(c => (
+                          <div key={c.label} className="p-3.5 bg-black/20 border border-white/5 rounded-xl space-y-2">
+                            <div className="flex justify-between text-xs font-bold text-gray-300 font-outfit">
+                              <span>{c.label}</span>
+                              <span>{c.rate}%</span>
+                            </div>
+                            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                              <div className={`bg-gradient-to-r ${c.color} h-2 rounded-full transition-all duration-500`} style={{ width: `${c.rate}%` }}></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Test logs terminal */}
+                      <div className="md:col-span-2 space-y-2 flex flex-col">
+                        <span className="text-[10px] font-bold text-gray-450 uppercase tracking-widest block">Test Run Logs</span>
+                        <pre className="flex-1 font-mono text-[10px] text-emerald-400 bg-black/90 p-4 rounded-xl border border-white/5 whitespace-pre overflow-auto max-h-[40vh] shadow-inner select-text">
+                          {testResults.log}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 text-xs text-gray-500">
+                      Run the test suite to populate code coverage diagrams.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/5 flex flex-col h-[70vh]">
