@@ -93,6 +93,32 @@ def save_state(state: dict) -> None:
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         yaml.safe_dump(state, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
+def record_token_usage(prompt_tokens: int, completion_tokens: int) -> None:
+    """Safely loads current state, increments token usage, and saves it."""
+    try:
+        state = load_state()
+        metadata = state.setdefault("token_metadata", {
+            "daily_budget": 5000000,
+            "daily_used": 0,
+            "total_used": 0,
+            "last_reset_date": ""
+        })
+        
+        # Reset if date changed
+        import datetime as dt
+        today = dt.date.today().isoformat()
+        if metadata.get("last_reset_date") != today:
+            metadata["daily_used"] = 0
+            metadata["last_reset_date"] = today
+            
+        total_call_tokens = prompt_tokens + completion_tokens
+        metadata["daily_used"] = metadata.get("daily_used", 0) + total_call_tokens
+        metadata["total_used"] = metadata.get("total_used", 0) + total_call_tokens
+        
+        save_state(state)
+    except Exception as e:
+        logger.error("Failed to record token usage: %s", e)
+
 def add_audit_log(state: dict, action: str, details: str, author: str = "AI") -> None:
     """Add a record to the audit trail log."""
     log_entry = {

@@ -76,6 +76,16 @@ class LLMClient:
                     contents=prompt,
                     config=config_opts,
                 )
+                try:
+                    usage = response.usage_metadata
+                    if usage:
+                        from automation import state_manager
+                        state_manager.record_token_usage(
+                            usage.prompt_token_count or 0,
+                            usage.candidates_token_count or 0
+                        )
+                except Exception:
+                    pass
                 return response.text or ""
             except errors.ClientError as e:
                 raise APIError(e.code, getattr(e, "message", "") or str(e))
@@ -133,6 +143,16 @@ class LLMClient:
                     raise APIError(429, resp.text)
                 resp.raise_for_status()
                 data = resp.json()
+                try:
+                    usage = data.get("usage")
+                    if usage:
+                        from automation import state_manager
+                        state_manager.record_token_usage(
+                            usage.get("prompt_tokens") or 0,
+                            usage.get("completion_tokens") or 0
+                        )
+                except Exception:
+                    pass
                 return data["choices"][0]["message"]["content"]
             except requests.exceptions.HTTPError as e:
                 status_code = e.response.status_code if e.response is not None else 500

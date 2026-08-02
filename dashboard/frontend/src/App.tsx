@@ -1494,55 +1494,80 @@ export default function App() {
         {/* Workspace panel */}
         <div className="space-y-6 lg:col-span-3">
           {/* Tabs Navigation */}
-          <div className="flex border-b border-white/5 space-x-4 sm:space-x-6 text-sm font-semibold mb-6 overflow-x-auto scrollbar-none whitespace-nowrap pb-1">
-            <button onClick={() => setActiveTab('overview')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'overview' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <FileText className="h-4 w-4" />
-              <span>Project Vision</span>
-            </button>
-            <button onClick={() => setActiveTab('milestones')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'milestones' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <ChevronRight className="h-4 w-4" />
-              <span>Roadmap Editor</span>
-            </button>
-            <button onClick={() => setActiveTab('keys')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'keys' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Key className="h-4 w-4" />
-              <span>API Credentials</span>
-            </button>
-            <button onClick={() => setActiveTab('git')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'git' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <GitBranch className="h-4 w-4" />
-              <span>Git Workspace</span>
-            </button>
-            <button onClick={() => setActiveTab('logs')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'logs' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Terminal className="h-4 w-4" />
-              <span>Terminal output</span>
-            </button>
-            <button onClick={() => setActiveTab('editor')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'editor' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <FileCode className="h-4 w-4" />
-              <span>Workspace Editor</span>
-            </button>
-            <button onClick={() => setActiveTab('preview')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'preview' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Play className="h-4 w-4 text-emerald-400 animate-pulse" />
-              <span>Live UI Preview</span>
-            </button>
-            <button onClick={() => setActiveTab('chat')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'chat' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <MessageSquare className="h-4 w-4 text-sky-400" />
-              <span>AI Developer Chat</span>
-            </button>
-            <button onClick={() => setActiveTab('database')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'database' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Database className="h-4 w-4 text-amber-400" />
-              <span>JSON DB Explorer</span>
-            </button>
-            <button onClick={() => setActiveTab('terminal')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'terminal' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Terminal className="h-4 w-4 text-rose-400" />
-              <span>Terminal Sandbox</span>
-            </button>
-            <button onClick={() => setActiveTab('quota')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'quota' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Cpu className="h-4 w-4 text-indigo-400" />
-              <span>Quota Health Monitor</span>
-            </button>
-            <button onClick={() => setActiveTab('settings')} className={`pb-3 border-b-2 transition-all flex items-center space-x-1.5 shrink-0 ${activeTab === 'settings' ? 'border-violet-500 text-violet-400' : 'border-transparent text-gray-450 hover:text-gray-200'}`}>
-              <Sliders className="h-4 w-4 text-teal-400" />
-              <span>Pipeline Settings</span>
-            </button>
+          {/* Categorized Tab Navigation */}
+          <div className="glass-card rounded-2xl p-4 bg-black/15 border border-white/5 space-y-4 mb-6 shadow-md">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 divide-y md:divide-y-0 md:divide-x divide-white/5">
+              
+              {/* Category 1: Main Workspace */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-violet-400 tracking-wider uppercase block font-outfit">🚀 Workspace Core</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => setActiveTab('overview')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'overview' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Vision Spec</span>
+                  </button>
+                  <button onClick={() => setActiveTab('milestones')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'milestones' ? 'bg-violet-655 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <GitPullRequest className="h-3.5 w-3.5" />
+                    <span>Roadmap</span>
+                  </button>
+                  <button onClick={() => setActiveTab('chat')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'chat' ? 'bg-sky-600 text-white shadow-sm border border-sky-500/20 font-bold' : 'bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/10'}`}>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span>AI Chat</span>
+                  </button>
+                  <button onClick={() => setActiveTab('editor')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'editor' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <FileCode className="h-3.5 w-3.5" />
+                    <span>Code Editor</span>
+                  </button>
+                  <button onClick={() => setActiveTab('preview')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'preview' ? 'bg-emerald-600 text-white shadow-sm border border-emerald-500/20 font-bold' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/10 animate-pulse'}`}>
+                    <Play className="h-3.5 w-3.5" />
+                    <span>Live UI</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Category 2: Developer Tools */}
+              <div className="space-y-2 pt-3 md:pt-0 md:pl-4">
+                <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase block font-outfit">🛠️ Developer Tools</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => setActiveTab('git')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'git' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <GitBranch className="h-3.5 w-3.5" />
+                    <span>Git VCS</span>
+                  </button>
+                  <button onClick={() => setActiveTab('database')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'database' ? 'bg-amber-650 text-white shadow-sm border border-amber-500/20 font-bold' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <Database className="h-3.5 w-3.5 animate-pulse" />
+                    <span>DB Explorer</span>
+                  </button>
+                  <button onClick={() => setActiveTab('terminal')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'terminal' ? 'bg-rose-650 text-white shadow-sm border border-rose-500/20 font-bold' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <Terminal className="h-3.5 w-3.5" />
+                    <span>Terminal</span>
+                  </button>
+                  <button onClick={() => setActiveTab('logs')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'logs' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Run Output</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Category 3: System settings */}
+              <div className="space-y-2 pt-3 md:pt-0 md:pl-4">
+                <span className="text-[10px] font-bold text-teal-400 tracking-wider uppercase block font-outfit">⚙️ System Configuration</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => setActiveTab('keys')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'keys' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <Key className="h-3.5 w-3.5" />
+                    <span>Credentials</span>
+                  </button>
+                  <button onClick={() => setActiveTab('quota')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'quota' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <Cpu className="h-3.5 w-3.5" />
+                    <span>Key Health</span>
+                  </button>
+                  <button onClick={() => setActiveTab('settings')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'settings' ? 'bg-teal-650 text-white shadow-sm border border-teal-500/20 font-bold' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
+                    <Sliders className="h-3.5 w-3.5" />
+                    <span>Settings</span>
+                  </button>
+                </div>
+              </div>
+              
+            </div>
           </div>
 
           {/* TAB CONTENT: Overview */}
