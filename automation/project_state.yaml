@@ -8,7 +8,7 @@ project:
   repository_url: ''
   deployment_url: ''
   created_at: '2026-08-01T10:29:58.288594+00:00'
-  updated_at: '2026-08-01T16:00:46.310237'
+  updated_at: '2026-08-02T06:46:44.115615'
   title: Tech Hub
 architecture:
   notes: The application will use a modular architecture with a React Vite frontend,
@@ -252,13 +252,13 @@ token_metadata:
   total_used: 0
   daily_budget: 5000000
   daily_used: 0
-  last_reset_date: '2026-08-01'
+  last_reset_date: '2026-08-02'
 last_run:
-  success: true
-  timestamp: '2026-08-01T10:30:46.310237+00:00'
-  error_message: ''
-  duration_seconds: 63
-  retry_count: 0
+  success: false
+  timestamp: '2026-08-02T06:46:44.115592+00:00'
+  error_message: All LLM providers and keys exhausted or rate-limited.
+  duration_seconds: 0
+  retry_count: 1
 provider_priority:
 - gemini
 - groq
@@ -378,7 +378,10 @@ trending_cache:
       score: 171
       source: hackernews
 quota:
-  rpd_exhausted: {}
+  rpd_exhausted:
+    '0': '2026-08-02'
+    '1': '2026-08-02'
+    '2': '2026-08-02'
   model_unavailable: {}
   key_last_used:
     '6': '2026-08-01T10:29:58.287989+00:00'
