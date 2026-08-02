@@ -27,7 +27,7 @@ PROVIDER_PRIORITY = [
 # Models per provider
 PROVIDER_MODELS = {
     "gemini": ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemma-3-27b-it", "gemma-3-12b-it"],
-    "groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"],
+    "groq": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
     "openrouter": [
         "openrouter/free",
         "google/gemma-2-9b-it:free",
