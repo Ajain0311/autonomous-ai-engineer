@@ -602,11 +602,12 @@ def run_preview_build_task():
         # 1. npm install
         preview_build_log += "Installing dependencies (npm install)...\n"
         proc_inst = subprocess.run(
-            ["npm", "install", "--no-audit", "--no-fund", "--loglevel=error"],
+            ["npm", "install", "--no-audit", "--no-fund", "--loglevel=error", "--include=dev"],
             cwd=str(app_path),
             capture_output=True,
             text=True,
-            shell=is_windows
+            shell=is_windows,
+            env={**os.environ, "NODE_ENV": "development"}
         )
         preview_build_log += proc_inst.stdout + "\n" + proc_inst.stderr + "\n"
         if proc_inst.returncode != 0:
@@ -620,7 +621,8 @@ def run_preview_build_task():
             cwd=str(app_path),
             capture_output=True,
             text=True,
-            shell=is_windows
+            shell=is_windows,
+            env={**os.environ, "NODE_ENV": "development"}
         )
         preview_build_log += proc_build.stdout + "\n" + proc_build.stderr + "\n"
         if proc_build.returncode != 0:
