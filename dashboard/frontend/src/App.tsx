@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
-  Play, Terminal, BarChart2, ChevronRight, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
+  Play, Terminal, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
   CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search, Maximize2, Minimize2,
-  FolderPlus, Download, WrapText, Palette, MessageSquare, Sliders, Mic, MicOff
+  FolderPlus, Download, WrapText, Palette, MessageSquare, Sliders, Mic, MicOff,
+  LogOut, CloudLightning
 } from 'lucide-react';
 
 interface Task {
@@ -66,7 +67,8 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview' | 'terminal' | 'settings' | 'quota' | 'database' | 'chat'>('overview');
+  type TabId = 'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview' | 'terminal' | 'settings' | 'quota' | 'database' | 'chat';
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
   
   // Terminal Sandbox States
   const [terminalCommand, setTerminalCommand] = useState<string>('');
@@ -102,8 +104,8 @@ export default function App() {
   const [showVisualCanvas, setShowVisualCanvas] = useState<boolean>(false);
   
   // Premium Features States
-  const [deployUrl, setDeployUrl] = useState<string>('');
-  const [deployLog, setDeployLog] = useState<string>('');
+  const [_deployUrl, setDeployUrl] = useState<string>('');
+  const [_deployLog, setDeployLog] = useState<string>('');
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
   
   const [codeReview, setCodeReview] = useState<string>('');
@@ -1553,7 +1555,7 @@ export default function App() {
     );
   }
 
-  const dailyUsedPercent = Math.min(100, Math.round((state.token_metadata.daily_used / state.token_metadata.daily_budget) * 100));
+  // dailyUsedPercent now displayed directly in sidebar footer
 
   const totalTasks = state?.milestones?.reduce((acc: number, m: any) => acc + (m.tasks?.length || 0), 0) || 0;
   const completedTasks = state?.milestones?.reduce((acc: number, m: any) => acc + (m.tasks?.filter((t: any) => t.status === 'completed')?.length || 0), 0) || 0;
@@ -1588,266 +1590,219 @@ export default function App() {
   const activeThemeStyle = themeStyles[editorTheme] || themeStyles.midnight;
 
   return (
-    <div className="text-gray-100 min-h-screen pb-12">
-      {/* Top Nav */}
-      <nav className="border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row gap-3 sm:gap-0 items-center justify-between">
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
+    <div className="text-gray-100 min-h-screen bg-[#07070a] flex">
+      {/* Sleek Vertical Navigation Sidebar */}
+      <aside className="w-72 border-r border-white/[0.04] bg-[#0c0c10] flex flex-col justify-between h-screen sticky top-0 shrink-0 font-outfit select-none z-45">
+        {/* Brand Header */}
+        <div className="p-6 border-b border-white/[0.04] flex items-center space-x-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
             <Cpu className="h-5 w-5 text-white" />
           </div>
           <div>
-            <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">Antigravity V2</span>
-            <span className="text-[10px] sm:text-xs text-violet-400 block -mt-1 font-medium font-outfit hidden sm:block">Autonomous Software Engineer</span>
+            <span className="font-bold text-sm bg-gradient-to-r from-violet-400 to-indigo-300 bg-clip-text text-transparent">Antigravity OS</span>
+            <span className="text-[10px] text-violet-500 block -mt-1 font-semibold">Autonomous AI Engineer</span>
           </div>
         </div>
-        <div className="flex items-center justify-between sm:justify-end space-x-3 w-full sm:w-auto">
-          <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 font-outfit shrink-0">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="hidden sm:inline">Local Node API Running</span>
-            <span className="sm:hidden">Local API</span>
-          </div>
-          <div className="flex items-center space-x-1.5 sm:space-x-2 text-xs bg-violet-500/10 px-2.5 py-1.5 rounded-lg border border-violet-500/20 text-violet-300 font-semibold font-outfit shrink-0">
-            <GitBranch className="h-3.5 w-3.5" />
-            <span className="max-w-[70px] sm:max-w-none truncate">{gitStatus.branch}</span>
-          </div>
-          <button onClick={handleLogout}
-                  className="px-2.5 sm:px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-350 rounded-lg text-xs font-bold font-outfit transition-all cursor-pointer shrink-0">
-            Logout
-          </button>
-        </div>
-      </nav>
 
-      {/* Main Grid */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
-        
-        {/* Sidebar */}
-        <div className="space-y-6 lg:col-span-1">
-          {/* Status Box */}
-          <div className="glass-card rounded-2xl p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute -right-12 -top-12 w-28 h-28 bg-violet-600/10 rounded-full blur-2xl"></div>
-            <h3 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-4 flex items-center justify-between">
-              <span>Engine Status</span>
-              <span className={`h-2.5 w-2.5 rounded-full ${pipeline.running ? 'bg-violet-500 animate-ping' : 'bg-gray-600'}`}></span>
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-300 font-medium">Pipeline Status</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${pipeline.running ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30' : 'bg-gray-800 text-gray-450 border border-white/5'}`}>
+        {/* Navigation Links */}
+        <div className="flex-1 py-6 px-4 space-y-7 overflow-y-auto">
+          {/* Category: Workspace Core */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 block">Workspace Core</span>
+            <div className="space-y-0.5">
+              {([
+                { id: 'overview' as TabId, label: 'Vision Spec', icon: FileText },
+                { id: 'milestones' as TabId, label: 'Roadmap & Tasks', icon: GitPullRequest },
+                { id: 'chat' as TabId, label: 'AI Architect Chat', icon: MessageSquare },
+                { id: 'editor' as TabId, label: 'Workspace Editor', icon: FileCode },
+                { id: 'preview' as TabId, label: 'Live UI Preview', icon: Play, pulse: true }
+              ]).map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isActive 
+                        ? 'bg-violet-650/10 text-violet-400 border border-violet-500/10 shadow-sm' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${item.pulse ? 'animate-pulse text-emerald-400' : ''}`} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Category: Developer Tools */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 block">Developer Tools</span>
+            <div className="space-y-0.5">
+              {([
+                { id: 'git' as TabId, label: 'Git VCS & Auditor', icon: GitBranch },
+                { id: 'database' as TabId, label: 'JSON DB Explorer', icon: Database },
+                { id: 'terminal' as TabId, label: 'Sandbox Playground', icon: Terminal },
+                { id: 'logs' as TabId, label: 'Run Output Logs', icon: FileText }
+              ]).map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isActive 
+                        ? 'bg-amber-600/10 text-amber-400 border border-amber-500/10' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Category: System Config */}
+          <div className="space-y-1.5">
+            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 block">System configuration</span>
+            <div className="space-y-0.5">
+              {([
+                { id: 'keys' as TabId, label: 'LLM Credentials', icon: Key },
+                { id: 'quota' as TabId, label: 'Key Health Monitor', icon: Cpu },
+                { id: 'settings' as TabId, label: 'Global Parameters', icon: Sliders }
+              ]).map(item => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isActive 
+                        ? 'bg-teal-650/10 text-teal-400 border border-teal-500/10' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Footer Panel */}
+        <div className="p-4 border-t border-white/[0.04] bg-[#09090c] space-y-3 shrink-0">
+          {state && (
+            <div className="p-3.5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-2 text-[10px]">
+              <div className="flex justify-between items-center font-mono">
+                <span className="text-gray-550">Pipeline status</span>
+                <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase ${
+                  pipeline.running ? 'bg-violet-655/20 text-violet-400 border border-violet-500/25 animate-pulse' : 'bg-gray-800 text-gray-500'
+                }`}>
                   {pipeline.running ? 'Running' : 'Idle'}
                 </span>
               </div>
-              <button onClick={triggerPipeline} disabled={pipeline.running}
-                      className="w-full py-2.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl font-medium shadow-lg shadow-violet-600/25 transition-all duration-300 flex items-center justify-center space-x-2 text-sm">
-                <Play className="h-4 w-4" />
-                <span>Start Daily Run</span>
-              </button>
-              <button onClick={() => setActiveTab('logs')}
-                      className="w-full py-2 px-4 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center space-x-2">
-                <Terminal className="h-4 w-4 text-violet-400" />
-                <span>View Output Terminal</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Sync & Git controls */}
-          <div className="glass-card rounded-2xl p-6 shadow-xl">
-            <h3 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-4">Pipeline Sync Control</h3>
-            <div className="space-y-3">
-              <button onClick={gitPull}
-                      className="w-full py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-between">
-                <span className="flex items-center space-x-2">
-                  <GitPullRequest className="h-4 w-4 text-violet-400" />
-                  <span>Pull Remote Spec</span>
-                </span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-              </button>
-              <button onClick={gitPush}
-                      className="w-full py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-between">
-                <span className="flex items-center space-x-2">
-                  <GitMerge className="h-4 w-4 text-indigo-400" />
-                  <span>Push Local Commits</span>
-                </span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-              </button>
               
-              <button onClick={triggerNetlifyDeploy}
-                      disabled={isDeploying}
-                      className="w-full py-2 px-4 bg-gradient-to-r from-emerald-600/20 to-teal-650/20 hover:from-emerald-600/30 hover:to-teal-650/30 border border-emerald-500/20 text-emerald-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-between disabled:opacity-50">
-                <span className="flex items-center space-x-2">
-                  {isDeploying ? (
-                    <RefreshCw className="h-4 w-4 animate-spin text-emerald-400" />
-                  ) : (
-                    <Play className="h-4 w-4 text-emerald-400" />
-                  )}
-                  <span>Deploy to Netlify</span>
-                </span>
-                <ChevronRight className="h-4 w-4 opacity-50" />
-              </button>
-
-              {(deployUrl || deployLog) && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-left space-y-1 text-[10px]">
-                  <span className="font-bold text-emerald-400 uppercase tracking-widest block">Netlify CDN Deployment</span>
-                  {deployUrl && (
-                    <a href={deployUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-white hover:underline block truncate font-semibold">
-                      🚀 Live: {deployUrl}
-                    </a>
-                  )}
-                  {deployLog && (
-                    <pre className="font-mono text-[9px] text-gray-400 leading-normal max-h-16 overflow-y-auto whitespace-pre-wrap mt-1 p-1 bg-black/30 rounded border border-white/5">
-                      {deployLog}
-                    </pre>
-                  )}
-                </div>
-              )}
-              
-              <button onClick={() => setShowResetModal(true)}
-                      className="w-full py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 justify-center">
-                <Trash2 className="h-4 w-4" />
-                <span>Start From Scratch</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Token Analytics */}
-          <div className="glass-card rounded-2xl p-6 shadow-xl">
-            <h3 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-4 flex items-center justify-between">
-              <span>Token Budget usage</span>
-              <BarChart2 className="h-4 w-4 text-violet-400" />
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-[11px] text-gray-450 mb-1 font-outfit">
-                  <span>Daily quota consumed</span>
-                  <span>{dailyUsedPercent}%</span>
-                </div>
-                <div className="w-full bg-white/5 rounded-full h-2">
-                  <div className="bg-gradient-to-r from-violet-500 to-indigo-500 h-2 rounded-full"
-                       style={{ width: `${dailyUsedPercent}%` }}></div>
-                </div>
-                <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                  <span>{state.token_metadata.daily_used.toLocaleString()} tkn</span>
-                  <span>Limit: {state.token_metadata.daily_budget.toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="border-t border-white/5 pt-3 flex justify-between items-center text-xs font-outfit">
-                <span className="text-gray-400">Total Pipeline Used</span>
-                <span className="text-violet-300 font-bold">{state.token_metadata.total_used.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SaaS Build Progress */}
-          {state.project.status !== 'idle' && (
-            <div className="glass-card rounded-2xl p-6 shadow-xl bg-gradient-to-br from-violet-650/5 to-indigo-650/5 border border-violet-500/10">
-              <h3 className="font-semibold text-xs text-gray-400 uppercase tracking-wider mb-4 flex items-center justify-between">
-                <span>SaaS Build Progress</span>
-                <Play className="h-4 w-4 text-emerald-400 animate-pulse" />
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-[11px] text-gray-450 mb-1 font-outfit">
-                    <span>Task Build Completion</span>
+              {state.project.status !== 'idle' && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-gray-500">
+                    <span>Task progress</span>
                     <span className="text-violet-300 font-bold">{projectProgress}%</span>
                   </div>
-                  <div className="w-full bg-white/5 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500"
-                         style={{ width: `${projectProgress}%` }}></div>
-                  </div>
-                  <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
-                    <span>{completedTasks} completed</span>
-                    <span>Total: {totalTasks} tasks</span>
+                  <div className="w-full bg-white/5 rounded-full h-1">
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-1 rounded-full" style={{ width: `${projectProgress}%` }}></div>
                   </div>
                 </div>
-                {state.project.custom_idea && (
-                  <div className="border-t border-white/5 pt-3 text-[10px] text-gray-400 leading-normal font-outfit">
-                    <span className="font-bold text-violet-400 block mb-0.5">Custom Topic Concept:</span>
-                    <p className="line-clamp-3 text-gray-300" title={state.project.custom_idea}>{state.project.custom_idea}</p>
-                  </div>
-                )}
+              )}
+
+              <div className="flex justify-between text-gray-500 font-mono">
+                <span>Daily Token</span>
+                <span className="text-violet-355 font-bold">{(state.token_metadata.daily_used / 1000).toFixed(1)}k tkn</span>
               </div>
             </div>
           )}
+          
+          <button
+            onClick={handleLogout}
+            className="w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-350 rounded-xl text-xs font-bold font-outfit transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Logout Account</span>
+          </button>
         </div>
+      </aside>
 
-        {/* Workspace panel */}
-        <div className="space-y-6 lg:col-span-3">
-          {/* Tabs Navigation */}
-          {/* Categorized Tab Navigation */}
-          <div className="glass-card rounded-2xl p-4 bg-black/15 border border-white/5 space-y-4 mb-6 shadow-md">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 divide-y md:divide-y-0 md:divide-x divide-white/5">
-              
-              {/* Category 1: Main Workspace */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold text-violet-400 tracking-wider uppercase block font-outfit">🚀 Workspace Core</span>
-                <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => setActiveTab('overview')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'overview' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <FileText className="h-3.5 w-3.5" />
-                    <span>Vision Spec</span>
-                  </button>
-                  <button onClick={() => setActiveTab('milestones')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'milestones' ? 'bg-violet-655 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <GitPullRequest className="h-3.5 w-3.5" />
-                    <span>Roadmap</span>
-                  </button>
-                  <button onClick={() => setActiveTab('chat')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'chat' ? 'bg-sky-600 text-white shadow-sm border border-sky-500/20 font-bold' : 'bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/10'}`}>
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    <span>AI Chat</span>
-                  </button>
-                  <button onClick={() => setActiveTab('editor')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'editor' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <FileCode className="h-3.5 w-3.5" />
-                    <span>Code Editor</span>
-                  </button>
-                  <button onClick={() => setActiveTab('preview')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'preview' ? 'bg-emerald-600 text-white shadow-sm border border-emerald-500/20 font-bold' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/10 animate-pulse'}`}>
-                    <Play className="h-3.5 w-3.5" />
-                    <span>Live UI</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Category 2: Developer Tools */}
-              <div className="space-y-2 pt-3 md:pt-0 md:pl-4">
-                <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase block font-outfit">🛠️ Developer Tools</span>
-                <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => setActiveTab('git')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'git' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <GitBranch className="h-3.5 w-3.5" />
-                    <span>Git VCS</span>
-                  </button>
-                  <button onClick={() => setActiveTab('database')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'database' ? 'bg-amber-650 text-white shadow-sm border border-amber-500/20 font-bold' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <Database className="h-3.5 w-3.5 animate-pulse" />
-                    <span>DB Explorer</span>
-                  </button>
-                  <button onClick={() => setActiveTab('terminal')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'terminal' ? 'bg-rose-650 text-white shadow-sm border border-rose-500/20 font-bold' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <Terminal className="h-3.5 w-3.5" />
-                    <span>Terminal</span>
-                  </button>
-                  <button onClick={() => setActiveTab('logs')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'logs' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <FileText className="h-3.5 w-3.5" />
-                    <span>Run Output</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Category 3: System settings */}
-              <div className="space-y-2 pt-3 md:pt-0 md:pl-4">
-                <span className="text-[10px] font-bold text-teal-400 tracking-wider uppercase block font-outfit">⚙️ System Configuration</span>
-                <div className="flex flex-wrap gap-1.5">
-                  <button onClick={() => setActiveTab('keys')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'keys' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <Key className="h-3.5 w-3.5" />
-                    <span>Credentials</span>
-                  </button>
-                  <button onClick={() => setActiveTab('quota')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'quota' ? 'bg-violet-650 text-white shadow-sm border border-violet-500/20' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <Cpu className="h-3.5 w-3.5" />
-                    <span>Key Health</span>
-                  </button>
-                  <button onClick={() => setActiveTab('settings')} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${activeTab === 'settings' ? 'bg-teal-650 text-white shadow-sm border border-teal-500/20 font-bold' : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'}`}>
-                    <Sliders className="h-3.5 w-3.5" />
-                    <span>Settings</span>
-                  </button>
-                </div>
-              </div>
-              
-            </div>
+      {/* Main Spacious Content Workspace Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
+        {/* Workspace Sticky Glass Header */}
+        <header className="border-b border-white/[0.04] bg-[#0c0c10]/60 backdrop-blur-md sticky top-0 z-40 px-8 py-4 flex flex-col sm:flex-row gap-4 sm:gap-0 items-center justify-between">
+          <div>
+            <h1 className="text-sm font-bold text-gray-300 font-outfit flex items-center gap-2">
+              {activeTab === 'overview' && <FileText className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'milestones' && <GitPullRequest className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'chat' && <MessageSquare className="h-4.5 w-4.5 text-sky-400 animate-pulse" />}
+              {activeTab === 'editor' && <FileCode className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'git' && <GitBranch className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'database' && <Database className="h-4.5 w-4.5 text-amber-400" />}
+              {activeTab === 'terminal' && <Terminal className="h-4.5 w-4.5 text-rose-400" />}
+              {activeTab === 'logs' && <FileText className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'keys' && <Key className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'quota' && <Cpu className="h-4.5 w-4.5 text-violet-400" />}
+              {activeTab === 'settings' && <Sliders className="h-4.5 w-4.5 text-teal-400" />}
+              <span className="font-outfit uppercase tracking-wider text-xs">
+                {activeTab === 'overview' ? 'Vision Specification' :
+                 activeTab === 'milestones' ? 'Roadmap milestones & backlog' :
+                 activeTab === 'chat' ? 'Lead Architect AI Chat' :
+                 activeTab === 'editor' ? 'Monaco Code Workspace' :
+                 activeTab === 'git' ? 'Version Control & Code Review' :
+                 activeTab === 'database' ? 'JSON Database Explorer' :
+                 activeTab === 'terminal' ? 'Dev Sandbox Playground' :
+                 activeTab === 'logs' ? 'System Runner Console Logs' :
+                 activeTab === 'keys' ? 'LLM Provider Credentials' :
+                 activeTab === 'quota' ? 'API Key Health Monitor' :
+                 activeTab === 'settings' ? 'Global Settings Panel' : activeTab}
+              </span>
+            </h1>
           </div>
+          
+          <div className="flex items-center space-x-3 shrink-0">
+            {/* Live Branch */}
+            <div className="flex items-center space-x-2 text-xs bg-white/5 border border-white/5 text-gray-300 px-3 py-1.5 rounded-xl font-mono">
+              <GitBranch className="h-3.5 w-3.5 text-violet-400" />
+              <span>{gitStatus.branch}</span>
+            </div>
+            
+            {/* Start Pipeline */}
+            <button
+              onClick={triggerPipeline}
+              disabled={pipeline.running}
+              className="px-4 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-violet-600/10 flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Play className="h-3.5 w-3.5 shrink-0" />
+              <span>{pipeline.running ? 'Running...' : 'Run Pipeline'}</span>
+            </button>
+            
+            {/* Netlify deploy */}
+            <button
+              onClick={triggerNetlifyDeploy}
+              disabled={isDeploying}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white border border-emerald-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5"
+            >
+              <CloudLightning className="h-3.5 w-3.5 shrink-0" />
+              <span>Deploy App</span>
+            </button>
+          </div>
+        </header>
 
+        {/* Spacious Main Workspace Area */}
+        <main className="p-8 max-w-7xl w-full mx-auto flex-1">
           {/* TAB CONTENT: Overview */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -3837,7 +3792,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
+        </main>
       </div>
 
       {/* DB Record Add/Edit Modal */}
