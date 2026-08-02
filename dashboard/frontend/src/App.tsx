@@ -85,7 +85,7 @@ export default function App() {
   const [customResetIdea, setCustomResetIdea] = useState<string>('');
   const [customResetTitle, setCustomResetTitle] = useState<string>('');
   const [targetMilestones, setTargetMilestones] = useState<number>(5);
-  const [projectScope, setProjectScope] = useState<'mvp' | 'saas'>('saas');
+  const [projectScope, setProjectScope] = useState<'mvp' | 'saas' | 'enterprise'>('saas');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [backendStack, setBackendStack] = useState<'nodejs' | 'python'>('nodejs');
   const [stylingStack, setStylingStack] = useState<'vanilla' | 'tailwind'>('tailwind');
@@ -2358,7 +2358,7 @@ export default function App() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-gray-400 font-semibold block">Project Scope Complexity</label>
-                    <div className="flex border border-white/10 rounded-xl overflow-hidden text-[10px] h-8">
+                    <div className="flex border border-white/10 rounded-xl overflow-hidden text-[9px] h-8">
                       <button
                         type="button"
                         onClick={() => setProjectScope('mvp')}
@@ -2372,6 +2372,13 @@ export default function App() {
                         className={`flex-1 font-bold cursor-pointer ${projectScope === 'saas' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-500'}`}
                       >
                         Full SaaS
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProjectScope('enterprise')}
+                        className={`flex-1 font-bold cursor-pointer ${projectScope === 'enterprise' ? 'bg-violet-600/30 text-violet-200 font-semibold' : 'bg-black/25 text-gray-500'}`}
+                      >
+                        Enterprise (1 Yr)
                       </button>
                     </div>
                   </div>

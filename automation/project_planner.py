@@ -165,6 +165,13 @@ def plan_new_project(trending_data: Dict, custom_idea: str = None,
         custom_instr.append(f"- Plan exactly {target_milestones} milestones in the milestones array, scaling the scope appropriately.")
     if project_scope == "mvp":
         custom_instr.append("- Prioritize a rapid prototype backlog, including only essential core workflows to build a working MVP.")
+    elif project_scope == "enterprise":
+        custom_instr.append(
+            "- Design a massive, enterprise-grade, multi-phase application architecture designed for a 1-year product lifecycle. "
+            "Backlog must feature production-ready modular layouts, clean architecture patterns (e.g. separated controllers, services, repositories), "
+            "comprehensive security middleware, database migrations, rigorous error tracking, unit/integration test suites, "
+            "and performance optimizations. Generate highly detailed and granular tasks for all modules."
+        )
     else:
         custom_instr.append("- Design a production-grade, highly structured commercial SaaS backlog featuring tests, setups, and complex routes.")
     if selected_features:
