@@ -209,12 +209,59 @@ export default function App() {
   });
 
   // Error Tracking
-  const [trackedErrors, setTrackedErrors] = useState<{id: string; message: string; file: string; line: number; count: number; status: 'open' | 'resolved'; severity: 'critical' | 'warning' | 'info'; lastSeen: string}[]>([
-    { id: 'e1', message: 'TypeError: Cannot read property of undefined', file: 'src/components/Dashboard.tsx', line: 142, count: 23, status: 'open', severity: 'critical', lastSeen: '5 min ago' },
-    { id: 'e2', message: 'Warning: Each child should have a unique key', file: 'src/components/TaskList.tsx', line: 67, count: 8, status: 'open', severity: 'warning', lastSeen: '1 hr ago' },
-    { id: 'e3', message: 'ReferenceError: process is not defined', file: 'src/utils/config.ts', line: 12, count: 3, status: 'resolved', severity: 'critical', lastSeen: '1 day ago' },
-    { id: 'e4', message: 'Hydration mismatch: Server vs Client render', file: 'src/pages/index.tsx', line: 1, count: 45, status: 'open', severity: 'warning', lastSeen: '30 min ago' },
+  const [trackedErrors, setTrackedErrors] = useState<{id: string; message: string; file: string; line: number; count: number; status: 'open' | 'resolved'; severity: 'critical' | 'warning' | 'info'; lastSeen: string; stackTrace?: string; fixSuggestion?: string}[]>([
+    { 
+      id: 'e1', 
+      message: 'TypeError: Cannot read property of undefined', 
+      file: 'src/components/Dashboard.tsx', 
+      line: 142, 
+      count: 23, 
+      status: 'open', 
+      severity: 'critical', 
+      lastSeen: '5 min ago',
+      stackTrace: `TypeError: Cannot read property 'user' of undefined\n    at Dashboard (src/components/Dashboard.tsx:142:28)\n    at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:16305)\n    at mountIndeterminateComponent (node_modules/react-dom/cjs/react-dom.development.js:20074)`,
+      fixSuggestion: `Add optional chaining:\n- const username = user.details.name;\n+ const username = user?.details?.name || 'Guest';`
+    },
+    { 
+      id: 'e2', 
+      message: 'Warning: Each child in a list should have a unique key prop', 
+      file: 'src/components/TaskList.tsx', 
+      line: 67, 
+      count: 8, 
+      status: 'open', 
+      severity: 'warning', 
+      lastSeen: '1 hr ago',
+      stackTrace: `Warning: Each child in a list should have a unique "key" prop.\n    at TaskList (src/components/TaskList.tsx:67:12)\n    at div\n    at App (src/App.tsx:820:10)`,
+      fixSuggestion: `Provide key prop to mapped element:\n- {items.map(item => <div>{item.name}</div>)}\n+ {items.map(item => <div key={item.id}>{item.name}</div>)}`
+    },
+    { 
+      id: 'e3', 
+      message: 'ReferenceError: process is not defined', 
+      file: 'src/utils/config.ts', 
+      line: 12, 
+      count: 3, 
+      status: 'resolved', 
+      severity: 'critical', 
+      lastSeen: '1 day ago',
+      stackTrace: `ReferenceError: process is not defined\n    at getConfig (src/utils/config.ts:12:5)`,
+      fixSuggestion: `Replace process.env with import.meta.env for Vite environment variables.`
+    },
+    { 
+      id: 'e4', 
+      message: 'Hydration mismatch: Server HTML vs Client render', 
+      file: 'src/pages/index.tsx', 
+      line: 1, 
+      count: 45, 
+      status: 'open', 
+      severity: 'warning', 
+      lastSeen: '30 min ago',
+      stackTrace: `Error: Text content does not match server-rendered HTML.\n    at HydrationBoundary (src/pages/index.tsx:1:1)`,
+      fixSuggestion: `Wrap dynamic browser state inside useEffect to prevent server/client timestamp mismatch.`
+    },
   ]);
+  const [fixingErrorId, setFixingErrorId] = useState<string | null>(null);
+  const [fixingAllErrors, setFixingAllErrors] = useState<boolean>(false);
+  const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null);
 
   // Team Members
   const [teamMembers] = useState<{id: string; name: string; email: string; role: 'admin' | 'developer' | 'viewer'; avatar: string; status: 'online' | 'offline' | 'away'; lastActive: string}[]>([
@@ -867,6 +914,49 @@ export default function App() {
       setApiTesterResponse({ status: 0, time: `${Date.now() - startTime}ms`, body: `Error: ${err.message}` });
     }
     setIsApiTesterLoading(false);
+  };
+
+  // AI Error Auto-Fix Handlers
+  const handleFixSingleError = async (id: string) => {
+    setFixingErrorId(id);
+    const targetErr = trackedErrors.find(e => e.id === id);
+    // Simulate AI patch analysis & resolution
+    await new Promise(r => setTimeout(r, 1200));
+    setTrackedErrors(prev => prev.map(e => e.id === id ? { ...e, status: 'resolved' } : e));
+    setFixingErrorId(null);
+
+    // Push notification to state
+    if (targetErr) {
+      setNotifications(prev => [
+        {
+          id: Date.now().toString(),
+          title: 'AI Auto-Repair Complete',
+          message: `Fixed error in ${targetErr.file}:${targetErr.line} automatically`,
+          time: 'Just now',
+          type: 'success',
+          read: false
+        },
+        ...prev
+      ]);
+    }
+  };
+
+  const handleFixAllErrors = async () => {
+    setFixingAllErrors(true);
+    await new Promise(r => setTimeout(r, 2000));
+    setTrackedErrors(prev => prev.map(e => ({ ...e, status: 'resolved' })));
+    setFixingAllErrors(false);
+    setNotifications(prev => [
+      {
+        id: Date.now().toString(),
+        title: 'All Errors Resolved',
+        message: 'AI Auto-Repair suite resolved all open tracked errors across codebase',
+        time: 'Just now',
+        type: 'success',
+        read: false
+      },
+      ...prev
+    ]);
   };
 
   const fetchState = async () => {
@@ -3796,7 +3886,7 @@ export default function App() {
                 {/* Custom command presets */}
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Presets:</span>
-                  {['npm run build', 'npm run dev', 'git status', 'node -v', 'npm list'].map(cmd => (
+                  {['agy --help', 'agy status', 'npm run build', 'npm run dev', 'git status', 'node -v'].map(cmd => (
                     <button
                       key={cmd}
                       onClick={() => setTerminalCommand(cmd)}
@@ -4094,30 +4184,100 @@ export default function App() {
             <div className="space-y-6">
               <div className="glass-card rounded-2xl p-6 shadow-xl">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-base font-bold text-white">Error Tracking</h2>
-                  <div className="flex items-center space-x-2">
+                  <div>
+                    <h2 className="text-base font-bold text-white">Error Tracking Center</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">Real-time exception logging, stack trace diagnosis, and automated AI code repair.</p>
+                  </div>
+                  <div className="flex items-center space-x-3">
                     <span className="text-[10px] bg-rose-500/10 text-rose-400 px-2.5 py-1 rounded-full border border-rose-500/20 font-bold">{trackedErrors.filter(e => e.status === 'open').length} Open</span>
                     <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-bold">{trackedErrors.filter(e => e.status === 'resolved').length} Resolved</span>
+                    {trackedErrors.some(e => e.status === 'open') && (
+                      <button 
+                        onClick={handleFixAllErrors}
+                        disabled={fixingAllErrors}
+                        className="px-3.5 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 shadow-lg shadow-violet-600/20"
+                      >
+                        <Zap className="h-3.5 w-3.5 text-amber-300" />
+                        <span>{fixingAllErrors ? 'AI Repairing All...' : 'Fix All with AI'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  {trackedErrors.map(err => (
-                    <div key={err.id} className={`p-4 rounded-xl border transition-all hover:bg-white/[0.02] ${err.status === 'resolved' ? 'border-white/[0.03] opacity-60' : err.severity === 'critical' ? 'border-rose-500/15 bg-rose-500/[0.02]' : 'border-amber-500/15 bg-amber-500/[0.02]'}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${err.severity === 'critical' ? 'bg-rose-500/20 text-rose-400' : err.severity === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-sky-500/20 text-sky-400'}`}>{err.severity}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${err.status === 'open' ? 'bg-rose-500/10 text-rose-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{err.status}</span>
+
+                <div className="space-y-3">
+                  {trackedErrors.map(err => {
+                    const isExpanded = expandedErrorId === err.id;
+                    const isFixing = fixingErrorId === err.id;
+                    return (
+                      <div key={err.id} className={`rounded-xl border transition-all ${err.status === 'resolved' ? 'border-white/[0.03] bg-black/10 opacity-75' : err.severity === 'critical' ? 'border-rose-500/20 bg-rose-500/[0.02]' : 'border-amber-500/20 bg-amber-500/[0.02]'}`}>
+                        <div className="p-4 flex items-start justify-between">
+                          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedErrorId(isExpanded ? null : err.id)}>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${err.severity === 'critical' ? 'bg-rose-500/20 text-rose-400' : err.severity === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-sky-500/20 text-sky-400'}`}>{err.severity}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${err.status === 'open' ? 'bg-rose-500/10 text-rose-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{err.status}</span>
+                              <span className="text-[10px] text-gray-500 font-mono">ID: {err.id}</span>
+                            </div>
+                            <p className="text-xs text-white font-bold hover:text-violet-300 transition-colors flex items-center gap-1.5">
+                              <span>{err.message}</span>
+                              <span className="text-[10px] text-gray-500">{isExpanded ? '▲' : '▼'}</span>
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-mono mt-1">
+                              📄 <code className="text-amber-300 font-bold">{err.file}:{err.line}</code> · {err.count} occurrences · Last seen: {err.lastSeen}
+                            </p>
                           </div>
-                          <p className="text-xs text-white font-semibold truncate">{err.message}</p>
-                          <p className="text-[10px] text-gray-500 font-mono mt-1">{err.file}:{err.line} · {err.count} occurrences · Last: {err.lastSeen}</p>
+
+                          <div className="flex items-center space-x-2 ml-4">
+                            {err.status === 'open' && (
+                              <button
+                                onClick={() => handleFixSingleError(err.id)}
+                                disabled={isFixing || fixingAllErrors}
+                                className="px-3 py-1.5 bg-gradient-to-r from-violet-600 to-teal-600 hover:from-violet-500 hover:to-teal-500 disabled:opacity-50 text-white rounded-xl text-[11px] font-bold cursor-pointer transition-all flex items-center space-x-1 shadow-md shadow-violet-600/20"
+                              >
+                                {isFixing ? (
+                                  <>
+                                    <RefreshCw className="h-3 w-3 animate-spin text-teal-300" />
+                                    <span>Fixing...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Zap className="h-3 w-3 text-yellow-300" />
+                                    <span>Fix with AI</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+
+                            <button 
+                              onClick={() => setTrackedErrors(prev => prev.map(e => e.id === err.id ? { ...e, status: e.status === 'open' ? 'resolved' : 'open' } : e))} 
+                              className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer transition-all ${err.status === 'open' ? 'bg-white/5 text-gray-300 hover:bg-white/10' : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'}`}
+                            >
+                              {err.status === 'open' ? 'Mark Resolved' : 'Reopen'}
+                            </button>
+                          </div>
                         </div>
-                        <button onClick={() => setTrackedErrors(prev => prev.map(e => e.id === err.id ? { ...e, status: e.status === 'open' ? 'resolved' : 'open' } : e))} className={`ml-3 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${err.status === 'open' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'}`}>
-                          {err.status === 'open' ? 'Resolve' : 'Reopen'}
-                        </button>
+
+                        {/* Expandable Stack Trace & AI Patch Suggestion */}
+                        {isExpanded && (
+                          <div className="border-t border-white/5 p-4 bg-black/40 space-y-3 rounded-b-xl">
+                            <div>
+                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Stack Trace</span>
+                              <pre className="text-[10px] text-rose-300/90 font-mono bg-black/60 p-3 rounded-xl border border-rose-500/10 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                                {err.stackTrace || 'No stack trace available for this event.'}
+                              </pre>
+                            </div>
+                            {err.fixSuggestion && (
+                              <div>
+                                <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider block mb-1">AI Suggested Code Fix Patch</span>
+                                <pre className="text-[11px] text-emerald-300 font-mono bg-emerald-950/20 p-3 rounded-xl border border-emerald-500/20 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                                  {err.fixSuggestion}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
