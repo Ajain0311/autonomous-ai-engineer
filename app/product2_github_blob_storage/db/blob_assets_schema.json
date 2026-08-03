@@ -1,0 +1,11 @@
+{
+  "tableName": "blob_assets",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "filename", "type": "string", "required": true },
+    { "name": "type", "type": "string", "required": true, "default": "image" },
+    { "name": "url", "type": "string", "required": true },
+    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
+    { "name": "created_at", "type": "string", "required": true }
+  ]
+}

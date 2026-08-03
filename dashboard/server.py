@@ -1324,14 +1324,158 @@ def get_product_table_data(product_id: str, table_name: str):
 @app.post("/api/products/data/{product_id}/{table_name}")
 def save_product_table_data(product_id: str, table_name: str, payload: list):
     data_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}.json"
+    if product_id == "system_db":
+        data_file = ROOT_DIR / "db" / f"{table_name}.json"
+        
     data_file.parent.mkdir(parents=True, exist_ok=True)
     
     with open(data_file, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
 
-    run_git_command(["add", "db/", f"app/{product_id}/"])
+    run_git_command(["add", "db/", "app/"])
     run_git_command(["commit", "-m", f"db(data): updated {table_name} in {product_id}"])
     return {"status": "success", "rows": payload}
+
+# ==========================================
+# MASTER TABLE DIRECTORY & BLOB STORAGE ENDPOINTS
+# ==========================================
+
+class TableCreateRequest(BaseModel):
+    product_id: str
+    table_name: str
+    columns: list
+
+class BlobUploadRequest(BaseModel):
+    filename: str
+    type: str  # "image" | "video" | "doc"
+    size: str = "1.0 MB"
+
+@app.get("/api/db/master_tables")
+def get_master_tables_directory():
+    master_tables = []
+    
+    master_cfg_file = ROOT_DIR / "db" / "master_config.json"
+    prod_map = {}
+    if master_cfg_file.exists():
+        try:
+            with open(master_cfg_file, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                for p in cfg.get("products", []):
+                    prod_map[p["id"]] = p
+        except Exception:
+            pass
+
+    # Scan root /db
+    db_dir = ROOT_DIR / "db"
+    if db_dir.exists():
+        for f in db_dir.glob("*.json"):
+            if not f.name.endswith("_schema.json") and f.name != "master_config.json":
+                rows_cnt = 0
+                try:
+                    with open(f, "r", encoding="utf-8") as file:
+                        d = json.load(file)
+                        rows_cnt = len(d) if isinstance(d, list) else 1
+                except Exception:
+                    pass
+                master_tables.append({
+                    "tableName": f.stem,
+                    "projectId": "system_db",
+                    "projectName": "Global System Database",
+                    "description": f"Global system database table for {f.stem}",
+                    "rowCount": rows_cnt
+                })
+
+    # Scan app/product* folders
+    app_dir = ROOT_DIR / "app"
+    if app_dir.exists():
+        for p_dir in app_dir.iterdir():
+            if p_dir.is_dir() and p_dir.name.startswith("product"):
+                p_db = p_dir / "db"
+                p_info = prod_map.get(p_dir.name, {})
+                p_name = p_info.get("name", p_dir.name)
+                p_desc = p_info.get("description", f"Isolated DB table for {p_dir.name}")
+                if p_db.exists():
+                    for f in p_db.glob("*.json"):
+                        if not f.name.endswith("_schema.json"):
+                            rows_cnt = 0
+                            try:
+                                with open(f, "r", encoding="utf-8") as file:
+                                    d = json.load(file)
+                                    rows_cnt = len(d) if isinstance(d, list) else 1
+                            except Exception:
+                                pass
+                            master_tables.append({
+                                "tableName": f.stem,
+                                "projectId": p_dir.name,
+                                "projectName": p_name,
+                                "description": p_desc,
+                                "rowCount": rows_cnt
+                            })
+
+    return {"status": "success", "master_tables": master_tables}
+
+@app.post("/api/db/create_table")
+def create_new_table(payload: TableCreateRequest):
+    table_name = payload.table_name.lower().replace(" ", "_")
+    target_dir = ROOT_DIR / "app" / payload.product_id / "db"
+    if payload.product_id == "system_db":
+        target_dir = ROOT_DIR / "db"
+        
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    schema_file = target_dir / f"{table_name}_schema.json"
+    data_file = target_dir / f"{table_name}.json"
+
+    with open(schema_file, "w", encoding="utf-8") as f:
+        json.dump({"tableName": table_name, "columns": payload.columns}, f, indent=2)
+
+    if not data_file.exists():
+        with open(data_file, "w", encoding="utf-8") as f:
+            json.dump([], f, indent=2)
+
+    run_git_command(["add", "db/", "app/"])
+    run_git_command(["commit", "-m", f"db(schema): created new table {table_name} in {payload.product_id}"])
+    return {"status": "success", "tableName": table_name}
+
+@app.post("/api/blob/upload")
+def upload_blob_asset(payload: BlobUploadRequest):
+    subfolder = "images" if payload.type == "image" else "videos" if payload.type == "video" else "docs"
+    storage_dir = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage" / subfolder
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    asset_file = storage_dir / payload.filename
+    with open(asset_file, "w", encoding="utf-8") as f:
+        f.write(f"Binary storage asset payload for {payload.filename}")
+
+    asset_url = f"/storage/{subfolder}/{payload.filename}"
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    data_file = ROOT_DIR / "app" / "product2_github_blob_storage" / "db" / "blob_assets.json"
+    data_file.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    if data_file.exists():
+        try:
+            with open(data_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+        except Exception:
+            pass
+
+    new_asset = {
+        "id": len(rows) + 1,
+        "filename": payload.filename,
+        "type": payload.type,
+        "url": asset_url,
+        "size": payload.size,
+        "created_at": today_str
+    }
+    rows.insert(0, new_asset)
+
+    with open(data_file, "w", encoding="utf-8") as f:
+        json.dump(rows, f, indent=2, ensure_ascii=False)
+
+    run_git_command(["add", "app/product2_github_blob_storage/"])
+    run_git_command(["commit", "-m", f"feat(blob): uploaded {payload.filename} to storage/{subfolder}"])
+    return {"status": "success", "asset": new_asset, "rows": rows}
 
 @app.post("/api/db/adblocker_rules")
 def save_adblocker_rules(rules: list):

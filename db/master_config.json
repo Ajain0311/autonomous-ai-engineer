@@ -3,8 +3,16 @@
   "products": [
     {
       "id": "product1_adblocker_extension",
-      "name": "Product 1: Manifest V3 AdBlocker Extension",
+      "name": "Product 01: Manifest V3 AdBlocker & Tracker Zapper",
+      "description": "Browser extension to block ads, trackers, and popup zappers using isolated dynamic rules.",
       "db_folder": "app/product1_adblocker_extension/db",
+      "status": "OPERATIONAL"
+    },
+    {
+      "id": "product2_github_blob_storage",
+      "name": "Product 02: GitHub Blob Storage & Media CDN Utility",
+      "description": "Uploads and organizes Images, MP4 Videos, and PDF Documents into distinct folders with raw access/download URLs.",
+      "db_folder": "app/product2_github_blob_storage/db",
       "status": "OPERATIONAL"
     }
   ]

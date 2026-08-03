@@ -1,0 +1,10 @@
+{
+  "tableName": "users",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "username", "type": "string", "required": true },
+    { "name": "password", "type": "string", "required": true },
+    { "name": "role", "type": "string", "required": true, "default": "viewer" },
+    { "name": "enabled", "type": "boolean", "required": true, "default": true }
+  ]
+}
