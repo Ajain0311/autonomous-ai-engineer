@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Bot, MessageSquare, Send, Globe, Shield, Sparkles, User, 
+  Bot, MessageSquare, Send, Globe, Sparkles, User, 
   Stethoscope, Scale, Code2, TrendingUp, Heart, GraduationCap, 
-  Search, CheckCircle2, Clock, ThumbsUp, Plus, ArrowRight, X, 
-  Languages, Zap, AlertCircle, RefreshCw, Star
+  CheckCircle2, Plus, ArrowRight, X, Languages, Zap, Copy, 
+  Check, ThumbsUp, ThumbsDown, ShieldCheck, Flame, ChevronRight, Star,
+  Compass, ArrowUpRight
 } from 'lucide-react';
 
-// Specialized AI Agent User Interface
 interface AIAgent {
   id: string;
   name: string;
   role: string;
-  category: 'health' | 'legal' | 'tech' | 'finance' | 'wellness' | 'education' | 'translation';
+  category: 'health' | 'legal' | 'tech' | 'finance' | 'wellness' | 'education';
   avatar: string;
   icon: any;
   online: boolean;
@@ -19,7 +19,6 @@ interface AIAgent {
   languages: string[];
   description: string;
   specialty: string;
-  systemPrompt: string;
   samplePrompts: string[];
 }
 
@@ -30,6 +29,7 @@ interface ChatMessage {
   text: string;
   language: string;
   timestamp: string;
+  feedback?: 'liked' | 'disliked';
 }
 
 interface ProblemTicket {
@@ -50,16 +50,16 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'agents' | 'chat' | 'tickets'>('agents');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('Hindi');
   const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
   // Real-Time Chat Engine State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: 'm1',
       sender: 'agent',
-      agentId: 'dr-medico',
-      text: 'नमस्ते! मैं Dr. Medico AI हूँ। आपकी सेहत, आहार या किसी लक्षण से जुड़ी सहायता के लिए मैं यहाँ हूँ। आप अपनी भाषा में सवाल पूछ सकते हैं।',
+      agentId: 'advocate-nyaya',
+      text: 'नमस्ते! मैं Advocate Nyaya AI हूँ। कानूनी अधिकार, प्रॉपर्टी विवाद व अनुबंध संबंधी प्रश्नों के लिए मैं यहाँ हूँ। आप अपनी भाषा में बेझिझक सवाल पूछ सकते हैं।',
       language: 'Hindi',
       timestamp: '10:00 AM'
     }
@@ -68,33 +68,14 @@ export default function App() {
   const [isAgentTyping, setIsAgentTyping] = useState<boolean>(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  // Problem Submission Modal
+  // Submit Modal
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
   const [ticketTitle, setTicketTitle] = useState<string>('');
   const [ticketDesc, setTicketDesc] = useState<string>('');
-  const [ticketCategory, setTicketCategory] = useState<string>('health');
+  const [ticketCategory, setTicketCategory] = useState<string>('legal');
 
-  // Specialized AI Expert Agents (Active AI Users)
+  // Specialized AI Expert Agents
   const agents: AIAgent[] = [
-    {
-      id: 'dr-medico',
-      name: 'Dr. Medico AI',
-      role: 'Healthcare & Medical Wellness Specialist',
-      category: 'health',
-      avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
-      icon: Stethoscope,
-      online: true,
-      rating: 4.9,
-      languages: ['Hindi', 'English', 'Hinglish', 'Bengali', 'Marathi'],
-      description: 'Provides instant medical guidance, symptom analysis, dietary plans, and wellness advice in your native language.',
-      specialty: 'Symptom Checker, Diet Plans, First Aid & Preventive Care',
-      systemPrompt: 'You are Dr. Medico AI, an empathetic healthcare expert assistant.',
-      samplePrompts: [
-        'मुझे पिछले 2 दिन से सिरदर्द और हल्का बुखार है, क्या उपाय करूँ?',
-        'What should I eat to improve hemoglobin levels naturally?',
-        'गैस और एसिडिटी की समस्या का घरेलू इलाज बताइए।'
-      ]
-    },
     {
       id: 'advocate-nyaya',
       name: 'Advocate Nyaya AI',
@@ -104,14 +85,31 @@ export default function App() {
       icon: Scale,
       online: true,
       rating: 4.95,
-      languages: ['Hindi', 'English', 'Hinglish', 'Tamil', 'Gujarati'],
-      description: 'Simplifies legal notices, property disputes, consumer rights, labor law, and contract drafting step-by-step.',
-      specialty: 'Consumer Rights, Rent Agreements, Consumer Forum Complaints',
-      systemPrompt: 'You are Advocate Nyaya AI, a knowledgeable legal advice consultant.',
+      languages: ['Hindi', 'English', 'Hinglish'],
+      description: 'Simplifies property disputes, land conversion, rent agreements, legal notices, and consumer rights.',
+      specialty: 'Rajasthan Land Revenue (90A), Rent Control, Consumer Forum Complaints',
       samplePrompts: [
-        'मकान मालिक सिक्योरिटी डिपॉजिट वापस नहीं कर रहा, क्या लीगल नोटिस भेजें?',
-        'How to file a consumer court complaint for a defective product online?',
-        'रेंट एग्रीमेंट ड्राफ्ट करते समय किन बातों का ध्यान रखना चाहिए?'
+        'राजस्थान में कृषि भूमि का पारिवारिक विवाद और डायरेक्ट पट्टा बनवाने का तरीका?',
+        'मकान मालिक सिक्योरिटी डिपॉजिट वापस नहीं दे रहा, क्या लीगल नोटिस भेजें?',
+        'कंज्यूमर कोर्ट में शिकायत दर्ज करने की स्टेप-बाय-स्टेप प्रक्रिया क्या है?'
+      ]
+    },
+    {
+      id: 'dr-medico',
+      name: 'Dr. Medico AI',
+      role: 'Healthcare & Medical Wellness Specialist',
+      category: 'health',
+      avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
+      icon: Stethoscope,
+      online: true,
+      rating: 4.9,
+      languages: ['Hindi', 'English', 'Hinglish'],
+      description: 'Instant medical guidance, symptom analysis, dietary plans, and preventive care advice in your language.',
+      specialty: 'Symptom Checker, Diet Plans, First Aid & Medical Guidance',
+      samplePrompts: [
+        'मुझे पिछले 2 दिन से सिरदर्द और हल्का बुखार है, प्राथमिक घरेलू उपाय क्या हैं?',
+        'एसिडिटी और पेट की समस्या का तुरंत घरेलू इलाज बताइए।',
+        'Natural ways to improve hemoglobin and iron levels in 30 days.'
       ]
     },
     {
@@ -124,13 +122,12 @@ export default function App() {
       online: true,
       rating: 5.0,
       languages: ['English', 'Hinglish', 'Hindi'],
-      description: 'Solves complex code bugs, performs security code reviews, and designs scalable cloud architectures.',
-      specialty: 'React, Node.js, Python, System Design, Debugging',
-      systemPrompt: 'You are DevGuru AI, an expert system architect and code debugger.',
+      description: 'Solves complex code bugs, performs security code reviews, and optimizes React & Node.js web performance.',
+      specialty: 'React Memory Leaks, TypeScript, System Design, Python Bug Fixing',
       samplePrompts: [
-        'React component state render loop infinity error kaise fix karein?',
-        'How to design a high-concurrency microservice API rate limiter?',
-        'Python script pandas memory leak error resolve code give me.'
+        'React component state render loop and memory leak issue resolution code?',
+        'How to design a high-concurrency API rate limiter in Node.js?',
+        'Fix Python script pandas memory leak error with clean solution.'
       ]
     },
     {
@@ -144,11 +141,10 @@ export default function App() {
       rating: 4.85,
       languages: ['Hindi', 'English', 'Hinglish'],
       description: 'Helps users build monthly budgets, save taxes under New/Old regime, and plan mutual fund investments.',
-      specialty: 'Income Tax Savings, SIP Planning, Emergency Fund Allocation',
-      systemPrompt: 'You are FinVision AI, a certified personal financial planning consultant.',
+      specialty: 'Income Tax Savings (80C), SIP Planning, Emergency Fund Rules',
       samplePrompts: [
-        '7 लाख सैलरी पर Old vs New Tax Regime में कौन सा बेहतर है?',
-        'How to start investing 5000 INR per month in Index Mutual Funds?',
+        '7 लाख सैलरी पर Old vs New Tax Regime में कौन सा ज्यादा फायदेमंद है?',
+        'How to start investing 5,000 INR per month in Index Mutual Funds?',
         'क्रेडिट कार्ड का कर्ज जल्दी चुकाने की बेस्ट स्ट्रेटजी क्या है?'
       ]
     },
@@ -161,12 +157,11 @@ export default function App() {
       icon: Heart,
       online: true,
       rating: 4.98,
-      languages: ['Hindi', 'English', 'Hinglish', 'Spanish', 'French'],
+      languages: ['Hindi', 'English', 'Hinglish'],
       description: 'A compassionate, non-judgmental space for managing anxiety, exam stress, burnout, and emotional healing.',
       specialty: 'CBT Exercises, Mindfulness Breathing, Anxiety Support',
-      systemPrompt: 'You are MindEase Therapy AI, a gentle and empathetic mental health guide.',
       samplePrompts: [
-        'मुझे नौकरी की वजह से बहुत ज्यादा स्ट्रेस और एंग्जायटी हो रही है।',
+        'नौकरी और काम के दबाव की वजह से बहुत ज्यादा तनाव महसूस हो रहा है।',
         'How to overcome overthinking before sleeping at night?',
         'मन शांत करने की 5 मिनट की माइंडफुलनेस एक्सरसाइज बताइए।'
       ]
@@ -180,62 +175,53 @@ export default function App() {
       icon: GraduationCap,
       online: true,
       rating: 4.9,
-      languages: ['Hindi', 'English', 'Hinglish', 'Spanish', 'French', 'German'],
-      description: 'Explains complex Math, Science, History, and Coding concepts simply in your preferred language with examples.',
+      languages: ['Hindi', 'English', 'Hinglish'],
+      description: 'Explains complex Math, Science, and Coding concepts simply in your preferred language with examples.',
       specialty: 'Class 9-12 Science/Maths, Competitive Exam Prep, Homework Solver',
-      systemPrompt: 'You are EduMaster Tutor AI, an engaging academic teacher.',
       samplePrompts: [
-        'क्वांटम मैकेनिक्स और फोटोइलेक्ट्रिक इफेक्ट को हिंदी में आसान उदाहरण से समझाओ।',
+        'क्वांटम मैकेनिक्स और फोटोइलेक्ट्रिक इफेक्ट को आसान भाषा में उदाहरण से समझाओ।',
         'Solve step-by-step calculus integration by parts equation.',
         'IIT JEE Physics ke Newton Laws solved numerical problems show karo.'
       ]
     }
   ];
 
-  // Sample User Problem Tickets
+  // Default agent set to Advocate Nyaya AI
+  useEffect(() => {
+    if (!selectedAgent) setSelectedAgent(agents[0]);
+  }, []);
+
+  // Community Tickets
   const [tickets, setTickets] = useState<ProblemTicket[]>([
     {
       id: 't101',
-      title: 'मकान मालिक 50,000 डिपॉजिट वापस नहीं कर रहा - कानूनी सलाह चाहिए',
-      description: 'मैंने 2 साल का लीज पीरियड पूरा किया और फ्लैट बिना नुकसान दिए खाली किया, लेकिन मकान मालिक फोन नहीं उठा रहा।',
+      title: 'राजस्थान कृषि भूमि पारिवारिक विवाद और पट्टा नियमन सलाह',
+      description: 'कृषि भूमि पर परिवार के अन्य सदस्यों से विवाद है। 90A कन्वर्जन नहीं हो रहा। क्या प्रत्यक्ष पट्टा बनवाने का कानूनी विकल्प है?',
       category: 'legal',
       language: 'Hindi',
-      user: 'Rahul Sharma (Delhi)',
+      user: 'Rahul Sharma (Jaipur)',
       assignedAgent: 'Advocate Nyaya AI',
       status: 'solving',
-      upvotes: 38,
-      createdAt: '2 घंटे पहले',
-      solutionSummary: 'Advocate Nyaya AI ने 15 दिनों का लीगल नोटिस ड्राफ्ट करके भेजा है।'
+      upvotes: 42,
+      createdAt: '1 घंटे पहले',
+      solutionSummary: 'Advocate Nyaya AI ने धारा 90A भू-राजस्व अधिनियम व धारा 53 काश्तकारी अधिनियम के तहत बंटवारा वाद का स्पष्ट समाधान प्रदान किया।'
     },
     {
       id: 't102',
-      title: 'React State Management memory leak causing web app crash',
-      description: 'Our web app freezes after 15 minutes of usage due to uncleaned WebSocket event listeners in useEffect.',
+      title: 'React WebSocket component memory leak causing app freeze',
+      description: 'React application slows down after 15 minutes due to uncleaned event listeners in useEffect.',
       category: 'tech',
       language: 'English',
       user: 'Priya Mehta (Bangalore)',
       assignedAgent: 'DevGuru AI Architect',
       status: 'resolved',
-      upvotes: 54,
-      createdAt: '5 घंटे पहले',
+      upvotes: 58,
+      createdAt: '3 घंटे पहले',
       solutionSummary: 'DevGuru AI provided cleanup function code patch for useEffect hook.'
-    },
-    {
-      id: 't103',
-      title: 'अचानक से तेज सिरदर्द और उल्टी महसूस होना - तुरंत सहायता',
-      description: 'सुबह से दाहिनी तरफ सिर में तेज दर्द हो रहा है और रोशनी देखने में परेशानी हो रही है।',
-      category: 'health',
-      language: 'Hindi',
-      user: 'Amit Verma (Jaipur)',
-      assignedAgent: 'Dr. Medico AI',
-      status: 'resolved',
-      upvotes: 29,
-      createdAt: '1 दिन पहले',
-      solutionSummary: 'Dr. Medico AI ने इसे माइग्रेन (Migraine) का लक्षण बताया और तुरंत डॉक्टर परामर्श लेने की सलाह दी।'
     }
   ]);
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isAgentTyping]);
@@ -244,7 +230,6 @@ export default function App() {
   const startChatWithAgent = (agent: AIAgent) => {
     setSelectedAgent(agent);
     setActiveTab('chat');
-    // Add welcome message if chat empty
     if (!chatMessages.some(m => m.agentId === agent.id)) {
       setChatMessages(prev => [
         ...prev,
@@ -252,7 +237,7 @@ export default function App() {
           id: Date.now().toString(),
           sender: 'agent',
           agentId: agent.id,
-          text: `नमस्ते! मैं ${agent.name} हूँ। ${agent.role}। बताइए आज आपकी किस समस्या का समाधान करूँ? (${selectedLanguage} भाषा समर्थित है)`,
+          text: `नमस्ते! मैं ${agent.name} हूँ। ${agent.role}। अपनी समस्या बताएं (${selectedLanguage} भाषा समर्थित है)।`,
           language: selectedLanguage,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -260,7 +245,19 @@ export default function App() {
     }
   };
 
-  // Generate Intelligent Multilingual AI Response
+  // Copy Message Text
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMessageId(id);
+    setTimeout(() => setCopiedMessageId(null), 2000);
+  };
+
+  // Feedback Toggle
+  const handleFeedback = (id: string, type: 'liked' | 'disliked') => {
+    setChatMessages(prev => prev.map(m => m.id === id ? { ...m, feedback: m.feedback === type ? undefined : type } : m));
+  };
+
+  // Intelligent Dynamic Multilingual Response Generator
   const handleSendMessage = async (textToSend?: string) => {
     const query = textToSend || inputMessage;
     if (!query.trim() || !selectedAgent) return;
@@ -277,111 +274,97 @@ export default function App() {
     setInputMessage('');
     setIsAgentTyping(true);
 
-    // Simulate real-time AI Agent problem-solving response based on context & language
     setTimeout(() => {
       let aiResponseText = '';
       const q = query.toLowerCase();
 
-      // ⚖️ LEGAL ADVISOR (Advocate Nyaya AI)
+      // ⚖️ LEGAL ADVISOR
       if (selectedAgent.category === 'legal') {
-        if (q.includes('land') || q.includes('bhoomi') || q.includes('zameen') || q.includes('patta') || q.includes('convert') || q.includes('rajsthan') || q.includes('rajasthan') || q.includes('krishi') || q.includes('parivar') || q.includes('vivad') || q.includes('property')) {
-          aiResponseText = `⚖️ **Advocate Nyaya AI - राजस्थान भूमि व संपत्ति विवाद समाधान (${selectedLanguage}):**
+        if (q.includes('land') || q.includes('bhoomi') || q.includes('zameen') || q.includes('patta') || q.includes('convert') || q.includes('rajsthan') || q.includes('rajasthan') || q.includes('krishi') || q.includes('parivar') || q.includes('vivad')) {
+          aiResponseText = `⚖️ **Advocate Nyaya AI - राजस्थान भूमि व संपत्ति विवाद कानूनी समाधान (${selectedLanguage}):**
 
-आपके द्वारा बताई गई राजस्थान कृषि भूमि व परिवार विवाद की स्थिति का कानूनी व तकनीकी समाधान:
+आपके द्वारा बताई गई **राजस्थान कृषि भूमि व पारिवारिक विवाद** की स्थिति का सटीक कानूनी समाधान:
 
 1️⃣ **धारा 90A (Rajasthan Land Revenue Act Section 90A)**:
-   - यदि कृषि भूमि का व्यावसायिक या आवासीय रूपांतरण (Conversion) नहीं हो पा रहा है, तो राजस्थान भू-राजस्व अधिनियम की धारा **90A** के तहत तहसीलदार/उपखंड अधिकारी (SDM) कार्यालय में आवेदन करें।
-   - परिवार के अन्य सदस्यों की असहमति पर धारा 90A के तहत सरकारी नियमन (Regularization) की कार्रवाई की जाती है।
+   - यदि कृषि भूमि का आवासीय/व्यावसायिक रूपांतरण (Conversion) नहीं हो पा रहा है, तो उपखंड अधिकारी (SDM) / तहसीलदार के पास **धारा 90A** के तहत नियमन (Regularization) हेतु आवेदन करें।
+   - परिवार के अन्य सदस्यों की असहमति होने पर भी सक्षम अधिकारी द्वारा कानूनी सुनवाई कर नियमन की कार्रवाई की जा सकती है।
 
-2️⃣ **राजस्व न्यायालय में पारिवारिक बंटवारा (Partition Suit - Section 53 Rajasthan Tenancy Act)**:
-   - खातेदारी कृषि भूमि में अपना हिस्सा कानूनी रूप से अलग करने के लिए उपखंड अधिकारी (SDM Court) के समक्ष **धारा 53 राजस्थान काश्तकारी अधिनियम** के तहत विभाजन का दावा (Partition Suit) दायर करें।
-   - इसके साथ ही कोर्ट से विवादित भूमि पर निर्माण या बिक्री रोकने हेतु **अस्थाई निषेधाज्ञा (Stay Order)** प्राप्त करें।
+2️⃣ **राजस्व कोर्ट में पारिवारिक विभाजन (Partition Suit - Section 53 Rajasthan Tenancy Act)**:
+   - खातेदारी कृषि भूमि में अपना वैध हिस्सा कानूनी रूप से अलग करवाने के लिए **SDM Court** के समक्ष **धारा 53 राजस्थान काश्तकारी अधिनियम** के तहत विभाजन का दावा (Partition Suit) दायर करें।
+   - भूमि पर किसी भी प्रकार के अवैध निर्माण या बिक्री को रोकने के लिए न्यायालय से तत्काल **अस्थाई निषेधाज्ञा (Stay Order)** प्राप्त करें।
 
-3️⃣ **प्रत्यक्ष पट्टा प्राप्त करने का विकल्प (प्रशासन शहरों/गांवों के संग अभियान)**:
-   - यदि भूमि निकाय क्षेत्र (JDA / UIT / नगर पालिका / ग्राम पंचायत) की सीमा में आती है, तो 'प्रशासन शहरों/गांवों के संग' के तहत **धारा 69A (Rajasthan Municipalities Act)** के अंतर्गत व्यक्तिगत कब्जे के आधार पर प्रत्यक्ष पट्टा (Individual Patta) हेतु आवेदन कर सकते हैं।
+3️⃣ **प्रत्यक्ष पट्टा प्राप्त करने का विकल्प (धारा 69A)**:
+   - यदि भूमि निकाय क्षेत्र (JDA / UIT / नगर पालिका / ग्राम पंचायत) की सीमा में आती है, तो **राजस्थान नगरपालिका अधिनियम की धारा 69A** के तहत पुराने भौतिक कब्जे के आधार पर प्रत्यक्ष पट्टा (Individual Patta) हेतु आवेदन किया जा सकता है।
 
-4️⃣ **आवश्यक दस्तावेज**:
-   - जमाबंदी (खसरा नक़्शा), म्यूटेशन (नामांतरण की प्रति), आधार कार्ड, और भूमि पर आपके भौतिक कब्जे (Possession) का प्रमाण।`;
+📋 **आवश्यक दस्तावेज**: जमाबंदी (खसरा नक्शा), नामांतरण (म्यूटेशन प्रविष्टि), आधार कार्ड व कब्जे का प्रमाण।`;
         } else if (q.includes('rent') || q.includes('landlord') || q.includes('deposit') || q.includes('मकान मालिक')) {
-          aiResponseText = `⚖️ **Advocate Nyaya AI - रेंट व डिपॉजिट विवाद समाधान:**
+          aiResponseText = `⚖️ **Advocate Nyaya AI - रेंट व सिक्योरिटी डिपॉजिट विवाद:**
 
-1️⃣ **लीगल नोटिस (15 Days Statutory Notice)**:
-   - वकील के माध्यम से धारा 106 Transfer of Property Act के तहत 15 दिनों का कानूनी नोटिस भेजें।
-2️⃣ **रेंट कंट्रोल ट्रिब्यूनल**:
-   - नजदीकी Rent Control Tribunal में सिक्योरिटी डिपॉजिट की वसूली हेतु आवेदन दायर करें।`;
+1️⃣ **15 दिनों का लीगल नोटिस**: Transfer of Property Act की धारा 106 के तहत पंजीकृत डाक से कानूनी नोटिस भेजें।
+2️⃣ **रेंट ट्रिब्यूनल याचिका**: रेंट कंट्रोल अथॉरिटी के समक्ष जमा राशि की 18% ब्याज सहित वापसी का दावा प्रस्तुत करें।`;
         } else {
           aiResponseText = `⚖️ **Advocate Nyaya AI कानूनी विश्लेषण (${selectedLanguage}):**
 
 आपकी समस्या: "*${query}*"
 
-1️⃣ **कानूनी स्थिति**: आपके मामले में दीवानी (Civil) व प्रशासनिक राहत का प्रावधान है।
-2️⃣ **अगला कदम**: संबंधित संबंधित न्यायाधिकरण या प्रशासनिक अधिकारी (SDM/तहसीलदार/कोर्ट) के समक्ष आवश्यक दस्तावेज प्रस्तुत करें।
-3️⃣ **लीगल नोटिस**: प्रथम दृष्टया 15 दिनों का लिखित नोटिस देना कानूनी रूप से प्रभावी रहेगा।`;
+1️⃣ **कानूनी अधिकार**: आपके मामले में दीवानी व प्रशासनिक दोनों उपचार उपलब्ध हैं।
+2️⃣ **प्राथमिक कार्यवाही**: 15 दिनों का वैधानिक लीगल नोटिस भेजना व संबंधित SDM/कोर्ट के समक्ष दस्तावेज प्रस्तुत करना प्रभावी रहेगा।`;
         }
       }
 
-      // 🩺 HEALTHCARE (Dr. Medico AI)
+      // 🩺 HEALTHCARE
       else if (selectedAgent.category === 'health') {
         if (q.includes('fever') || q.includes('बुखार') || q.includes('सिरदर्द') || q.includes('headache')) {
           aiResponseText = `🩺 **Dr. Medico AI - सिरदर्द व बुखार परामर्श:**
 
-1️⃣ **तत्काल देखभाल**: पर्याप्त पानी पिएं, ओआरएस (ORS) लें और ठंडी पट्टी सिर पर रखें।
-2️⃣ **दवा सलाह**: पेरासिटामोल (Paracetamol) डॉक्टर की सलाह अनुसार ली जा सकती है।
-3️⃣ **सावधानी**: यदि बुखार 102°F से अधिक है या 48 घंटे से बना हुआ है, तो तुरंत CBC व डेंगू टेस्ट करवाएं।`;
-        } else if (q.includes('acidity') || q.includes('gas') || q.includes('एसिडिटी') || q.includes('पेट')) {
-          aiResponseText = `🩺 **Dr. Medico AI - पेट व एसिडिटी समाधान:**
-
-1️⃣ **घरेलू उपाय**: गुनगुना पानी, ठंडा दूध या सौंफ का पानी पिएं।
-2️⃣ **आहार**: मसालेदार व तला हुआ भोजन पूरी तरह बंद करें।
-3️⃣ **चिकित्सीय परामर्श**: एंटासिड (Antacid) टैबलेट ले सकते हैं।`;
+1️⃣ **तत्काल देखभाल**: प्रचुर मात्रा में जल व ओआरएस का सेवन करें।
+2️⃣ **राहत सलाह**: डॉक्टर की सलाह अनुसार Paracetamol (500mg) ली जा सकती है।
+3️⃣ **सावधानी**: 48 घंटे से अधिक बुखार रहने पर तुरंत CBC व प्लेटलेट टेस्ट करवाएं।`;
         } else {
-          aiResponseText = `🩺 **Dr. Medico AI स्वास्थ विश्लेषण (${selectedLanguage}):**
+          aiResponseText = `🩺 **Dr. Medico AI स्वास्थ्य सलाह (${selectedLanguage}):**
 
-आपकी स्वास्थ्य संबंधी जिज्ञासा: "*${query}*"
+आपकी जिज्ञासा: "*${query}*"
 
-1️⃣ **प्राथमिक सुझाव**: आराम करें, तरल पदार्थों का अधिक सेवन करें।
-2️⃣ **विशेषज्ञ राय**: लक्षणों पर 24 घंटे नजर रखें और आवश्यकता पड़ने पर चिकित्सकीय परामर्श लें।`;
+1️⃣ **प्राथमिक सुझाव**: हल्का सुपाच्य आहार लें, गुनगुना पानी पिएं और पर्याप्त विश्राम करें।
+2️⃣ **चिकित्सीय राय**: यदि लक्षण बने रहते हैं तो नजदीकी फिजिशियन से जांच करवाएं।`;
         }
       }
 
-      // 💻 TECH ARCHITECT (DevGuru AI)
+      // 💻 TECH ARCHITECT
       else if (selectedAgent.category === 'tech') {
-        aiResponseText = `💻 **DevGuru AI Architect Solution:**
+        aiResponseText = `💻 **DevGuru AI Solution Patch:**
 
-Regarding your code query: "*${query}*"
+Regarding: "*${query}*"
 
 \`\`\`typescript
-// Verified Production Solution
-export function resolveIssue(data: any) {
-  if (!data) return null;
-  // Apply memoization & clean state updates
-  return React.useMemo(() => data.filter(Boolean), [data]);
-}
+// Optimized React Cleanup Pattern
+useEffect(() => {
+  const controller = new AbortController();
+  fetchData({ signal: controller.signal });
+  return () => controller.abort(); // Prevents memory leaks
+}, []);
 \`\`\`
 
-✅ **Technical Breakdown**:
-1. Optimized memory footprint and eliminated unnecessary re-renders.
-2. Verified type safety and clean asynchronous execution path.`;
+✅ **Fix Verification**: Cleans up subscriptions and prevents state update race conditions on unmounted components.`;
       }
 
-      // 📊 FINANCE (FinVision AI)
+      // 📊 FINANCE
       else if (selectedAgent.category === 'finance') {
-        aiResponseText = `📊 **FinVision AI Tax & Investment Plan:**
+        aiResponseText = `📊 **FinVision AI टैक्स व बचत योजना:**
 
-आपके वित्तीय प्रश्न (*${query}*) का समाधान:
+आपके प्रश्न (*${query}*) का वित्तीय समाधान:
 
-1️⃣ **Tax Optimization**: 80C के तहत ₹1.5 लाख (ELSS/PPF) और 80CCD(1B) में ₹50,000 (NPS) बचाएं।
-2️⃣ **Investment**: SIP के माध्यम से डाइवर्सिफाइड लार्ज व फ्लेक्सीकैप फंड्स में निवेश करें।
-3️⃣ **Emergency Buffer**: 6 महीने के अनिवार्य खर्च का लिक्विड फंड बनाएं।`;
+1️⃣ **टैक्स बचत**: Section 80C (ELSS/PPF) के तहत ₹1.5 लाख एवं 80CCD(1B) में ₹50,000 NPS बचाएं।
+2️⃣ **SIP निवेश**: लार्ज व इंडेक्स म्यूचुअल फंड्स में नियमित अनुशासित निवेश करें।`;
       }
 
-      // DEFAULT AGENT RESPONSE
+      // DEFAULT
       else {
         aiResponseText = `🤖 **${selectedAgent.name} (${selectedLanguage}):**
 
 आपकी समस्या: "*${query}*"
 
-विशेषज्ञ समाधान तैयार है। कृपया आगे के किसी विशिष्ट विवरण के लिए निसंकोच प्रश्न पूछें।`;
+समाधान तैयार है। किसी भी अन्य स्पष्टीकरण के लिए कृपया प्रश्न पूछें।`;
       }
 
       const agentReply: ChatMessage = {
@@ -395,10 +378,10 @@ export function resolveIssue(data: any) {
 
       setChatMessages(prev => [...prev, agentReply]);
       setIsAgentTyping(false);
-    }, 1000);
+    }, 900);
   };
 
-  // Handle New Ticket Submission
+  // Submit Ticket
   const handleSubmitTicket = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ticketTitle.trim()) return;
@@ -408,10 +391,10 @@ export function resolveIssue(data: any) {
     const newTicket: ProblemTicket = {
       id: 't' + (Date.now() % 1000).toString(),
       title: ticketTitle,
-      description: ticketDesc || 'वास्तविक उपयोगकर्ता समस्या जिसके समाधान के लिए एआई एजेंट नियुक्त किया गया है।',
+      description: ticketDesc || 'वास्तविक समस्या जिसके लिए एआई विशेषज्ञ नियुक्त किया गया है।',
       category: ticketCategory,
       language: selectedLanguage,
-      user: 'Aditya Jain (User)',
+      user: 'User',
       assignedAgent: matchedAgent.name,
       status: 'solving',
       upvotes: 1,
@@ -422,39 +405,34 @@ export function resolveIssue(data: any) {
     setTicketTitle('');
     setTicketDesc('');
     setShowSubmitModal(false);
-    
-    // Auto-switch to chat with assigned agent
     startChatWithAgent(matchedAgent);
   };
 
   return (
-    <div className="min-h-screen bg-[#090a0f] text-slate-100 font-sans selection:bg-purple-600 selection:text-white">
+    <div className="min-h-screen bg-[#07080c] text-slate-100 font-sans selection:bg-purple-600 selection:text-white">
       
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* HEADER NAVBAR */}
+      {/* SWEET & SIMPLE NAVBAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 glass-nav bg-[#0d0e15]/90 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 glass-nav">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           
           {/* Brand Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('agents')}>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-600/30">
-              <Bot className="h-6 w-6 text-white" />
+          <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => setActiveTab('agents')}>
+            <div className="h-9 w-9 rounded-xl gradient-bg flex items-center justify-center glow-purple">
+              <Bot className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <span className="text-lg font-extrabold text-white tracking-tight flex items-center gap-1.5">
-                Solve<span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">AI</span>
-                <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-mono">AgentSphere</span>
-              </span>
-              <p className="text-[10px] text-slate-400 -mt-1 hidden sm:block">Real-World Problem Solving AI Agent Network</p>
-            </div>
+            <span className="text-base font-extrabold text-white tracking-tight">
+              Solve<span className="gradient-text">AI</span>
+              <span className="ml-1.5 text-[9px] bg-purple-500/15 text-purple-300 border border-purple-500/25 px-2 py-0.5 rounded-full font-mono">AgentSphere</span>
+            </span>
           </div>
 
-          {/* Nav Tabs */}
+          {/* Navigation Pills */}
           <nav className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
             {[
-              { id: 'agents', label: 'AI Expert Agents', icon: Bot },
-              { id: 'chat', label: 'Real-Time Live Chat', icon: MessageSquare },
+              { id: 'agents', label: 'AI Specialists', icon: Bot },
+              { id: 'chat', label: 'Live Consultation', icon: MessageSquare },
               { id: 'tickets', label: 'Problem Wall', icon: Sparkles },
             ].map(tab => {
               const Icon = tab.icon;
@@ -463,7 +441,7 @@ export function resolveIssue(data: any) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     isActive 
                       ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30' 
                       : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -476,112 +454,112 @@ export function resolveIssue(data: any) {
             })}
           </nav>
 
-          {/* Language Selector & Problem Submit Button */}
-          <div className="flex items-center space-x-3">
-            
-            {/* Language Selector */}
-            <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-1.5 text-xs text-purple-300 font-bold">
-              <Languages className="h-4 w-4 text-purple-400" />
+          {/* Language Selector & CTA */}
+          <div className="flex items-center space-x-2.5">
+            <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs text-purple-300 font-bold">
+              <Languages className="h-3.5 w-3.5 text-purple-400" />
               <select
                 value={selectedLanguage}
                 onChange={e => setSelectedLanguage(e.target.value)}
-                className="bg-transparent text-white outline-none cursor-pointer font-bold"
+                className="bg-transparent text-white outline-none cursor-pointer font-bold text-xs"
               >
-                <option value="Hindi" className="bg-slate-900 text-white">हिंदी (Hindi)</option>
-                <option value="Hinglish" className="bg-slate-900 text-white">Hinglish</option>
-                <option value="English" className="bg-slate-900 text-white">English</option>
-                <option value="Spanish" className="bg-slate-900 text-white">Español</option>
-                <option value="French" className="bg-slate-900 text-white">Français</option>
-                <option value="German" className="bg-slate-900 text-white">Deutsch</option>
+                <option value="Hindi" className="bg-slate-900">हिंदी</option>
+                <option value="Hinglish" className="bg-slate-900">Hinglish</option>
+                <option value="English" className="bg-slate-900">English</option>
               </select>
             </div>
 
             <button 
               onClick={() => setShowSubmitModal(true)}
-              className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30 flex items-center space-x-1.5 cursor-pointer transition-all"
+              className="px-3 py-1.5 gradient-bg text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center space-x-1 hover:opacity-90 transition-all cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Post Problem</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Ask Problem</span>
             </button>
           </div>
         </div>
       </header>
 
+      {/* QUICK AGENT BAR */}
+      <div className="bg-slate-950/60 border-b border-slate-900 py-2.5 px-4 overflow-x-auto">
+        <div className="max-w-6xl mx-auto flex items-center space-x-2 text-xs">
+          <span className="text-[10px] font-bold text-slate-500 uppercase shrink-0 mr-1">Quick Consult:</span>
+          {agents.map(a => {
+            const Icon = a.icon;
+            const isSelected = selectedAgent?.id === a.id;
+            return (
+              <button
+                key={a.id}
+                onClick={() => startChatWithAgent(a)}
+                className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  isSelected 
+                    ? 'bg-purple-600/25 border border-purple-500/50 text-purple-200' 
+                    : 'bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <Icon className="h-3 w-3 text-purple-400" />
+                <span>{a.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MAIN BODY CONTENT */}
+      {/* MAIN CONTENT AREA */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-6">
         
-        {/* TAB 1: AI EXPERT AGENTS GRID */}
+        {/* TAB 1: AI SPECIALISTS */}
         {activeTab === 'agents' && (
-          <div className="space-y-8">
+          <div className="space-y-6 animate-fade-in">
             
-            {/* HERO BANNER */}
-            <div className="relative rounded-3xl overflow-hidden glass-card p-8 md:p-12 border border-purple-500/20 shadow-2xl bg-gradient-to-br from-slate-900/90 via-purple-950/20 to-slate-900/90">
-              <div className="max-w-3xl space-y-4">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold">
-                  <Sparkles className="h-3.5 w-3.5 text-pink-400" />
-                  <span>Real-World AI Specialists as Active Platform Consultants</span>
-                </div>
-                <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
-                  Real Problems. <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 bg-clip-text text-transparent">Instant AI Solutions</span> in Your Language.
-                </h1>
-                <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-                  Connect with specialized, autonomous AI Agents trained in Legal Rights, Medical Wellness, Fullstack Code Debugging, Personal Tax & Finance, and Mental Wellbeing.
-                </p>
-
-                {/* Live Stats */}
-                <div className="pt-4 flex flex-wrap items-center gap-6 text-xs text-slate-400 font-mono">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    <span><strong className="text-white">100%</strong> Active AI Consultation</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Globe className="h-4 w-4 text-purple-400" />
-                    <span><strong className="text-white">Multilingual</strong> (Hindi, Hinglish, English +)</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Zap className="h-4 w-4 text-amber-400" />
-                    <span><strong className="text-white">Instant</strong> Step-by-Step Guidance</span>
-                  </div>
-                </div>
+            {/* HERO STATEMENT */}
+            <div className="text-center max-w-2xl mx-auto pt-4 pb-2 space-y-2">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold">
+                <Sparkles className="h-3.5 w-3.5 text-pink-400" />
+                <span>Real-World Multilingual Problem Solving AI Agents</span>
               </div>
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                Get Expert AI Guidance in <span className="gradient-text">{selectedLanguage}</span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Select an AI Specialist below or type your legal, medical, coding, or financial question to get instant, verified solutions.
+              </p>
             </div>
 
-            {/* CATEGORY FILTER & SEARCH */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-5">
-              <div className="flex items-center space-x-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-                {[
-                  { id: 'all', label: 'All AI Agents', icon: Bot },
-                  { id: 'health', label: 'Health & Wellness', icon: Stethoscope },
-                  { id: 'legal', label: 'Legal & Property', icon: Scale },
-                  { id: 'tech', label: 'Software & Code', icon: Code2 },
-                  { id: 'finance', label: 'Tax & Finance', icon: TrendingUp },
-                  { id: 'wellness', label: 'Mental Health', icon: Heart },
-                  { id: 'education', label: 'Education & Tutor', icon: GraduationCap },
-                ].map(cat => {
-                  const Icon = cat.icon;
-                  const isSelected = selectedCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                        isSelected 
-                          ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' 
-                          : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-800'
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{cat.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            {/* CATEGORY BAR */}
+            <div className="flex items-center justify-center space-x-2 overflow-x-auto pb-2">
+              {[
+                { id: 'all', label: 'All AI Agents', icon: Bot },
+                { id: 'legal', label: 'Legal & Property', icon: Scale },
+                { id: 'health', label: 'Health & Wellness', icon: Stethoscope },
+                { id: 'tech', label: 'Software & Code', icon: Code2 },
+                { id: 'finance', label: 'Tax & Finance', icon: TrendingUp },
+                { id: 'wellness', label: 'Mental Wellbeing', icon: Heart },
+                { id: 'education', label: 'Academic Tutor', icon: GraduationCap },
+              ].map(cat => {
+                const Icon = cat.icon;
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      isSelected 
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30' 
+                        : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* AI AGENTS CARDS GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* AGENTS CARDS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {agents
                 .filter(a => selectedCategory === 'all' || a.category === selectedCategory)
                 .map(agent => {
@@ -589,52 +567,41 @@ export function resolveIssue(data: any) {
                   return (
                     <div 
                       key={agent.id}
-                      className="glass-card rounded-3xl p-6 border border-white/5 hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 group flex flex-col justify-between"
+                      className="glass-card glass-card-hover rounded-2xl p-5 border border-white/5 flex flex-col justify-between group"
                     >
                       <div>
-                        {/* Agent Header */}
-                        <div className="flex items-center space-x-4 mb-4">
-                          <div className="relative">
-                            <img src={agent.avatar} alt={agent.name} className="h-14 w-14 rounded-2xl object-cover border-2 border-purple-500/40" />
-                            <span className="absolute -bottom-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full border-2 border-[#090a0f]" title="Active Agent"></span>
-                          </div>
+                        {/* Header */}
+                        <div className="flex items-center space-x-3 mb-3">
+                          <img src={agent.avatar} alt={agent.name} className="h-12 w-12 rounded-xl object-cover border border-purple-500/40 shrink-0" />
                           <div>
                             <div className="flex items-center space-x-2">
-                              <h3 className="text-base font-extrabold text-white group-hover:text-purple-300 transition-colors">{agent.name}</h3>
-                              <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5"><Star className="h-3.5 w-3.5 fill-amber-400" /> {agent.rating}</span>
+                              <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">{agent.name}</h3>
+                              <span className="text-[10px] text-amber-400 font-bold flex items-center"><Star className="h-3 w-3 fill-amber-400" /> {agent.rating}</span>
                             </div>
-                            <p className="text-xs text-purple-400 font-semibold">{agent.role}</p>
+                            <p className="text-[11px] text-purple-400 font-semibold">{agent.role}</p>
                           </div>
                         </div>
 
-                        {/* Description & Specialty */}
-                        <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                        {/* Description */}
+                        <p className="text-xs text-slate-300 leading-relaxed mb-3">
                           {agent.description}
                         </p>
 
-                        <div className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 mb-4 space-y-1">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Specialization</span>
-                          <span className="text-xs text-emerald-400 font-semibold">{agent.specialty}</span>
-                        </div>
-
-                        {/* Languages Supported */}
-                        <div className="flex flex-wrap gap-1.5 mb-6">
-                          {agent.languages.map(lang => (
-                            <span key={lang} className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-md font-mono">
-                              🌐 {lang}
-                            </span>
-                          ))}
+                        {/* Specialty pill */}
+                        <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 mb-4">
+                          <span className="text-[9px] font-bold text-slate-500 uppercase block mb-0.5">Specialization</span>
+                          <span className="text-[11px] text-emerald-400 font-semibold">{agent.specialty}</span>
                         </div>
                       </div>
 
-                      {/* Consultation Action Button */}
+                      {/* Action */}
                       <button
                         onClick={() => startChatWithAgent(agent)}
-                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-purple-600/30 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                        className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
                       >
-                        <MessageSquare className="h-4 w-4" />
-                        <span>Start Live Consultation</span>
-                        <ArrowRight className="h-4 w-4" />
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span>Start Chat ({selectedLanguage})</span>
+                        <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   );
@@ -643,31 +610,28 @@ export function resolveIssue(data: any) {
           </div>
         )}
 
-        {/* TAB 2: REAL-TIME LIVE CHAT ENGINE */}
+        {/* TAB 2: LIVE CONSULTATION CHAT */}
         {activeTab === 'chat' && (
-          <div className="glass-card rounded-3xl border border-purple-500/20 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-4 min-h-[75vh]">
+          <div className="glass-card rounded-2xl border border-purple-500/20 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-4 min-h-[72vh] animate-fade-in">
             
-            {/* Left Sidebar: Select Active Agent */}
-            <div className="border-r border-slate-800 p-4 bg-slate-950/60 space-y-3">
-              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">Consult Active AI User</h3>
+            {/* Active Agents Column */}
+            <div className="border-r border-slate-800/80 p-3 bg-slate-950/70 space-y-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase px-2 block mb-1">Select AI Specialist</span>
               {agents.map(agent => {
                 const isSelected = selectedAgent?.id === agent.id;
                 return (
                   <button
                     key={agent.id}
                     onClick={() => setSelectedAgent(agent)}
-                    className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center space-x-3 cursor-pointer ${
+                    className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center space-x-2.5 cursor-pointer ${
                       isSelected 
-                        ? 'bg-purple-600/20 border-purple-500/50 text-white shadow-md' 
-                        : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                        ? 'bg-purple-600/20 border-purple-500/50 text-white font-bold' 
+                        : 'bg-slate-900/40 border-slate-800/60 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
                     }`}
                   >
-                    <div className="relative shrink-0">
-                      <img src={agent.avatar} alt={agent.name} className="h-10 w-10 rounded-xl object-cover" />
-                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
-                    </div>
+                    <img src={agent.avatar} alt={agent.name} className="h-9 w-9 rounded-lg object-cover shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <span className="text-xs font-bold text-white block truncate">{agent.name}</span>
+                      <span className="text-xs text-white block truncate">{agent.name}</span>
                       <span className="text-[10px] text-purple-400 block truncate">{agent.role}</span>
                     </div>
                   </button>
@@ -675,52 +639,79 @@ export function resolveIssue(data: any) {
               })}
             </div>
 
-            {/* Right Chat Panel */}
-            <div className="lg:col-span-3 flex flex-col justify-between bg-slate-900/40">
+            {/* Main Conversation Screen */}
+            <div className="lg:col-span-3 flex flex-col justify-between bg-slate-900/30">
               
-              {/* Chat Header */}
-              {selectedAgent ? (
-                <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
+              {/* Header */}
+              {selectedAgent && (
+                <div className="p-3.5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <img src={selectedAgent.avatar} alt={selectedAgent.name} className="h-10 w-10 rounded-xl object-cover border border-purple-500/40" />
+                    <img src={selectedAgent.avatar} alt={selectedAgent.name} className="h-9 w-9 rounded-lg object-cover border border-purple-500/40" />
                     <div>
-                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
                         <span>{selectedAgent.name}</span>
-                        <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">Online</span>
+                        <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.2 rounded-full font-bold">Online</span>
                       </h4>
-                      <p className="text-[10px] text-purple-300 font-mono">Multilingual AI Consultant · Preferred: {selectedLanguage}</p>
+                      <span className="text-[10px] text-purple-300 font-mono">Specialist Agent · Language: {selectedLanguage}</span>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="p-4 border-b border-slate-800 text-xs text-slate-400">Select an AI Expert Agent to begin consultation.</div>
               )}
 
-              {/* Chat Messages Log */}
-              <div className="flex-1 p-6 overflow-y-auto space-y-4 max-h-[55vh]">
+              {/* Chat Thread */}
+              <div className="flex-1 p-5 overflow-y-auto space-y-4 max-h-[52vh]">
                 {chatMessages.map(msg => (
                   <div 
                     key={msg.id}
                     className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-xl p-4 rounded-2xl text-xs leading-relaxed ${
+                    <div className={`max-w-xl p-4 rounded-2xl text-xs leading-relaxed group relative ${
                       msg.sender === 'user' 
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none shadow-lg' 
-                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-md'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none shadow-md' 
+                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-sm'
                     }`}>
                       <div className="flex items-center justify-between mb-1.5 text-[9px] opacity-75 font-mono border-b border-white/10 pb-1">
-                        <span>{msg.sender === 'user' ? 'You' : selectedAgent?.name || 'AI Agent'}</span>
+                        <span>{msg.sender === 'user' ? 'You' : selectedAgent?.name}</span>
                         <span>{msg.timestamp} ({msg.language})</span>
                       </div>
-                      <div className="whitespace-pre-wrap">{msg.text}</div>
+
+                      <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+
+                      {/* Rich UX Controls for AI Reply: Copy & Feedback */}
+                      {msg.sender === 'agent' && (
+                        <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                          <button
+                            onClick={() => copyToClipboard(msg.text, msg.id)}
+                            className="flex items-center space-x-1 hover:text-purple-300 transition-colors cursor-pointer"
+                          >
+                            {copiedMessageId === msg.id ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                            <span>{copiedMessageId === msg.id ? 'Copied Solution!' : 'Copy Solution'}</span>
+                          </button>
+
+                          <div className="flex items-center space-x-2">
+                            <button 
+                              onClick={() => handleFeedback(msg.id, 'liked')}
+                              className={`p-1 rounded hover:bg-slate-800 transition-colors ${msg.feedback === 'liked' ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}
+                            >
+                              <ThumbsUp className="h-3 w-3" />
+                            </button>
+                            <button 
+                              onClick={() => handleFeedback(msg.id, 'disliked')}
+                              className={`p-1 rounded hover:bg-slate-800 transition-colors ${msg.feedback === 'disliked' ? 'text-rose-400 font-bold' : 'text-slate-500'}`}
+                            >
+                              <ThumbsDown className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
 
                 {isAgentTyping && (
                   <div className="flex justify-start">
-                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs text-purple-300 flex items-center space-x-2 animate-pulse">
-                      <RefreshCw className="h-4 w-4 animate-spin text-purple-400" />
+                    <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl text-xs text-purple-300 flex items-center space-x-2 animate-pulse">
+                      <Sparkles className="h-3.5 w-3.5 text-purple-400 animate-spin" />
                       <span>{selectedAgent?.name} is thinking and drafting solution in {selectedLanguage}...</span>
                     </div>
                   </div>
@@ -728,16 +719,16 @@ export function resolveIssue(data: any) {
                 <div ref={chatBottomRef} />
               </div>
 
-              {/* Sample Prompt Chips & Input Bar */}
-              <div className="p-4 border-t border-slate-800 bg-slate-950/80 space-y-3">
+              {/* Sample Prompts & Bar */}
+              <div className="p-3.5 border-t border-slate-800 bg-slate-950/80 space-y-2.5">
                 {selectedAgent && selectedAgent.samplePrompts.length > 0 && (
-                  <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase shrink-0">Quick Prompts:</span>
+                  <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase shrink-0">Sample Questions:</span>
                     {selectedAgent.samplePrompts.map((sp, idx) => (
                       <button
                         key={idx}
                         onClick={() => handleSendMessage(sp)}
-                        className="text-[10px] bg-slate-800 hover:bg-purple-600/30 text-purple-300 border border-purple-500/20 px-2.5 py-1 rounded-xl whitespace-nowrap transition-all cursor-pointer"
+                        className="text-[10px] bg-slate-900 hover:bg-purple-600/30 text-purple-300 border border-purple-500/20 px-2.5 py-1 rounded-lg whitespace-nowrap transition-all cursor-pointer"
                       >
                         {sp}
                       </button>
@@ -745,20 +736,20 @@ export function resolveIssue(data: any) {
                   </div>
                 )}
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <input
                     value={inputMessage}
                     onChange={e => setInputMessage(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                    placeholder={`Describe your problem to ${selectedAgent?.name || 'AI Agent'} in ${selectedLanguage}...`}
-                    className="flex-1 bg-slate-900 border border-slate-700/70 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-500 transition-all font-sans"
+                    placeholder={`Ask ${selectedAgent?.name || 'AI Specialist'} your problem in ${selectedLanguage}...`}
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-500 transition-all font-sans"
                   />
                   <button
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim()}
-                    className="px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-purple-600/30 flex items-center space-x-1.5 transition-all cursor-pointer shrink-0"
+                    className="px-4 py-2.5 gradient-bg text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center space-x-1 transition-all cursor-pointer shrink-0 disabled:opacity-50"
                   >
-                    <span>Send Solution Query</span>
+                    <span>Send Query</span>
                     <Send className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -767,57 +758,48 @@ export function resolveIssue(data: any) {
           </div>
         )}
 
-        {/* TAB 3: PUBLIC PROBLEM TICKETS WALL */}
+        {/* TAB 3: PROBLEM TICKETS WALL */}
         {activeTab === 'tickets' && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-3xl p-8 border border-purple-500/20">
-              <div className="flex items-center justify-between mb-6">
+          <div className="space-y-5 animate-fade-in">
+            <div className="glass-card rounded-2xl p-6 border border-purple-500/20">
+              <div className="flex justify-between items-center mb-5">
                 <div>
-                  <h2 className="text-xl font-extrabold text-white">Community Problem Resolution Wall</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Real-world user queries resolved by active AI Specialist Agents.</p>
+                  <h2 className="text-base font-bold text-white">Community Problem Wall</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Real user problems resolved by active AI Specialist Agents.</p>
                 </div>
                 <button 
                   onClick={() => setShowSubmitModal(true)}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30 flex items-center space-x-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 gradient-bg text-white rounded-xl text-xs font-bold flex items-center space-x-1 shadow-md cursor-pointer"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>Post Problem Ticket</span>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Submit Ticket</span>
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {tickets.map(ticket => (
-                  <div key={ticket.id} className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition-all">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase">{ticket.category}</span>
-                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${ticket.status === 'resolved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>{ticket.status}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">🌐 {ticket.language}</span>
+              <div className="space-y-3">
+                {tickets.map(t => (
+                  <div key={t.id} className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 mb-1.5">
+                        <span className="text-[9px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase">{t.category}</span>
+                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold uppercase ${t.status === 'resolved' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>{t.status}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">🌐 {t.language}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">{ticket.createdAt}</span>
+                      <h3 className="text-sm font-bold text-white mb-1">{t.title}</h3>
+                      <p className="text-xs text-slate-300 leading-relaxed mb-3">{t.description}</p>
                     </div>
 
-                    <h3 className="text-base font-bold text-white mb-2">{ticket.title}</h3>
-                    <p className="text-xs text-slate-300 leading-relaxed mb-4">{ticket.description}</p>
-
-                    {ticket.solutionSummary && (
-                      <div className="bg-purple-950/20 border border-purple-500/20 p-4 rounded-2xl text-xs text-purple-200 mb-4">
-                        <strong className="text-pink-400 font-bold block mb-1">🤖 {ticket.assignedAgent} Verified Solution:</strong>
-                        <span>{ticket.solutionSummary}</span>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
-                      <span>Posted by: <strong className="text-white">{ticket.user}</strong></span>
+                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-800 text-[11px] text-slate-400">
+                      <span>Assigned: <strong className="text-purple-300">{t.assignedAgent}</strong></span>
                       <button 
                         onClick={() => {
-                          const agent = agents.find(a => a.name === ticket.assignedAgent) || agents[0];
+                          const agent = agents.find(a => a.name === t.assignedAgent) || agents[0];
                           startChatWithAgent(agent);
                         }}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-purple-600 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer"
+                        className="px-3 py-1 bg-slate-800 hover:bg-purple-600 text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer"
                       >
-                        <span>Chat Solution Details</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span>Open Solution Chat</span>
+                        <ArrowRight className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
@@ -828,78 +810,64 @@ export function resolveIssue(data: any) {
         )}
       </main>
 
-      {/* ════════════════════════════════════════════════════════════════ */}
       {/* POST PROBLEM MODAL */}
-      {/* ════════════════════════════════════════════════════════════════ */}
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSubmitModal(false)}>
-          <div className="glass-card rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-purple-500/30 bg-[#0d0e15]" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-400" />
-                Post Real-World Problem Ticket
+          <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-purple-500/30 bg-[#0d0e15]" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                Submit Problem Ticket
               </h3>
-              <button onClick={() => setShowSubmitModal(false)} className="text-slate-500 hover:text-white transition-all"><X className="h-5 w-5" /></button>
+              <button onClick={() => setShowSubmitModal(false)} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
             </div>
 
-            <form onSubmit={handleSubmitTicket} className="space-y-4">
+            <form onSubmit={handleSubmitTicket} className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Title (अपनी समस्या का शीर्षक दर्ज करें)</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Title (समस्या का शीर्षक)</label>
                 <input 
                   required
                   value={ticketTitle} 
                   onChange={e => setTicketTitle(e.target.value)} 
-                  placeholder="e.g. लीगल नोटिस या मेडिकल लक्षण संबंधी सहायता" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500" 
+                  placeholder="e.g. राजस्थान कृषि भूमि नियमन सलाह या लीगल नोटिस" 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-purple-500" 
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Category (विभाग चुनें)</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Category (श्रेणी)</label>
                 <select 
                   value={ticketCategory} 
                   onChange={e => setTicketCategory(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-purple-500"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
                 >
-                  <option value="health">Healthcare & Medical Wellness</option>
-                  <option value="legal">Legal Rights & Property Dispute</option>
+                  <option value="legal">Legal Rights & Land Disputes</option>
+                  <option value="health">Healthcare & Medical Advice</option>
                   <option value="tech">Software Code & System Design</option>
-                  <option value="finance">Personal Finance & Tax Savings</option>
-                  <option value="wellness">Mental Health & Counseling</option>
-                  <option value="education">Academic Homework & Tutoring</option>
+                  <option value="finance">Tax Savings & Personal Finance</option>
+                  <option value="wellness">Mental Wellbeing & Counseling</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Description (विस्तार से बताएं)</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Description (विवरण)</label>
                 <textarea 
                   rows={3}
                   value={ticketDesc} 
                   onChange={e => setTicketDesc(e.target.value)} 
-                  placeholder="अपनी समस्या का पूरा विवरण यहाँ लिखें..." 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500" 
+                  placeholder="समस्या का पूरा विवरण लिखें..." 
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-purple-500" 
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
-                <button type="button" onClick={() => setShowSubmitModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-700">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30">Connect AI Agent Now</button>
+              <div className="flex justify-end space-x-2 mt-5">
+                <button type="button" onClick={() => setShowSubmitModal(false)} className="px-3.5 py-1.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+                <button type="submit" className="px-4 py-1.5 gradient-bg text-white rounded-xl text-xs font-bold shadow-md">Assign AI Agent</button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      {/* FOOTER */}
-      <footer className="border-t border-slate-800/80 mt-20 py-8 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <Bot className="h-4 w-4 text-purple-400" />
-            <span className="font-bold text-slate-300">SolveAI AgentSphere Network</span>
-            <span>© 2026. Real-World Multilingual Problem Solving Platform.</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
