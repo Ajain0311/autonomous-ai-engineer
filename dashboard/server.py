@@ -1556,7 +1556,7 @@ def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
     smtp_user = os.environ.get("SMTP_USER", os.environ.get("SENDER_EMAIL"))
     smtp_pass = os.environ.get("SMTP_PASSWORD", os.environ.get("SMTP_PASS"))
-    sender_email = os.environ.get("SENDER_EMAIL", smtp_user or "noreply@autonomous-ai-engineer.com")
+    sender_email = os.environ.get("SENDER_EMAIL", smtp_user or "kuldeepswarnkar4@gmail.com")
 
     if not smtp_user or not smtp_pass:
         logger.info("SMTP credentials not present in ENV. Operating in simulated OTP mode.")
