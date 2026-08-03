@@ -4,6 +4,7 @@ import json
 import subprocess
 import logging
 import datetime
+from datetime import datetime
 import threading
 from pathlib import Path
 from typing import Optional, Dict
@@ -1499,7 +1500,7 @@ async def upload_blob_file(file: UploadFile = File(...)):
     with open(asset_file, "wb") as f:
         f.write(contents)
 
-    size_mb = f"{round(len(contents) / (1024 * 1024), 2)} MB" if len(contents) > 1024*1024 else f"{round(len(contents) / 1024, 1)} KB font"
+    size_mb = f"{round(len(contents) / (1024 * 1024), 2)} MB" if len(contents) > 1024*1024 else f"{round(len(contents) / 1024, 1)} KB"
     asset_url = f"/storage/{subfolder}/{filename}"
     today_str = datetime.now().strftime("%Y-%m-%d")
 
@@ -1523,11 +1524,14 @@ async def upload_blob_file(file: UploadFile = File(...)):
     }
     rows.insert(0, new_asset)
 
-    with open(data_file, "w", encoding="utf-8") as f:
-        json.dump(rows, f, indent=2, ensure_ascii=False)
+    try:
+        with open(data_file, "w", encoding="utf-8") as f:
+            json.dump(rows, f, indent=2, ensure_ascii=False)
+        run_git_command(["add", "app/product2_github_blob_storage/"])
+        run_git_command(["commit", "-m", f"feat(blob): uploaded {filename} to storage/{subfolder}"])
+    except Exception as e:
+        logger.warning(f"Git commit failed during blob upload: {e}")
 
-    run_git_command(["add", "app/product2_github_blob_storage/"])
-    run_git_command(["commit", "-m", f"feat(blob): uploaded {filename} to storage/{subfolder}"])
     return {"status": "success", "asset": new_asset, "rows": rows}
 
 class SuperAdminLoginRequest(BaseModel):

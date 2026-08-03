@@ -149,6 +149,27 @@ export default function App() {
   ]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
+  // Product 01: AdBlocker Extension State
+  const [adblockRules, setAdblockRules] = useState<any[]>([
+    { id: 1, domain: '*doubleclick.net*', category: 'Ads', action: 'block', priority: 1, enabled: true },
+    { id: 2, domain: '*google-analytics.com*', category: 'Trackers', action: 'block', priority: 1, enabled: true },
+    { id: 3, domain: '*connect.facebook.net*', category: 'Social', action: 'block', priority: 2, enabled: true },
+    { id: 4, domain: '*popads.net*', category: 'Popups', action: 'block', priority: 1, enabled: true }
+  ]);
+  const [newRuleDomain, setNewRuleDomain] = useState<string>('');
+  const [newRuleCategory, setNewRuleCategory] = useState<string>('Ads');
+  const [testUrlInput, setTestUrlInput] = useState<string>('https://doubleclick.net/pagead/ads.js');
+  const [testResult, setTestResult] = useState<{ blocked: boolean; rule?: any } | null>(null);
+
+  // Product 03: Email Micro-Chat State
+  const [chatMessages, setChatMessages] = useState<any[]>([
+    { id: 1, sender_email: 'aditya@example.com', recipient_email: 'team@antigravity.dev', subject: 'Product 03 Chat Initialization', body: 'Welcome to Email-based Micro Chat MVP!', timestamp: '2026-08-03 22:30:00' },
+    { id: 2, sender_email: 'team@antigravity.dev', recipient_email: 'aditya@example.com', subject: 'Re: Product 03 Chat Initialization', body: 'Real-time email threads integrated into isolated JSON DB.', timestamp: '2026-08-03 22:31:00' }
+  ]);
+  const [chatRecipient, setChatRecipient] = useState<string>('team@antigravity.dev');
+  const [chatSubject, setChatSubject] = useState<string>('Product 03 Email Thread');
+  const [chatBody, setChatBody] = useState<string>('');
+
   // Users List
   const [usersList, setUsersList] = useState<UserEntry[]>([
     { id: 1, username: 'admin', role: 'super_admin', enabled: true },
@@ -324,9 +345,124 @@ export default function App() {
       .catch(() => console.log('Master tables fallback'));
   };
 
+  const fetchAdblockRules = () => {
+    fetch('/api/products/data/product1_adblocker_extension/rules')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.rows) && data.rows.length > 0) setAdblockRules(data.rows);
+      })
+      .catch(() => {});
+  };
+
+  const fetchChatMessages = () => {
+    fetch('/api/products/data/product3_email_chat_mvp/messages')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.rows) && data.rows.length > 0) setChatMessages(data.rows);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchMasterTables();
+    fetchAdblockRules();
+    fetchChatMessages();
   }, []);
+
+  // Product 01 Action Handlers
+  const handleAddRule = async () => {
+    if (!newRuleDomain.trim()) return;
+    const newRule = {
+      id: Date.now() % 10000,
+      domain: newRuleDomain.trim(),
+      category: newRuleCategory,
+      action: 'block',
+      priority: 1,
+      enabled: true
+    };
+    const updated = [...adblockRules, newRule];
+    setAdblockRules(updated);
+    setNewRuleDomain('');
+    try {
+      await fetch('/api/products/data/product1_adblocker_extension/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      setSuccessToast(`✅ Rule '${newRule.domain}' added & committed!`);
+    } catch {
+      setSuccessToast(`✅ Rule '${newRule.domain}' added!`);
+    }
+  };
+
+  const handleToggleRule = async (ruleId: number) => {
+    const updated = adblockRules.map(r => r.id === ruleId ? { ...r, enabled: !r.enabled } : r);
+    setAdblockRules(updated);
+    try {
+      await fetch('/api/products/data/product1_adblocker_extension/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch {}
+  };
+
+  const handleDeleteRule = async (ruleId: number) => {
+    const updated = adblockRules.filter(r => r.id !== ruleId);
+    setAdblockRules(updated);
+    try {
+      await fetch('/api/products/data/product1_adblocker_extension/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      setSuccessToast('✅ Rule removed!');
+    } catch {}
+  };
+
+  const handleTestUrl = () => {
+    if (!testUrlInput.trim()) return;
+    const url = testUrlInput.trim().toLowerCase();
+    const matched = adblockRules.find(r => {
+      if (!r.enabled) return false;
+      const cleanDomain = r.domain.replace(/\*/g, '');
+      return url.includes(cleanDomain);
+    });
+
+    if (matched) {
+      setTestResult({ blocked: true, rule: matched });
+      setSuccessToast(`🛡️ URL matched rule: ${matched.domain}`);
+    } else {
+      setTestResult({ blocked: false });
+      setSuccessToast(`✅ URL allowed - No active block rules matched.`);
+    }
+  };
+
+  // Product 03 Action Handler
+  const handleSendChatMessage = async () => {
+    if (!chatBody.trim()) return;
+    const newMsg = {
+      id: Date.now() % 10000,
+      sender_email: currentUser?.email || `${currentUser?.username}@example.com`,
+      recipient_email: chatRecipient.trim() || 'team@antigravity.dev',
+      subject: chatSubject.trim() || 'General Conversation',
+      body: chatBody.trim(),
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
+    };
+    const updated = [...chatMessages, newMsg];
+    setChatMessages(updated);
+    setChatBody('');
+    try {
+      await fetch('/api/products/data/product3_email_chat_mvp/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      setSuccessToast('📧 Email message sent and saved to thread DB!');
+    } catch {
+      setSuccessToast('📧 Message sent locally!');
+    }
+  };
 
   // Inspect Table Handler
   const openInspectTableModal = (projectId: string, tableName: string) => {
@@ -981,6 +1117,215 @@ export default function App() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PRODUCT 01 OPERATIONAL VIEW */}
+              {selectedProductView === 'product1_adblocker_extension' && (
+                <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border border-cyan-500/30 space-y-6 mt-4">
+                  <div>
+                    <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-bold mb-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
+                      <span>Product 01 Tool Operational View</span>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-extrabold text-white">Manifest V3 AdBlocker & Tracker Zapper</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Manage isolated dynamic network rules, run live URL ad-blocking simulations, and inspect Chrome extension assets.</p>
+                  </div>
+
+                  {/* Section 1: Live URL AdBlock Test Simulator */}
+                  <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                    <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-amber-400" /> Live URL Zapper Simulator
+                    </h3>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        value={testUrlInput}
+                        onChange={e => setTestUrlInput(e.target.value)}
+                        placeholder="Paste URL to test (e.g. https://doubleclick.net/ad.js)..."
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-cyan-500 font-mono"
+                      />
+                      <button
+                        onClick={handleTestUrl}
+                        className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold shrink-0 flex items-center justify-center space-x-1 cursor-pointer"
+                      >
+                        <Play className="h-3.5 w-3.5 fill-white" />
+                        <span>Test URL Rule</span>
+                      </button>
+                    </div>
+
+                    {testResult && (
+                      <div className={`p-3 rounded-xl text-xs font-mono border flex items-center justify-between ${
+                        testResult.blocked
+                          ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      }`}>
+                        <div className="flex items-center space-x-2">
+                          {testResult.blocked ? (
+                            <ShieldAlert className="h-4 w-4 text-rose-400 shrink-0" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                          )}
+                          <span>
+                            {testResult.blocked
+                              ? `[BLOCKED] Matched Rule #${testResult.rule.id} (${testResult.rule.domain})`
+                              : '[ALLOWED] No active block rule matched this URL.'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-black/40">
+                          {testResult.blocked ? 'Block Action' : 'Allow Action'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 2: Active Dynamic DNR Rules List & Add Form */}
+                  <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Database className="h-4 w-4 text-cyan-400" /> Active Dynamic Rules Catalog (<code className="text-cyan-300 font-mono">app/product1_adblocker_extension/db/rules.json</code>)
+                      </h3>
+                      <span className="text-[11px] text-slate-400 font-mono">{adblockRules.length} Active Rules</span>
+                    </div>
+
+                    <div className="bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        value={newRuleDomain}
+                        onChange={e => setNewRuleDomain(e.target.value)}
+                        placeholder="Enter domain pattern (e.g. *popads.net*)..."
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-500 font-mono w-full"
+                      />
+                      <select
+                        value={newRuleCategory}
+                        onChange={e => setNewRuleCategory(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-cyan-500 cursor-pointer w-full sm:w-auto"
+                      >
+                        <option value="Ads">Category: Ads</option>
+                        <option value="Trackers">Category: Trackers</option>
+                        <option value="Social">Category: Social</option>
+                        <option value="Popups">Category: Popups</option>
+                      </select>
+                      <button
+                        onClick={handleAddRule}
+                        className="w-full sm:w-auto px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shrink-0 cursor-pointer"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Rule</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {adblockRules.map(rule => (
+                        <div key={rule.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-[10px] bg-slate-950 text-cyan-300 px-2 py-0.5 rounded font-bold">#{rule.id}</span>
+                            <span className="font-bold text-white">{rule.domain}</span>
+                            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded uppercase">{rule.category}</span>
+                          </div>
+
+                          <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+                            <button
+                              onClick={() => handleToggleRule(rule.id)}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                                rule.enabled ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-500'
+                              }`}
+                            >
+                              {rule.enabled ? '● Enabled' : '○ Disabled'}
+                            </button>
+                            <button onClick={() => handleDeleteRule(rule.id)} className="text-slate-500 hover:text-rose-400 p-1">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PRODUCT 03 OPERATIONAL VIEW */}
+              {selectedProductView === 'product3_email_chat_mvp' && (
+                <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border border-purple-500/30 space-y-6 mt-4">
+                  <div>
+                    <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold mb-1">
+                      <Mail className="h-3.5 w-3.5 text-purple-400" />
+                      <span>Product 03 Tool Operational View</span>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-extrabold text-white">Email-Based Micro-Chat MVP (Rocket.Chat Style)</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Real-time email threads integrated into isolated JSON database (<code className="text-purple-300 font-mono">app/product3_email_chat_mvp/db/messages.json</code>).</p>
+                  </div>
+
+                  {/* Section 1: Live Threaded Email Chat Window */}
+                  <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-4 max-h-[400px] overflow-y-auto">
+                    <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+                      <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-purple-400" /> Email Conversation Thread
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono">{chatMessages.length} Messages</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {chatMessages.map(msg => (
+                        <div key={msg.id} className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-mono">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-bold text-cyan-300">{msg.sender_email}</span>
+                              <span className="text-slate-500">➜</span>
+                              <span className="text-purple-300">{msg.recipient_email}</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
+                          </div>
+                          <div className="text-xs font-bold text-white">{msg.subject}</div>
+                          <div className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900 p-2.5 rounded-xl border border-slate-800/60">
+                            {msg.body}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Section 2: Compose & Dispatch New Email Message */}
+                  <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                    <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Send className="h-4 w-4 text-emerald-400" /> Compose Email Chat Message
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">Recipient Email:</label>
+                        <input
+                          value={chatRecipient}
+                          onChange={e => setChatRecipient(e.target.value)}
+                          placeholder="e.g. team@antigravity.dev"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-slate-400 block mb-1">Subject:</label>
+                        <input
+                          value={chatSubject}
+                          onChange={e => setChatSubject(e.target.value)}
+                          placeholder="e.g. Project Update"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Message Body:</label>
+                      <textarea
+                        rows={3}
+                        value={chatBody}
+                        onChange={e => setChatBody(e.target.value)}
+                        placeholder="Write your email message thread content..."
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-sans outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSendChatMessage}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 shadow-md cursor-pointer"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span>Dispatch Email Message</span>
+                    </button>
                   </div>
                 </div>
               )}
