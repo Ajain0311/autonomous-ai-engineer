@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import subprocess
 import logging
 import datetime
@@ -1038,11 +1039,14 @@ class RoadmapUpdateRequest(BaseModel):
 
 @app.get("/api/db/daily_roadmap")
 def get_daily_roadmap():
-    db_file = ROOT_DIR / "db" / "daily_roadmap.json"
-    if db_file.exists():
-        with open(db_file, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"current_streak_days": 1, "active_project": "01-adblocker-extension", "daily_logs": []}
+    try:
+        db_file = ROOT_DIR / "db" / "daily_roadmap.json"
+        if db_file.exists():
+            with open(db_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error("Error reading daily roadmap: %s", e)
+    return {"current_streak_days": 1, "active_project": "product1_adblocker_extension", "daily_logs": []}
 
 @app.post("/api/db/daily_roadmap")
 def update_daily_roadmap(payload: dict):
@@ -1054,10 +1058,15 @@ def update_daily_roadmap(payload: dict):
 
 @app.get("/api/db/adblocker_rules")
 def get_adblocker_rules():
-    db_file = ROOT_DIR / "db" / "adblocker_rules.json"
-    if db_file.exists():
-        with open(db_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+    try:
+        db_file = ROOT_DIR / "app" / "product1_adblocker_extension" / "db" / "rules.json"
+        if not db_file.exists():
+            db_file = ROOT_DIR / "db" / "adblocker_rules.json"
+        if db_file.exists():
+            with open(db_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error("Error reading adblocker rules: %s", e)
     return []
 
 # ==========================================
@@ -1114,10 +1123,15 @@ def validate_and_cast_row(row: dict, schema: dict):
 
 @app.get("/api/db/schema/{table_name}")
 def get_table_schema(table_name: str):
-    schema_file = ROOT_DIR / "db" / f"{table_name}_schema.json"
-    if schema_file.exists():
-        with open(schema_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+    try:
+        schema_file = ROOT_DIR / "app" / "product1_adblocker_extension" / "db" / f"{table_name}_schema.json"
+        if not schema_file.exists():
+            schema_file = ROOT_DIR / "db" / f"{table_name}_schema.json"
+        if schema_file.exists():
+            with open(schema_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error("Error reading schema: %s", e)
     return {"tableName": table_name, "columns": []}
 
 @app.post("/api/db/schema/{table_name}")
