@@ -1477,6 +1477,58 @@ def upload_blob_asset(payload: BlobUploadRequest):
     run_git_command(["commit", "-m", f"feat(blob): uploaded {payload.filename} to storage/{subfolder}"])
     return {"status": "success", "asset": new_asset, "rows": rows}
 
+@app.post("/api/products/queue/promote/{queue_id}")
+def promote_queue_item_to_product(queue_id: int):
+    queue_file = ROOT_DIR / "db" / "product_queue.json"
+    queue = []
+    if queue_file.exists():
+        try:
+            with open(queue_file, "r", encoding="utf-8") as f:
+                queue = json.load(f)
+        except Exception:
+            pass
+
+    promoted_item = None
+    updated_queue = []
+    for item in queue:
+        if item.get("id") == queue_id:
+            item["status"] = "ACTIVE"
+            promoted_item = item
+        updated_queue.append(item)
+
+    if promoted_item:
+        title = promoted_item.get("title", "Product")
+        folder_name = title.lower().replace(" ", "_").replace(":", "").replace("-", "_")
+        folder_name = "".join(c for c in folder_name if c.isalnum() or c == "_")
+        if not folder_name.startswith("product"):
+            folder_name = f"product_{folder_name}"
+
+        # Initialize product folder & isolated DB
+        product_db_dir = ROOT_DIR / "app" / folder_name / "db"
+        product_db_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(product_db_dir / "rules_schema.json", "w", encoding="utf-8") as f:
+            json.dump({
+                "tableName": "rules",
+                "columns": [
+                    { "name": "id", "type": "number", "required": True, "min": 1 },
+                    { "name": "title", "type": "string", "required": True },
+                    { "name": "enabled", "type": "boolean", "required": True, "default": True }
+                ]
+            }, f, indent=2)
+
+        with open(product_db_dir / "rules.json", "w", encoding="utf-8") as f:
+            json.dump([{ "id": 1, "title": f"Initial item for {title}", "enabled": True }], f, indent=2)
+
+        with open(queue_file, "w", encoding="utf-8") as f:
+            json.dump(updated_queue, f, indent=2, ensure_ascii=False)
+
+        run_git_command(["add", "db/", f"app/{folder_name}/"])
+        run_git_command(["commit", "-m", f"feat(queue): promoted '{title}' to active building product"])
+        return {"status": "success", "folder_name": folder_name, "queue": updated_queue}
+
+    return {"status": "error", "message": "Item not found in queue"}
+
 @app.post("/api/db/adblocker_rules")
 def save_adblocker_rules(rules: list):
     db_file = ROOT_DIR / "db" / "adblocker_rules.json"

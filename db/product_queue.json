@@ -1,0 +1,6 @@
+[
+  { "id": 1, "title": "Product 04: URL Cleaner & UTM Parameter Stripper", "category": "Browser Utility", "target_day": 2, "priority": "HIGH", "status": "QUEUED" },
+  { "id": 2, "title": "Product 05: One-Click Tab Group & Session Saver", "category": "Productivity Tool", "target_day": 3, "priority": "HIGH", "status": "QUEUED" },
+  { "id": 3, "title": "Product 06: Offline Password & Security Token Generator", "category": "Security Tool", "target_day": 4, "priority": "MEDIUM", "status": "QUEUED" },
+  { "id": 4, "title": "Product 07: Web Article to Clean Markdown Exporter", "category": "Content Tool", "target_day": 5, "priority": "MEDIUM", "status": "QUEUED" }
+]

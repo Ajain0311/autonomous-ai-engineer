@@ -1,0 +1,11 @@
+{
+  "tableName": "product_queue",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "title", "type": "string", "required": true },
+    { "name": "category", "type": "string", "required": true, "default": "Utility Tool" },
+    { "name": "target_day", "type": "number", "required": true, "min": 1 },
+    { "name": "priority", "type": "string", "required": true, "default": "HIGH" },
+    { "name": "status", "type": "string", "required": true, "default": "QUEUED" }
+  ]
+}

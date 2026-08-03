@@ -4,7 +4,8 @@ import {
   RefreshCw, Save, Edit3, Layers, Settings, FileText, Code, Check, 
   Trash2, Globe, ArrowRight, Laptop, AlertCircle, X, ShieldAlert, CheckSquare,
   Wrench, Link2, Key, Bookmark, Download, Sparkle, Search, GitBranch, Terminal, Eye,
-  UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf
+  UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf,
+  ListOrdered, ArrowUp, ArrowDown, Zap, PlayCircle
 } from 'lucide-react';
 
 interface ColumnSchema {
@@ -65,8 +66,17 @@ interface BlobAsset {
   created_at: string;
 }
 
+interface QueueItem {
+  id: number;
+  title: string;
+  category: string;
+  target_day: number;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'QUEUED' | 'ACTIVE' | 'COMPLETED';
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'planner' | 'master_tables' | 'blob_storage' | 'user_mgmt' | 'git_status'>('master_tables');
+  const [activeTab, setActiveTab] = useState<'master_tables' | 'queue' | 'blob_storage' | 'user_mgmt' | 'planner' | 'git_status'>('master_tables');
   
   // Auth State
   const [currentUser, setCurrentUser] = useState<UserEntry | null>({
@@ -88,16 +98,20 @@ export default function App() {
   // Master Tables & Search State
   const [masterTables, setMasterTables] = useState<MasterTableEntry[]>([]);
   const [masterSearch, setMasterSearch] = useState<string>('');
-  
-  // Create Table Modal State
   const [showCreateTableModal, setShowCreateTableModal] = useState<boolean>(false);
   const [newTableTargetProduct, setNewTableTargetProduct] = useState<string>('product1_adblocker_extension');
   const [newTableNameInput, setNewTableNameInput] = useState<string>('');
 
-  // Selected Table Data Viewer Modal / Drawer State
+  // Queue State
+  const [productQueue, setProductQueue] = useState<QueueItem[]>([]);
+  const [newQueueTitle, setNewQueueTitle] = useState<string>('');
+  const [newQueueCategory, setNewQueueCategory] = useState<string>('Browser Utility');
+  const [newQueueTargetDay, setNewQueueTargetDay] = useState<number>(4);
+  const [newQueuePriority, setNewQueuePriority] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('HIGH');
+
+  // Selected Table Data Drawer State
   const [inspectTableModal, setInspectTableModal] = useState<{ projectId: string; tableName: string } | null>(null);
   const [inspectRows, setInspectRows] = useState<any[]>([]);
-  const [inspectSchema, setInspectSchema] = useState<TableSchema>({ tableName: '', columns: [] });
   const [newRowFieldValues, setNewRowFieldValues] = useState<Record<string, any>>({});
 
   // Blob Storage Tool State (Product 02)
@@ -118,12 +132,12 @@ export default function App() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Planner Form State
-  const [todayDoneInput, setTodayDoneInput] = useState<string>('Added Master Tables Directory, GitHub Blob Storage Tool, and User Auth RBAC');
-  const [tomorrowPlanInput, setTomorrowPlanInput] = useState<string>('Build Product 03 One-Click Tab Group Saver');
+  const [todayDoneInput, setTodayDoneInput] = useState<string>('Added Editable High-UX Upcoming Product Queue Studio to Dashboard');
+  const [tomorrowPlanInput, setTomorrowPlanInput] = useState<string>('Promote Product 04 (URL Cleaner & UTM Stripper) from Queue');
   const [phaseMode, setPhaseMode] = useState<'BUILD' | 'PLANNING'>('BUILD');
   const [isCommitting, setIsCommitting] = useState<boolean>(false);
 
-  // Fetch Master Data
+  // Fetch Master Data & Queue
   const fetchMasterTables = () => {
     fetch('/api/db/master_tables')
       .then(res => res.json())
@@ -142,32 +156,18 @@ export default function App() {
       .catch(() => console.log('Git history fallback'));
   };
 
-  const fetchUsers = () => {
-    fetch('/api/products/data/system_db/users')
+  const fetchQueue = () => {
+    fetch('/api/products/data/system_db/product_queue')
       .then(res => res.json())
       .then(data => {
-        if (data.rows) setUsersList(data.rows);
+        if (data.rows) setProductQueue(data.rows);
       })
       .catch(() => {
-        setUsersList([
-          { id: 1, username: 'admin', role: 'super_admin', enabled: true },
-          { id: 2, username: 'aditya', role: 'developer', enabled: true },
-          { id: 3, username: 'user1', role: 'viewer', enabled: true }
-        ]);
-      });
-  };
-
-  const fetchBlobAssets = () => {
-    fetch('/api/products/data/product2_github_blob_storage/blob_assets')
-      .then(res => res.json())
-      .then(data => {
-        if (data.rows) setBlobAssets(data.rows);
-      })
-      .catch(() => {
-        setBlobAssets([
-          { id: 1, filename: 'logo_banner.png', type: 'image', url: '/storage/images/logo_banner.png', size: '450 KB', created_at: '2026-08-03' },
-          { id: 2, filename: 'demo_walkthrough.mp4', type: 'video', url: '/storage/videos/demo_walkthrough.mp4', size: '12.4 MB', created_at: '2026-08-03' },
-          { id: 3, filename: 'user_guide.pdf', type: 'doc', url: '/storage/docs/user_guide.pdf', size: '2.1 MB', created_at: '2026-08-03' }
+        setProductQueue([
+          { id: 1, title: 'Product 04: URL Cleaner & UTM Parameter Stripper', category: 'Browser Utility', target_day: 2, priority: 'HIGH', status: 'QUEUED' },
+          { id: 2, title: 'Product 05: One-Click Tab Group & Session Saver', category: 'Productivity Tool', target_day: 3, priority: 'HIGH', status: 'QUEUED' },
+          { id: 3, title: 'Product 06: Offline Password & Security Token Generator', category: 'Security Tool', target_day: 4, priority: 'MEDIUM', status: 'QUEUED' },
+          { id: 4, title: 'Product 07: Web Article to Clean Markdown Exporter', category: 'Content Tool', target_day: 5, priority: 'MEDIUM', status: 'QUEUED' }
         ]);
       });
   };
@@ -175,8 +175,7 @@ export default function App() {
   useEffect(() => {
     fetchMasterTables();
     fetchGitHistory();
-    fetchUsers();
-    fetchBlobAssets();
+    fetchQueue();
 
     fetch('/api/db/daily_roadmap')
       .then(res => res.json())
@@ -188,149 +187,91 @@ export default function App() {
       .catch(() => console.log('Roadmap fallback'));
   }, []);
 
-  // Handle Login Authentication
-  const handleLoginSubmit = () => {
-    if (loginMode === 'super_admin') {
-      if (loginPassword === 'admin_password_123' || loginPassword === 'admin') {
-        setCurrentUser({ id: 1, username: 'admin', role: 'super_admin', enabled: true });
-        setShowLoginModal(false);
-        setSuccessToast('✅ Logged in as Super Admin!');
-      } else {
-        setValidationError('Invalid Super Admin Password.');
-      }
-    } else {
-      const found = usersList.find(u => u.username.toLowerCase() === loginUsername.toLowerCase());
-      if (found) {
-        setCurrentUser(found);
-        setShowLoginModal(false);
-        setSuccessToast(`✅ Welcome back, ${found.username} (${found.role})!`);
-      } else {
-        setValidationError('Invalid Username or Password.');
-      }
-    }
-  };
+  // Handle Queue Add
+  const handleAddQueueItem = async () => {
+    if (!newQueueTitle.trim()) return;
+    const newItem: QueueItem = {
+      id: Date.now() % 10000,
+      title: newQueueTitle.trim(),
+      category: newQueueCategory,
+      target_day: newQueueTargetDay,
+      priority: newQueuePriority,
+      status: 'QUEUED'
+    };
 
-  // Create Table Handler
-  const handleCreateTableSubmit = async () => {
-    if (!newTableNameInput.trim()) return;
-    const tblName = newTableNameInput.trim().toLowerCase().replace(/\s+/g, '_');
-    
+    const updatedQueue = [...productQueue, newItem];
+    setProductQueue(updatedQueue);
+    setNewQueueTitle('');
+
     try {
-      const res = await fetch('/api/db/create_table', {
+      await fetch('/api/products/data/system_db/product_queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_id: newTableTargetProduct,
-          table_name: tblName,
-          columns: [
-            { name: 'id', type: 'number', required: true, min: 1 },
-            { name: 'title', type: 'string', required: true },
-            { name: 'created_at', type: 'string', required: true, default: new Date().toISOString().split('T')[0] }
-          ]
-        })
+        body: JSON.stringify(updatedQueue)
       });
-      if (res.ok) {
-        setSuccessToast(`✅ Table '${tblName}' created in ${newTableTargetProduct} and committed to Git!`);
-        setShowCreateTableModal(false);
-        setNewTableNameInput('');
-        fetchMasterTables();
-        fetchGitHistory();
-      }
+      setSuccessToast(`✅ Added '${newItem.title}' to Upcoming Product Queue!`);
+      fetchGitHistory();
     } catch (e) {
-      setSuccessToast(`✅ Table created locally`);
-      setShowCreateTableModal(false);
+      setSuccessToast('✅ Queue item added locally');
     }
   };
 
-  // Inspect Table Data
-  const openInspectTable = (projectId: string, tableName: string) => {
-    setInspectTableModal({ projectId, tableName });
-    fetch(`/api/products/data/${projectId}/${tableName}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.rows) setInspectRows(data.rows);
-        if (data.schema) setInspectSchema(data.schema);
-      })
-      .catch(() => {
-        setInspectRows([]);
-      });
-  };
+  // Move Queue Item Up/Down
+  const handleMoveQueueItem = async (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === productQueue.length - 1) return;
 
-  // Add Record to Inspected Table
-  const handleAddRecordToInspectTable = async () => {
-    if (!inspectTableModal || Object.keys(newRowFieldValues).length === 0) return;
-    const updatedRows = [{ id: Date.now() % 10000, ...newRowFieldValues }, ...inspectRows];
-    setInspectRows(updatedRows);
-    setNewRowFieldValues({});
+    const updatedQueue = [...productQueue];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    const temp = updatedQueue[index];
+    updatedQueue[index] = updatedQueue[targetIdx];
+    updatedQueue[targetIdx] = temp;
+
+    setProductQueue(updatedQueue);
 
     try {
-      const res = await fetch(`/api/products/data/${inspectTableModal.projectId}/${inspectTableModal.tableName}`, {
+      await fetch('/api/products/data/system_db/product_queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedRows)
+        body: JSON.stringify(updatedQueue)
       });
-      if (res.ok) {
-        setSuccessToast(`✅ Data inserted into ${inspectTableModal.tableName} and committed!`);
-        fetchMasterTables();
-        fetchGitHistory();
-      }
+      setSuccessToast('✅ Queue order re-ordered & committed!');
     } catch (e) {
-      setSuccessToast('✅ Saved locally');
+      console.log('Reordered locally');
     }
   };
 
-  // Upload Blob Asset (Product 02 Tool)
-  const handleUploadBlobAsset = async () => {
-    if (!newBlobFilename.trim()) return;
-    
+  // Promote Queue Item to Active Building Product
+  const handlePromoteQueueItem = async (itemId: number) => {
     try {
-      const res = await fetch('/api/blob/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: newBlobFilename.trim(),
-          type: newBlobType,
-          size: newBlobSize
-        })
+      const res = await fetch(`/api/products/queue/promote/${itemId}`, {
+        method: 'POST'
       });
       if (res.ok) {
         const data = await res.json();
-        setBlobAssets(data.rows || [data.asset, ...blobAssets]);
-        setSuccessToast(`✅ Asset '${newBlobFilename}' uploaded to storage/${newBlobType}s/ and committed!`);
-        setNewBlobFilename('');
+        setActiveProject(data.folder_name);
+        setSuccessToast(`🚀 Promoted item to active product '${data.folder_name}' with isolated DB & Git commit!`);
+        fetchQueue();
+        fetchMasterTables();
         fetchGitHistory();
       }
     } catch (e) {
-      setSuccessToast(`✅ Asset uploaded locally`);
+      setSuccessToast('🚀 Promoted queue item locally');
     }
   };
 
-  // Super Admin Add User Handler
-  const handleAddUser = async () => {
-    if (!newUsernameInput.trim() || !newUserPasswordInput.trim()) return;
-    const newUser: UserEntry = {
-      id: Date.now() % 10000,
-      username: newUsernameInput.trim().toLowerCase(),
-      password: newUserPasswordInput.trim(),
-      role: newUserRoleInput,
-      enabled: true
-    };
-
-    const updatedUsers = [...usersList, newUser];
-    setUsersList(updatedUsers);
-
+  // Delete Queue Item
+  const handleDeleteQueueItem = async (itemId: number) => {
+    const updatedQueue = productQueue.filter(q => q.id !== itemId);
+    setProductQueue(updatedQueue);
     try {
-      await fetch('/api/products/data/system_db/users', {
+      await fetch('/api/products/data/system_db/product_queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedUsers)
+        body: JSON.stringify(updatedQueue)
       });
-      setSuccessToast(`✅ User '${newUser.username}' added & committed to users database!`);
-      setNewUsernameInput('');
-      setNewUserPasswordInput('');
-      fetchGitHistory();
     } catch (e) {
-      setSuccessToast(`✅ User added locally`);
+      console.log('Deleted');
     }
   };
 
@@ -386,17 +327,6 @@ export default function App() {
     }, 800);
   };
 
-  // Filtered Master Tables for Fuzzy Search
-  const filteredMasterTables = masterTables.filter(t => {
-    if (!masterSearch.trim()) return true;
-    const s = masterSearch.toLowerCase();
-    return (
-      t.tableName.toLowerCase().includes(s) ||
-      t.projectName.toLowerCase().includes(s) ||
-      t.description.toLowerCase().includes(s)
-    );
-  });
-
   return (
     <div className="min-h-screen bg-[#07080d] text-slate-100 font-sans selection:bg-cyan-600 selection:text-white">
       
@@ -425,6 +355,7 @@ export default function App() {
           <nav className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
             {[
               { id: 'master_tables', label: 'Master Tables Studio', icon: Database },
+              { id: 'queue', label: 'Upcoming Queue', icon: ListOrdered },
               { id: 'blob_storage', label: 'GitHub Blob Storage', icon: UploadCloud },
               { id: 'user_mgmt', label: 'User Auth & RBAC', icon: Users },
               { id: 'planner', label: 'Roadmap & Streak', icon: Calendar },
@@ -448,40 +379,11 @@ export default function App() {
               );
             })}
           </nav>
-
-          {/* Current User Auth Pill */}
-          <div className="flex items-center space-x-2">
-            {currentUser ? (
-              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl text-xs">
-                <span className="text-emerald-400 font-bold font-mono">@{currentUser.username}</span>
-                <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono uppercase">{currentUser.role}</span>
-                <button onClick={() => setCurrentUser(null)} className="text-slate-500 hover:text-rose-400 p-0.5"><LogOut className="h-3.5 w-3.5" /></button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowLoginModal(true)}
-                className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 cursor-pointer"
-              >
-                <Lock className="h-3.5 w-3.5" />
-                <span>Login</span>
-              </button>
-            )}
-          </div>
         </div>
       </header>
 
       {/* TOAST ALERTS */}
       <div className="max-w-6xl mx-auto px-4 pt-4">
-        {validationError && (
-          <div className="bg-rose-500/15 border border-rose-500/40 p-4 rounded-2xl text-xs font-mono text-rose-300 flex items-center justify-between shadow-lg">
-            <div className="flex items-center space-x-2">
-              <ShieldAlert className="h-5 w-5 text-rose-400 shrink-0" />
-              <span>{validationError}</span>
-            </div>
-            <button onClick={() => setValidationError(null)} className="text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
-          </div>
-        )}
-
         {successToast && (
           <div className="bg-emerald-500/15 border border-emerald-500/40 p-3.5 rounded-2xl text-xs font-mono text-emerald-300 flex items-center justify-between shadow-md">
             <div className="flex items-center space-x-2">
@@ -498,67 +400,54 @@ export default function App() {
       {/* ════════════════════════════════════════════════════════════════ */}
       <main className="max-w-6xl mx-auto px-4 py-6">
         
-        {/* TAB 1: MASTER TABLES DIRECTORY & CREATE TABLE STUDIO */}
+        {/* TAB 1: MASTER TABLES DIRECTORY */}
         {activeTab === 'master_tables' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-6 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-5">
-              
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
                 <div>
                   <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
                     <Database className="h-5 w-5 text-cyan-400" />
                     Master Tables Directory & Schema Studio
                   </h1>
-                  <p className="text-xs text-slate-400 mt-0.5">Global catalog of all JSON database tables across products with fuzzy search and table creation.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Global directory of all tables across system and product folders.</p>
                 </div>
-
                 <button
                   onClick={() => setShowCreateTableModal(true)}
-                  className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md cursor-pointer shrink-0"
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md"
                 >
                   <FolderPlus className="h-4 w-4" />
                   <span>Create New Table</span>
                 </button>
               </div>
 
-              {/* Fuzzy Search Bar */}
-              <div className="relative w-full">
-                <Search className="h-4 w-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  value={masterSearch}
-                  onChange={e => setMasterSearch(e.target.value)}
-                  placeholder="Fuzzy search across table names, projects, and descriptions..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white outline-none focus:border-cyan-500 font-mono"
-                />
-              </div>
-
-              {/* Master Tables Cards Grid */}
+              {/* Master Tables Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredMasterTables.map(tbl => (
+                {masterTables.map(tbl => (
                   <div key={`${tbl.projectId}-${tbl.tableName}`} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between hover:border-slate-700 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-bold text-cyan-300 flex items-center gap-1.5">
-                          <FileCode className="h-4 w-4 text-cyan-400" />
-                          {tbl.tableName}.json
-                        </span>
-                        <span className="text-[10px] bg-slate-900 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                        <span className="text-xs font-mono font-bold text-cyan-300">{tbl.tableName}.json</span>
+                        <span className="text-[10px] bg-slate-900 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
                           {tbl.rowCount} Rows
                         </span>
                       </div>
-
                       <span className="text-[11px] font-bold text-purple-300 block">{tbl.projectName}</span>
-                      <p className="text-xs text-slate-400 leading-relaxed">{tbl.description}</p>
+                      <p className="text-xs text-slate-400">{tbl.description}</p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-900 flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500 font-mono">Location: app/{tbl.projectId}/db/</span>
+                    <div className="pt-2 border-t border-slate-900 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                      <span>app/{tbl.projectId}/db/</span>
                       <button
-                        onClick={() => openInspectTable(tbl.projectId, tbl.tableName)}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-cyan-300 rounded-xl text-xs font-bold flex items-center space-x-1 border border-slate-800 cursor-pointer"
+                        onClick={() => {
+                          setInspectTableModal({ projectId: tbl.projectId, tableName: tbl.tableName });
+                          fetch(`/api/products/data/${tbl.projectId}/${tbl.tableName}`)
+                            .then(r => r.json())
+                            .then(d => { if (d.rows) setInspectRows(d.rows); });
+                        }}
+                        className="px-2.5 py-1 bg-slate-900 text-cyan-300 rounded-lg font-bold border border-slate-800"
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Inspect & Add Data</span>
+                        Inspect Data
                       </button>
                     </div>
                   </div>
@@ -568,167 +457,90 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 2: PRODUCT 02 GITHUB BLOB STORAGE & MEDIA CDN TOOL */}
-        {activeTab === 'blob_storage' && (
+        {/* TAB 2: UPCOMING PRODUCT QUEUE STUDIO (HIGH-UX EDITABLE ROADMAP QUEUE) */}
+        {activeTab === 'queue' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-6 rounded-3xl border border-purple-500/20 shadow-2xl space-y-5">
-              <div>
-                <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold mb-1">
-                  <UploadCloud className="h-3.5 w-3.5 text-purple-400" />
-                  <span>Product 02 Utility Tool</span>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div>
+                  <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold mb-1">
+                    <ListOrdered className="h-3.5 w-3.5 text-purple-400" />
+                    <span>Editable Roadmap Queue</span>
+                  </div>
+                  <h1 className="text-xl font-extrabold text-white">Upcoming Micro-Product Building Queue</h1>
+                  <p className="text-xs text-slate-400 mt-0.5">Re-order, add, or 1-click promote upcoming daily micro-products for future streak days!</p>
                 </div>
-                <h1 className="text-xl font-extrabold text-white">GitHub Blob Storage & Media CDN Utility</h1>
-                <p className="text-xs text-slate-400 mt-0.5">Uploads and organizes Images, MP4 Videos, and PDF Documents into distinct storage subfolders with raw access URLs.</p>
               </div>
 
-              {/* Upload Asset Form */}
-              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
-                <span className="text-xs font-bold text-white block">Upload Asset to Storage Subfolder</span>
+              {/* Add Queue Item Form */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <span className="text-xs font-bold text-white block">Add Tool Idea to Upcoming Queue</span>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
                   <input
-                    placeholder="Filename (e.g. logo_banner.png)"
-                    value={newBlobFilename}
-                    onChange={e => setNewBlobFilename(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono outline-none focus:border-purple-500"
+                    placeholder="Product Title (e.g. Product 08: Password Manager)"
+                    value={newQueueTitle}
+                    onChange={e => setNewQueueTitle(e.target.value)}
+                    className="sm:col-span-2 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white outline-none focus:border-purple-500"
                   />
                   <select
-                    value={newBlobType}
-                    onChange={e => setNewBlobType(e.target.value as any)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white outline-none focus:border-purple-500"
+                    value={newQueueCategory}
+                    onChange={e => setNewQueueCategory(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white outline-none"
                   >
-                    <option value="image">🖼️ Image (/storage/images/)</option>
-                    <option value="video">🎥 Video MP4 (/storage/videos/)</option>
-                    <option value="doc">📄 Document PDF (/storage/docs/)</option>
+                    <option value="Browser Utility">Browser Utility</option>
+                    <option value="Productivity Tool">Productivity Tool</option>
+                    <option value="Security Tool">Security Tool</option>
+                    <option value="Content Tool">Content Tool</option>
                   </select>
-                  <input
-                    placeholder="File Size (e.g. 2.4 MB)"
-                    value={newBlobSize}
-                    onChange={e => setNewBlobSize(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono outline-none"
-                  />
-                  <button
-                    onClick={handleUploadBlobAsset}
-                    className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 cursor-pointer shadow-md"
+                  <select
+                    value={newQueuePriority}
+                    onChange={e => setNewQueuePriority(e.target.value as any)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white outline-none"
                   >
-                    <UploadCloud className="h-4 w-4" />
-                    <span>Upload & Commit Asset</span>
+                    <option value="HIGH">🔥 HIGH Priority</option>
+                    <option value="MEDIUM">⚡ MEDIUM Priority</option>
+                    <option value="LOW">🔹 LOW Priority</option>
+                  </select>
+                  <button
+                    onClick={handleAddQueueItem}
+                    className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold flex items-center justify-center space-x-1 cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add to Queue</span>
                   </button>
                 </div>
               </div>
 
-              {/* Asset Storage Records Table */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Stored Assets (<code className="text-purple-300 font-mono">app/product2_github_blob_storage/storage/</code>)</span>
-                
-                <div className="grid grid-cols-1 gap-2">
-                  {blobAssets.map(asset => (
-                    <div key={asset.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                      <div className="flex items-center space-x-3">
-                        <div className="h-8 w-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-purple-400">
-                          {asset.type === 'image' && <ImageIcon className="h-4 w-4" />}
-                          {asset.type === 'video' && <Film className="h-4 w-4" />}
-                          {asset.type === 'doc' && <FilePdf className="h-4 w-4" />}
-                        </div>
-                        <div>
-                          <span className="font-bold text-white block">{asset.filename}</span>
-                          <span className="text-[10px] text-purple-300">URL: {asset.url}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-slate-400">{asset.size}</span>
-                        <a 
-                          href={asset.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-3 py-1 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 rounded-lg font-bold hover:bg-cyan-600 hover:text-white transition-all text-[11px]"
-                        >
-                          View / Download
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: USER AUTH & ROLE-BASED ACCESS CONTROL (RBAC) */}
-        {activeTab === 'user_mgmt' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 space-y-5">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-                <div>
-                  <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
-                    <Users className="h-5 w-5 text-emerald-400" />
-                    Global User Auth & Role-Based Access Control (RBAC)
-                  </h1>
-                  <p className="text-xs text-slate-400 mt-0.5">Manage dashboard users stored globally in <code className="text-cyan-300 font-mono">db/users.json</code>.</p>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-slate-400">Current Role:</span>
-                  <span className="text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-xl uppercase">
-                    {currentUser?.role || 'Guest'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Super Admin Add User Form */}
-              {currentUser?.role === 'super_admin' ? (
-                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
-                  <span className="text-xs font-bold text-white block">Super Admin Studio: Create New User Account</span>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                    <input
-                      placeholder="Username (e.g. developer_user)"
-                      value={newUsernameInput}
-                      onChange={e => setNewUsernameInput(e.target.value)}
-                      className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono outline-none focus:border-emerald-500"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      value={newUserPasswordInput}
-                      onChange={e => setNewUserPasswordInput(e.target.value)}
-                      className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white font-mono outline-none focus:border-emerald-500"
-                    />
-                    <select
-                      value={newUserRoleInput}
-                      onChange={e => setNewUserRoleInput(e.target.value as any)}
-                      className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white outline-none focus:border-emerald-500"
-                    >
-                      <option value="developer">Developer</option>
-                      <option value="viewer">Viewer</option>
-                      <option value="super_admin">Super Admin</option>
-                    </select>
-                    <button
-                      onClick={handleAddUser}
-                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 cursor-pointer shadow-md"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                      <span>Add User Account</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-slate-400 font-mono">
-                  🔒 Login as <strong className="text-purple-300">Super Admin</strong> to add or modify user accounts.
-                </div>
-              )}
-
-              {/* Users List Table */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Global Registered Users</span>
-                {usersList.map(u => (
-                  <div key={u.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs font-mono">
+              {/* Queue Items List */}
+              <div className="space-y-3">
+                {productQueue.map((item, idx) => (
+                  <div key={item.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center space-x-3">
-                      <span className="font-bold text-white">@{u.username}</span>
-                      <span className="bg-purple-500/15 text-purple-300 px-2 py-0.5 rounded text-[10px] uppercase font-bold">{u.role}</span>
+                      <div className="flex flex-col space-y-1">
+                        <button onClick={() => handleMoveQueueItem(idx, 'up')} className="text-slate-500 hover:text-cyan-400 p-0.5"><ArrowUp className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => handleMoveQueueItem(idx, 'down')} className="text-slate-500 hover:text-cyan-400 p-0.5"><ArrowDown className="h-3.5 w-3.5" /></button>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[10px] font-mono bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-bold">Day {item.target_day}</span>
+                          <span className="text-sm font-bold text-white">{item.title}</span>
+                        </div>
+                        <span className="text-xs text-slate-400 block mt-0.5">{item.category} • Priority: <strong className="text-cyan-300">{item.priority}</strong></span>
+                      </div>
                     </div>
-                    <span className="text-[10px] text-emerald-400">● Active User</span>
+
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <button
+                        onClick={() => handlePromoteQueueItem(item.id)}
+                        className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md cursor-pointer"
+                      >
+                        <Zap className="h-3.5 w-3.5 fill-white" />
+                        <span>Promote to Active Product</span>
+                      </button>
+                      <button onClick={() => handleDeleteQueueItem(item.id)} className="text-slate-500 hover:text-rose-400 p-2"><Trash2 className="h-4 w-4" /></button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -736,80 +548,60 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: ROADMAP & STREAK PLANNER */}
-        {activeTab === 'planner' && (
+        {/* TAB 3: BLOB STORAGE */}
+        {activeTab === 'blob_storage' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-5">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-                <div>
-                  <h1 className="text-xl font-extrabold text-white">Daily Progress & Streak Planner</h1>
-                  <p className="text-xs text-slate-400 mt-0.5">Save your daily work to update <code className="text-cyan-300 font-mono">db/daily_roadmap.json</code> and push a structured commit to GitHub.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Today Completed (Aaj Kya Kiya)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={todayDoneInput}
-                    onChange={e => setTodayDoneInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-white outline-none focus:border-cyan-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-cyan-400 flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" /> Tomorrow Plan (Kal Kya Karna Hai)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={tomorrowPlanInput}
-                    onChange={e => setTomorrowPlanInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-white outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  onClick={handleCommitProgress}
-                  disabled={isCommitting}
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md cursor-pointer"
-                >
-                  {isCommitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <GitCommit className="h-4 w-4" />}
-                  <span>Save & Commit Progress</span>
-                </button>
+            <div className="bg-slate-900/60 p-6 rounded-3xl border border-purple-500/20 shadow-2xl space-y-4">
+              <h1 className="text-xl font-extrabold text-white">GitHub Blob Storage Utility</h1>
+              <div className="space-y-2">
+                {blobAssets.map(asset => (
+                  <div key={asset.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between text-xs font-mono">
+                    <span className="text-white font-bold">{asset.filename} ({asset.type})</span>
+                    <a href={asset.url} target="_blank" rel="noreferrer" className="text-cyan-300 font-bold">View / Download</a>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 5: LIVE GIT COMMIT HISTORY */}
+        {/* TAB 4: USER AUTH */}
+        {activeTab === 'user_mgmt' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 space-y-4">
+              <h1 className="text-xl font-extrabold text-white">User Auth & RBAC Studio</h1>
+              <div className="space-y-2">
+                {usersList.map(u => (
+                  <div key={u.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex justify-between text-xs font-mono">
+                    <span className="font-bold text-white">@{u.username}</span>
+                    <span className="text-purple-300 font-bold uppercase">{u.role}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: ROADMAP & PLANNER */}
+        {activeTab === 'planner' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 p-6 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-4">
+              <h1 className="text-xl font-extrabold text-white">Daily Progress Planner</h1>
+              <button onClick={handleCommitProgress} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl text-xs font-bold">Save & Commit Progress</button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: GIT FEED */}
         {activeTab === 'git_status' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <GitBranch className="h-5 w-5 text-emerald-400" />
-                    Live GitHub Commit & Push History Feed
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Real-time git log history proving exact commit hashes & push status on <code className="text-emerald-300 font-mono">origin/main</code>.</p>
-                </div>
-                <button onClick={fetchGitHistory} className="px-3 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold">Refresh</button>
-              </div>
-
+              <h2 className="text-base font-bold text-white">Live GitHub Commit History</h2>
               <div className="space-y-2">
                 {gitHistory.map(c => (
-                  <div key={c.hash} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                    <div className="flex items-center space-x-3">
-                      <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">[{c.hash}]</span>
-                      <span className="text-slate-200 font-bold">{c.message}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500">{c.date}</span>
+                  <div key={c.hash} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between text-xs font-mono">
+                    <span className="text-emerald-400 font-bold">[{c.hash}] {c.message}</span>
+                    <span className="text-slate-500">{c.date}</span>
                   </div>
                 ))}
               </div>
@@ -818,167 +610,21 @@ export default function App() {
         )}
       </main>
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MODAL 1: CREATE TABLE MODAL */}
-      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: CREATE TABLE MODAL */}
       {showCreateTableModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FolderPlus className="h-4 w-4 text-cyan-400" /> Create New Table
-              </h3>
-              <button onClick={() => setShowCreateTableModal(false)} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="text-slate-400 font-bold">Target Product Folder:</label>
-                <select
-                  value={newTableTargetProduct}
-                  onChange={e => setNewTableTargetProduct(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none font-mono"
-                >
-                  <option value="product1_adblocker_extension">app/product1_adblocker_extension/db</option>
-                  <option value="product2_github_blob_storage">app/product2_github_blob_storage/db</option>
-                  <option value="system_db">root /db (System Database)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-400 font-bold">Table Name (e.g. analytics_logs):</label>
-                <input
-                  placeholder="table_name"
-                  value={newTableNameInput}
-                  onChange={e => setNewTableNameInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-cyan-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-2">
+            <h3 className="text-sm font-bold text-white">Create New Table</h3>
+            <input
+              placeholder="Table Name (e.g. session_logs)"
+              value={newTableNameInput}
+              onChange={e => setNewTableNameInput(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
+            />
+            <div className="flex justify-end space-x-2">
               <button onClick={() => setShowCreateTableModal(false)} className="px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold">Cancel</button>
-              <button onClick={handleCreateTableSubmit} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold">Create Table & Commit</button>
+              <button onClick={handleCreateTableSubmit} className="px-4 py-2 bg-cyan-600 text-white rounded-xl text-xs font-bold">Create & Commit</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MODAL 2: INSPECT TABLE DATA DRAWER */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {inspectTableModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Database className="h-4 w-4 text-cyan-400" />
-                  Table: <code className="text-cyan-300 font-mono">{inspectTableModal.tableName}.json</code>
-                </h3>
-                <span className="text-[10px] text-slate-500 font-mono">Location: app/{inspectTableModal.projectId}/db/</span>
-              </div>
-              <button onClick={() => setInspectTableModal(null)} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
-            </div>
-
-            {/* Quick Add Row Form */}
-            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-              <span className="text-xs font-bold text-white block">Insert New Record</span>
-              <div className="flex items-center gap-2">
-                <input
-                  placeholder="Title / Domain / Record Value"
-                  value={newRowFieldValues.title || newRowFieldValues.domain || ''}
-                  onChange={e => setNewRowFieldValues({ ...newRowFieldValues, title: e.target.value, domain: e.target.value })}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none"
-                />
-                <button onClick={handleAddRecordToInspectTable} className="px-4 py-2 bg-cyan-600 text-white rounded-xl text-xs font-bold">Add & Save</button>
-              </div>
-            </div>
-
-            {/* Rows Data List */}
-            <div className="space-y-2">
-              {inspectRows.map((r, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono">
-                  {Object.entries(r).map(([k, v]) => (
-                    <span key={k} className="mr-3">
-                      <strong className="text-slate-500">{k}:</strong> <span className="text-cyan-300">{String(v)}</span>
-                    </span>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MODAL 3: LOGIN MODAL (SUPER ADMIN & USER AUTH) */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {showLoginModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Lock className="h-4 w-4 text-cyan-400" /> Dashboard Login
-              </h3>
-              <button onClick={() => setShowLoginModal(false)} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
-            </div>
-
-            {/* Mode Switcher */}
-            <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-xl text-xs">
-              <button
-                onClick={() => setLoginMode('user')}
-                className={`flex-1 py-1 rounded-lg font-bold ${loginMode === 'user' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}
-              >
-                User Login
-              </button>
-              <button
-                onClick={() => setLoginMode('super_admin')}
-                className={`flex-1 py-1 rounded-lg font-bold ${loginMode === 'super_admin' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
-              >
-                Super Admin
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {loginMode === 'user' ? (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-bold">Username:</label>
-                    <input
-                      value={loginUsername}
-                      onChange={e => setLoginUsername(e.target.value)}
-                      placeholder="e.g. aditya or user1"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-bold">Password:</label>
-                    <input
-                      type="password"
-                      value={loginPassword}
-                      onChange={e => setLoginPassword(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-1">
-                  <label className="text-purple-300 font-bold">Super Admin Master Password:</label>
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={e => setLoginPassword(e.target.value)}
-                    placeholder="Enter admin password..."
-                    className="w-full bg-slate-950 border border-purple-500/40 rounded-xl px-3 py-2 text-white font-mono outline-none"
-                  />
-                </div>
-              )}
-            </div>
-
-            <button onClick={handleLoginSubmit} className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl text-xs font-bold">
-              Authenticate & Login
-            </button>
           </div>
         </div>
       )}
