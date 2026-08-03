@@ -1547,49 +1547,63 @@ class VerifyOTPRequest(BaseModel):
 import random
 OTP_STORE: Dict[str, str] = {}
 
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests as http_requests
+
+OTP_HTML_TEMPLATE = """
+<div style="font-family:Arial,sans-serif;background:#07080d;color:#fff;padding:30px;border-radius:16px;max-width:480px;margin:auto">
+  <h2 style="color:#06b6d4;margin-top:0">🔐 DailyCodeEngine Console</h2>
+  <p style="color:#94a3b8;font-size:14px">Your one-time login verification code:</p>
+  <div style="background:#0f172a;border:2px solid #06b6d4;border-radius:12px;padding:24px;text-align:center;margin:20px 0">
+    <span style="font-size:36px;font-weight:900;letter-spacing:10px;color:#10b981">{otp_code}</span>
+  </div>
+  <p style="color:#64748b;font-size:12px">This code expires in 5 minutes. Do not share it with anyone.</p>
+</div>
+"""
 
 def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
-    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    smtp_user = os.environ.get("SMTP_USER", os.environ.get("SENDER_EMAIL"))
-    smtp_pass = os.environ.get("SMTP_PASSWORD", os.environ.get("SMTP_PASS"))
-    sender_email = os.environ.get("SENDER_EMAIL", smtp_user or "kuldeepswarnkar4@gmail.com")
+    sender_email = os.environ.get("SENDER_EMAIL", "kuldeepswarnkar4@gmail.com")
+    html_body = OTP_HTML_TEMPLATE.format(otp_code=otp_code)
 
-    if not smtp_user or not smtp_pass:
-        logger.info("SMTP credentials not present in ENV. Operating in simulated OTP mode.")
-        return False
+    # --- Option 1: Resend API (works on Render free tier, HTTPS) ---
+    resend_key = os.environ.get("RESEND_API_KEY")
+    if resend_key:
+        try:
+            resp = http_requests.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={"from": f"DailyCodeEngine <{sender_email}>", "to": [to_email],
+                      "subject": f"🔐 Your OTP Code: {otp_code}", "html": html_body},
+                timeout=15
+            )
+            if resp.status_code in (200, 201):
+                logger.info(f"Resend OTP email sent to {to_email}")
+                return True
+            logger.error(f"Resend error: {resp.status_code} {resp.text}")
+        except Exception as e:
+            logger.error(f"Resend dispatch failed: {e}")
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"🔐 Your 6-Digit Verification Code: {otp_code}"
-        msg["From"] = sender_email
-        msg["To"] = to_email
+    # --- Option 2: SendGrid API (works on Render free tier, HTTPS) ---
+    sendgrid_key = os.environ.get("SENDGRID_API_KEY")
+    if sendgrid_key:
+        try:
+            resp = http_requests.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                headers={"Authorization": f"Bearer {sendgrid_key}", "Content-Type": "application/json"},
+                json={"personalizations": [{"to": [{"email": to_email}]}],
+                      "from": {"email": sender_email, "name": "DailyCodeEngine"},
+                      "subject": f"🔐 Your OTP Code: {otp_code}",
+                      "content": [{"type": "text/html", "value": html_body}]},
+                timeout=15
+            )
+            if resp.status_code == 202:
+                logger.info(f"SendGrid OTP email sent to {to_email}")
+                return True
+            logger.error(f"SendGrid error: {resp.status_code} {resp.text}")
+        except Exception as e:
+            logger.error(f"SendGrid dispatch failed: {e}")
 
-        html_content = f"""
-        <div style="font-family: Arial, sans-serif; background-color: #07080d; color: #ffffff; padding: 30px; border-radius: 16px;">
-          <h2 style="color: #06b6d4; margin-top: 0;">DailyCodeEngine Console Verification</h2>
-          <p style="color: #94a3b8; font-size: 14px;">Use the following 6-digit OTP code to complete your login:</p>
-          <div style="background: #0f172a; border: 1px solid #06b6d4; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #10b981;">{otp_code}</span>
-          </div>
-          <p style="color: #64748b; font-size: 12px;">This code will expire in 5 minutes. If you did not request this code, please ignore this email.</p>
-        </div>
-        """
-        msg.attach(MIMEText(html_content, "html"))
-
-        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
-        server.starttls()
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(sender_email, [to_email], msg.as_string())
-        server.quit()
-        logger.info(f"Real SMTP OTP Email dispatched to {to_email}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to send real SMTP OTP email: {e}")
-        return False
+    logger.info("No email API key configured. Running in Dev OTP mode.")
+    return False
 
 @app.post("/api/auth/send_otp")
 async def send_email_otp(payload: SendOTPRequest, background_tasks: BackgroundTasks):
