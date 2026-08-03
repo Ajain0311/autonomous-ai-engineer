@@ -1547,6 +1547,50 @@ class VerifyOTPRequest(BaseModel):
 import random
 OTP_STORE: Dict[str, str] = {}
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
+    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", os.environ.get("SENDER_EMAIL"))
+    smtp_pass = os.environ.get("SMTP_PASSWORD", os.environ.get("SMTP_PASS"))
+    sender_email = os.environ.get("SENDER_EMAIL", smtp_user or "noreply@autonomous-ai-engineer.com")
+
+    if not smtp_user or not smtp_pass:
+        logger.info("SMTP credentials not present in ENV. Operating in simulated OTP mode.")
+        return False
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"🔐 Your 6-Digit Verification Code: {otp_code}"
+        msg["From"] = sender_email
+        msg["To"] = to_email
+
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; background-color: #07080d; color: #ffffff; padding: 30px; border-radius: 16px;">
+          <h2 style="color: #06b6d4; margin-top: 0;">DailyCodeEngine Console Verification</h2>
+          <p style="color: #94a3b8; font-size: 14px;">Use the following 6-digit OTP code to complete your login:</p>
+          <div style="background: #0f172a; border: 1px solid #06b6d4; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #10b981;">{otp_code}</span>
+          </div>
+          <p style="color: #64748b; font-size: 12px;">This code will expire in 5 minutes. If you did not request this code, please ignore this email.</p>
+        </div>
+        """
+        msg.attach(MIMEText(html_content, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(sender_email, [to_email], msg.as_string())
+        server.quit()
+        logger.info(f"Real SMTP OTP Email dispatched to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send real SMTP OTP email: {e}")
+        return False
+
 @app.post("/api/auth/send_otp")
 def send_email_otp(payload: SendOTPRequest):
     email = payload.email.strip().lower()
@@ -1557,11 +1601,14 @@ def send_email_otp(payload: SendOTPRequest):
     OTP_STORE[email] = otp_code
     logger.info(f"Generated 6-digit OTP {otp_code} for email {email}")
 
+    email_sent = dispatch_real_email_otp(email, otp_code)
+
     return {
         "status": "success",
         "message": f"6-Digit OTP sent to {email}",
         "email": email,
-        "dev_otp": otp_code
+        "email_sent": email_sent,
+        "dev_otp": otp_code if not email_sent else None
     }
 
 @app.post("/api/auth/verify_otp")
