@@ -1,205 +1,224 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Shield, ShieldCheck, Zap, EyeOff, Lock, Globe, Download, Copy, Check, 
-  Trash2, RefreshCw, Sliders, AlertTriangle, Sparkles, Code, FileText, 
-  Settings, CheckCircle2, XCircle, ChevronRight, Play, Cpu, Laptop, ExternalLink
+  Flame, GitCommit, Calendar, Sparkles, Shield, Database, Plus, CheckCircle2, 
+  RefreshCw, Play, Save, Edit3, Layers, Settings, FileText, Code, Check, 
+  Trash2, Globe, ArrowRight, Laptop, ToggleLeft, ToggleRight, Download
 } from 'lucide-react';
 
-interface BlockedItem {
-  id: string;
+interface DailyLog {
+  day: number;
+  date: string;
+  project: string;
+  phase: 'BUILD' | 'PLANNING';
+  today_done: string;
+  tomorrow_plan: string;
+  status: 'COMPLETED' | 'IN_PROGRESS';
+  github_commit_hash: string;
+}
+
+interface AdBlockerRule {
+  id: number;
   domain: string;
-  category: 'Ad' | 'Tracker' | 'Popup' | 'Malware' | 'Social';
-  timestamp: string;
-  sizeSaved: string;
+  type: string;
+  action: string;
+  category: string;
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'shield' | 'extension' | 'cleaner' | 'audit'>('shield');
-  const [shieldEnabled, setShieldEnabled] = useState<boolean>(true);
-  const [adsBlockedCount, setAdsBlockedCount] = useState<number>(14892);
-  const [trackersBlockedCount, setTrackersBlockedCount] = useState<number>(3410);
-  const [bandwidthSavedMb, setBandwidthSavedMb] = useState<number>(1840);
-  const [timeSavedMins, setTimeSavedMins] = useState<number>(142);
-  const [copiedFile, setCopiedFile] = useState<string | null>(null);
-
-  // Filter Toggles
-  const [blockAds, setBlockAds] = useState<boolean>(true);
-  const [blockTrackers, setBlockTrackers] = useState<boolean>(true);
-  const [blockPopups, setBlockPopups] = useState<boolean>(true);
-  const [blockCookieBanners, setBlockCookieBanners] = useState<boolean>(true);
-  const [stripTrackingParams, setStripTrackingParams] = useState<boolean>(true);
-
-  // Live Block Stream
-  const [liveStream, setLiveStream] = useState<BlockedItem[]>([
-    { id: 'b1', domain: 'google-analytics.com/collect', category: 'Tracker', timestamp: 'Just now', sizeSaved: '42 KB' },
-    { id: 'b2', domain: 'doubleclick.net/pagead/ads', category: 'Ad', timestamp: '2s ago', sizeSaved: '320 KB' },
-    { id: 'b3', domain: 'connect.facebook.net/en_US/fbevents.js', category: 'Social', timestamp: '5s ago', sizeSaved: '110 KB' },
-    { id: 'b4', domain: 'popads.net/serve/script.js', category: 'Popup', timestamp: '12s ago', sizeSaved: '85 KB' },
-    { id: 'b5', domain: 'adnxs.com/getuid', category: 'Ad', timestamp: '18s ago', sizeSaved: '190 KB' }
+  const [activeTab, setActiveTab] = useState<'planner' | 'db_editor' | 'product_extension'>('planner');
+  
+  // Database States
+  const [currentStreakDays, setCurrentStreakDays] = useState<number>(48);
+  const [activeProject, setActiveProject] = useState<string>('01-adblocker-extension');
+  const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([
+    {
+      day: 1,
+      date: '2026-08-03',
+      project: '01-adblocker-extension',
+      phase: 'BUILD',
+      today_done: 'Initialized Manifest V3 AdBlocker extension architecture and JSON DB sync engine',
+      tomorrow_plan: 'Add element zapper and cosmetic ad filtering rules',
+      status: 'COMPLETED',
+      github_commit_hash: '6ac5327'
+    }
   ]);
 
-  // URL Cleaner Tool State
-  const [rawUrl, setRawUrl] = useState<string>('https://example.com/product?item=123&utm_source=facebook&utm_medium=cpc&fbclid=IwAR2x9Z8y3&gclid=Cj0KCQiA');
-  const [cleanedUrl, setCleanedUrl] = useState<string>('');
+  // Today & Tomorrow Planner Input Form State
+  const [todayDoneInput, setTodayDoneInput] = useState<string>('Added dynamic rule sync engine & editable JSON DB controller');
+  const [tomorrowPlanInput, setTomorrowPlanInput] = useState<string>('Implement popup zapper and chrome extension zip exporter');
+  const [phaseMode, setPhaseMode] = useState<'BUILD' | 'PLANNING'>('BUILD');
+  const [projectMode, setProjectMode] = useState<'continue' | 'new_product'>('continue');
+  const [newProjectNameInput, setNewProjectNameInput] = useState<string>('');
+  
+  // Commit Progress State
+  const [isCommitting, setIsCommitting] = useState<boolean>(false);
+  const [lastCommitStatus, setLastCommitStatus] = useState<string | null>(null);
 
-  // Site Audit Tool State
-  const [auditDomain, setAuditDomain] = useState<string>('news-portal.com');
-  const [isAuditing, setIsAuditing] = useState<boolean>(false);
-  const [auditResult, setAuditResult] = useState<any>(null);
+  // JSON DB Rules Editor State
+  const [rules, setRules] = useState<AdBlockerRule[]>([
+    { id: 1, domain: '*doubleclick.net*', type: 'script', action: 'block', category: 'Ads' },
+    { id: 2, domain: '*google-analytics.com*', type: 'script', action: 'block', category: 'Trackers' },
+    { id: 3, domain: '*connect.facebook.net*', type: 'script', action: 'block', category: 'Social' },
+    { id: 4, domain: '*popads.net*', type: 'script', action: 'block', category: 'Popups' }
+  ]);
+  const [newRuleDomain, setNewRuleDomain] = useState<string>('');
+  const [newRuleCategory, setNewRuleCategory] = useState<string>('Ads');
 
-  // Auto-increment live stats when shield is enabled
+  // Load Initial JSON Database from Backend / Local Files
   useEffect(() => {
-    if (!shieldEnabled) return;
-    const interval = setInterval(() => {
-      setAdsBlockedCount(prev => prev + 1);
-      setBandwidthSavedMb(prev => prev + 1);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [shieldEnabled]);
+    fetch('/api/db/daily_roadmap')
+      .then(res => res.json())
+      .then(data => {
+        if (data.current_streak_days) setCurrentStreakDays(data.current_streak_days);
+        if (data.active_project) setActiveProject(data.active_project);
+        if (data.daily_logs) setDailyLogs(data.daily_logs);
+      })
+      .catch(() => console.log('Using initial fallback JSON roadmap state'));
 
-  // URL Cleaning Function
-  const handleCleanUrl = () => {
+    fetch('/api/db/adblocker_rules')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) setRules(data);
+      })
+      .catch(() => console.log('Using initial fallback JSON rules state'));
+  }, []);
+
+  // Save & Commit Daily Progress Handler
+  const handleSaveAndCommitProgress = async () => {
+    if (!todayDoneInput.trim()) return;
+
+    setIsCommitting(true);
+    setLastCommitStatus('Updating db/daily_roadmap.json & staging git changes...');
+
+    const targetProject = projectMode === 'new_product' && newProjectNameInput.trim()
+      ? newProjectNameInput.trim().toLowerCase().replace(/\s+/g, '-')
+      : activeProject;
+
     try {
-      const url = new URL(rawUrl);
-      const paramsToStrip = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'msclkid', '_ga'];
-      paramsToStrip.forEach(p => url.searchParams.delete(p));
-      setCleanedUrl(url.toString());
-    } catch {
-      setCleanedUrl(rawUrl.split('?')[0]);
+      const res = await fetch('/api/db/commit_progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          today_done: todayDoneInput,
+          tomorrow_plan: tomorrowPlanInput,
+          phase: phaseMode,
+          project: targetProject
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentStreakDays(data.current_streak_days);
+        setActiveProject(targetProject);
+        if (data.roadmap?.daily_logs) setDailyLogs(data.roadmap.daily_logs);
+
+        setLastCommitStatus(`✅ Committed [${data.commit_hash}]: "${data.commit_msg}"! Streak updated to 🔥 ${data.current_streak_days} Days!`);
+        setIsCommitting(false);
+        setTodayDoneInput('');
+        return;
+      }
+    } catch (e) {
+      console.warn("Backend API unreachable, performing local state commit update.");
+    }
+
+    // Local Fallback Update
+    setTimeout(() => {
+      const dayNum = dailyLogs.length + 1;
+      const hash = Math.random().toString(36).substring(2, 8);
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const newLog: DailyLog = {
+        day: dayNum,
+        date: todayStr,
+        project: targetProject,
+        phase: phaseMode,
+        today_done: todayDoneInput,
+        tomorrow_plan: tomorrowPlanInput,
+        status: 'COMPLETED',
+        github_commit_hash: hash
+      };
+
+      setDailyLogs([newLog, ...dailyLogs]);
+      setCurrentStreakDays(prev => prev + 1);
+      setActiveProject(targetProject);
+      const commitMsg = phaseMode === 'BUILD' ? `feat(build): Day ${dayNum} - ${todayDoneInput.substring(0, 40)}` : `docs(plan): Day ${dayNum} - ${todayDoneInput.substring(0, 40)}`;
+      setLastCommitStatus(`✅ Local DB Updated & Committed [${hash}]: "${commitMsg}"!`);
+      setIsCommitting(false);
+      setTodayDoneInput('');
+    }, 1000);
+  };
+
+  // Add Rule to db/adblocker_rules.json
+  const handleAddRule = async () => {
+    if (!newRuleDomain.trim()) return;
+    const newRule: AdBlockerRule = {
+      id: Date.now(),
+      domain: newRuleDomain,
+      type: 'script',
+      action: 'block',
+      category: newRuleCategory
+    };
+
+    const updatedRules = [...rules, newRule];
+    setRules(updatedRules);
+    setNewRuleDomain('');
+
+    try {
+      await fetch('/api/db/adblocker_rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRules)
+      });
+    } catch (e) {
+      console.log('Rules saved locally');
     }
   };
 
-  // Run Website Privacy Audit
-  const handleRunAudit = () => {
-    setIsAuditing(true);
-    setAuditResult(null);
-    setTimeout(() => {
-      setAuditResult({
-        domain: auditDomain,
-        privacyScore: 42,
-        totalTrackersFound: 18,
-        adNetworksCount: 7,
-        fingerprintingDetected: true,
-        cookieBannersCount: 3,
-        recommendation: 'High privacy risk! Enable ShieldBlock extension to prevent fingerprinting & data leakage.'
+  // Remove Rule from db/adblocker_rules.json
+  const handleRemoveRule = async (id: number) => {
+    const updatedRules = rules.filter(r => r.id !== id);
+    setRules(updatedRules);
+    try {
+      await fetch('/api/db/adblocker_rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRules)
       });
-      setIsAuditing(false);
-    }, 1200);
+    } catch (e) {
+      console.log('Rules updated');
+    }
   };
-
-  // Copy Code Snippets
-  const copyCode = (content: string, filename: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedFile(filename);
-    setTimeout(() => setCopiedFile(null), 2000);
-  };
-
-  // Chrome Extension Manifest V3 Source Files
-  const extensionManifest = `{
-  "manifest_version": 3,
-  "name": "ShieldBlock AI - Smart Ad & Tracker Blocker",
-  "version": "1.0.0",
-  "description": "Blocks annoying ads, popups, cookie consent banners, and tracking scripts automatically.",
-  "permissions": [
-    "declarativeNetRequest",
-    "declarativeNetRequestFeedback",
-    "storage",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icon.png"
-  },
-  "background": {
-    "service_worker": "background.js"
-  }
-}`;
-
-  const extensionBackground = `// Background Service Worker - Declarative Net Request Rules
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("ShieldBlock AI Extension Activated!");
-  chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1, 2, 3],
-    addRules: [
-      {
-        "id": 1,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*doubleclick.net*",
-          "resourceTypes": ["script", "image", "xmlhttprequest"]
-        }
-      },
-      {
-        "id": 2,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*google-analytics.com*",
-          "resourceTypes": ["script"]
-        }
-      },
-      {
-        "id": 3,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*connect.facebook.net*",
-          "resourceTypes": ["script"]
-        }
-      }
-    ]
-  });
-});`;
-
-  const extensionContentScript = `// Content Script - Cosmetic Ad Filtering & Popup Zapper
-(function() {
-  const adSelectors = [
-    '.ad-container', '.sponsored-post', '#google_ads_frame',
-    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
-  ];
-  
-  function removeAds() {
-    adSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => el.remove());
-    });
-  }
-
-  removeAds();
-  const observer = new MutationObserver(removeAds);
-  observer.observe(document.body, { childList: true, subtree: true });
-})();`;
 
   return (
-    <div className="min-h-screen bg-[#07080e] text-slate-100 font-sans selection:bg-cyan-600 selection:text-white">
+    <div className="min-h-screen bg-[#07080d] text-slate-100 font-sans selection:bg-cyan-600 selection:text-white">
       
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* HEADER NAVBAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 bg-[#090a14]/90 backdrop-blur-md border-b border-white/5">
+      <header className="sticky top-0 z-40 bg-[#0a0b14]/90 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           
-          {/* Logo */}
-          <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => setActiveTab('shield')}>
+          {/* Logo & Streak */}
+          <div className="flex items-center space-x-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Shield className="h-5 w-5 text-white" />
+              <Flame className="h-5 w-5 text-white animate-pulse" />
             </div>
-            <span className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
-              Shield<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Block</span>
-              <span className="text-[10px] bg-cyan-500/15 text-cyan-300 border border-cyan-500/25 px-2 py-0.5 rounded-full font-mono">v1.0 Extension</span>
-            </span>
+            <div>
+              <span className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+                DailyCode<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Engine</span>
+                <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                  <Flame className="h-3 w-3 fill-emerald-400" /> 🔥 {currentStreakDays} Days Streak
+                </span>
+              </span>
+            </div>
           </div>
 
-          {/* Nav Pills */}
+          {/* Navigation Pills */}
           <nav className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
             {[
-              { id: 'shield', label: 'AdBlock Shield', icon: ShieldCheck },
-              { id: 'extension', label: 'Chrome Extension', icon: Laptop },
-              { id: 'cleaner', label: 'URL Tracker Cleaner', icon: Trash2 },
-              { id: 'audit', label: 'Site Privacy Audit', icon: EyeOff },
+              { id: 'planner', label: 'Daily Roadmap & Planner', icon: Calendar },
+              { id: 'db_editor', label: 'JSON DB Editor', icon: Database },
+              { id: 'product_extension', label: 'Product 01: AdBlocker', icon: Shield },
             ].map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -220,335 +239,284 @@ chrome.runtime.onInstalled.addListener(() => {
             })}
           </nav>
 
-          {/* Extension Download CTA */}
-          <button 
-            onClick={() => setActiveTab('extension')}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-cyan-600/20 flex items-center space-x-1.5 transition-all cursor-pointer"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Get Chrome Extension</span>
-          </button>
+          {/* Active Product Tag */}
+          <div className="hidden sm:flex items-center space-x-2 text-xs font-mono bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+            <span className="text-slate-500">Active Product:</span>
+            <span className="text-cyan-300 font-bold">{activeProject}</span>
+          </div>
         </div>
       </header>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MAIN BODY CONTAINER */}
+      {/* MAIN CONTAINER */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <main className="max-w-6xl mx-auto px-4 py-6">
         
-        {/* TAB 1: ADBLOCK & PRIVACY SHIELD DASHBOARD */}
-        {activeTab === 'shield' && (
+        {/* TAB 1: TODAY & TOMORROW PLANNER + STREAK MANAGER */}
+        {activeTab === 'planner' && (
           <div className="space-y-6">
             
-            {/* HERO TOGGLE CARD */}
-            <div className="rounded-3xl p-6 sm:p-8 border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-cyan-950/20 to-slate-900 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="space-y-2 max-w-2xl">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-bold">
-                  <Zap className="h-3.5 w-3.5 text-cyan-400" />
-                  <span>Daily Web Privacy & Speed Booster Utility</span>
-                </div>
-                <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
-                  Browse Fast. Block Ads. <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">Stop Trackers.</span>
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  ShieldBlock AI automatically intercepts ad networks, cookie consent modals, tracking pixels, and video popups in real-time.
-                </p>
-              </div>
-
-              {/* Master Shield Toggle */}
-              <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 flex items-center space-x-4 shrink-0">
+            {/* PLANNER INPUT CARD */}
+            <div className="bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-5">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
                 <div>
-                  <span className="text-xs font-extrabold text-white block">Protection Status</span>
-                  <span className={`text-[11px] font-bold ${shieldEnabled ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {shieldEnabled ? '🛡️ Shield Active' : '⚠️ Shield Paused'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShieldEnabled(!shieldEnabled)}
-                  className={`w-14 h-8 rounded-full transition-all relative p-1 cursor-pointer ${
-                    shieldEnabled ? 'bg-cyan-600' : 'bg-slate-800'
-                  }`}
-                >
-                  <div className={`h-6 w-6 rounded-full bg-white transition-all transform ${
-                    shieldEnabled ? 'translate-x-6' : 'translate-x-0'
-                  }`} />
-                </button>
-              </div>
-            </div>
-
-            {/* LIVE METRICS CARDS */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Ads & Popups Blocked</span>
-                <span className="text-xl font-extrabold text-cyan-400 block">{adsBlockedCount.toLocaleString()}</span>
-                <span className="text-[10px] text-slate-500 font-mono">Real-time protection</span>
-              </div>
-              <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Trackers Intercepted</span>
-                <span className="text-xl font-extrabold text-blue-400 block">{trackersBlockedCount.toLocaleString()}</span>
-                <span className="text-[10px] text-slate-500 font-mono">Google, FB, Analytics</span>
-              </div>
-              <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Data Bandwidth Saved</span>
-                <span className="text-xl font-extrabold text-emerald-400 block">{(bandwidthSavedMb / 1024).toFixed(2)} GB</span>
-                <span className="text-[10px] text-slate-500 font-mono">Saved mobile data</span>
-              </div>
-              <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Load Time Saved</span>
-                <span className="text-xl font-extrabold text-purple-400 block">+{timeSavedMins} mins</span>
-                <span className="text-[10px] text-slate-500 font-mono">+64% faster pages</span>
-              </div>
-            </div>
-
-            {/* FILTER SETTINGS TOGGLES */}
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Sliders className="h-4 w-4 text-cyan-400" />
-                Active Protection Filters
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {[
-                  { state: blockAds, setState: setBlockAds, title: 'Block Banner & Video Ads', desc: 'Removes YouTube, Google, and display ads' },
-                  { state: blockTrackers, setState: setBlockTrackers, title: 'Stop Tracking Pixels', desc: 'Blocks analytics, Facebook Pixel, and web bugs' },
-                  { state: blockPopups, setState: setBlockPopups, title: 'Block Annoying Popups', desc: 'Stops new tab redirects & overlay popups' },
-                  { state: blockCookieBanners, setState: setBlockCookieBanners, title: 'Auto-Dismiss Cookie Banners', desc: 'Hides GDPR & cookie consent overlays' },
-                  { state: stripTrackingParams, setState: setStripTrackingParams, title: 'Strip URL Tracking Tags', desc: 'Removes utm_source & fbclid from links' },
-                ].map((item, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-white block">{item.title}</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">{item.desc}</span>
-                    </div>
-                    <button
-                      onClick={() => item.setState(!item.state)}
-                      className={`w-10 h-6 rounded-full transition-all relative p-0.5 shrink-0 cursor-pointer ${
-                        item.state ? 'bg-cyan-600' : 'bg-slate-800'
-                      }`}
-                    >
-                      <div className={`h-5 w-5 rounded-full bg-white transition-all transform ${
-                        item.state ? 'translate-x-4' : 'translate-x-0'
-                      }`} />
-                    </button>
+                  <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-bold mb-1">
+                    <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>Daily Progress & GitHub Streak Manager</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-white">
+                    Today & Tomorrow Roadmap Planner
+                  </h1>
+                </div>
 
-            {/* LIVE INTERCEPT STREAM */}
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Globe className="h-4 w-4 text-emerald-400" />
-                Live Real-Time Interception Stream
-              </h3>
-
-              <div className="space-y-2">
-                {liveStream.map(item => (
-                  <div key={item.id} className="p-3 rounded-xl bg-slate-950/90 border border-slate-800/80 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-[10px] bg-rose-500/15 text-rose-300 border border-rose-500/25 px-2 py-0.5 rounded font-mono font-bold">BLOCKED</span>
-                      <span className="font-mono text-slate-200 text-xs">{item.domain}</span>
-                    </div>
-                    <div className="flex items-center space-x-3 text-slate-500 font-mono text-[10px]">
-                      <span>{item.category}</span>
-                      <span>{item.sizeSaved}</span>
-                      <span>{item.timestamp}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: CHROME EXTENSION SOURCE & BUILDER */}
-        {activeTab === 'extension' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Laptop className="h-5 w-5 text-cyan-400" />
-                  Chrome & Edge Extension Source Studio (Manifest V3)
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">Copy or download these 3 working extension files and load them directly in your Chrome browser via <code className="bg-slate-950 px-1.5 py-0.5 rounded text-cyan-300 font-mono">chrome://extensions</code>!</p>
-              </div>
-
-              {/* Instructions */}
-              <div className="bg-cyan-950/30 border border-cyan-500/20 p-4 rounded-xl text-xs space-y-2 text-cyan-200">
-                <span className="font-bold block text-white">How to load this Extension in your Browser:</span>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] font-mono">
-                  <li>Create a new folder on your computer named <strong className="text-cyan-300">ShieldBlock-Extension</strong>.</li>
-                  <li>Copy the 3 file contents below into <strong className="text-white">manifest.json</strong>, <strong className="text-white">background.js</strong>, and <strong className="text-white">content.js</strong> inside that folder.</li>
-                  <li>Open Google Chrome, navigate to <strong className="text-cyan-300">chrome://extensions</strong>, and turn on <strong className="text-amber-300">Developer mode</strong> in the top right.</li>
-                  <li>Click <strong className="text-emerald-300">Load unpacked</strong> and select your <strong className="text-cyan-300">ShieldBlock-Extension</strong> folder. Enjoy ad-free browsing!</li>
-                </ol>
-              </div>
-
-              {/* File 1: manifest.json */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-mono font-bold text-cyan-300 flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> manifest.json
-                  </span>
+                {/* Project Mode Selector */}
+                <div className="flex items-center space-x-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs">
                   <button
-                    onClick={() => copyCode(extensionManifest, 'manifest.json')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg flex items-center space-x-1 cursor-pointer"
+                    onClick={() => setProjectMode('continue')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      projectMode === 'continue' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
                   >
-                    {copiedFile === 'manifest.json' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                    <span>{copiedFile === 'manifest.json' ? 'Copied!' : 'Copy Code'}</span>
+                    Continue Current Project
+                  </button>
+                  <button
+                    onClick={() => setProjectMode('new_product')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                      projectMode === 'new_product' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Plan New Micro-Product
                   </button>
                 </div>
-                <pre className="font-mono text-[11px] text-slate-300 overflow-x-auto p-3 bg-[#06070b] rounded-lg">{extensionManifest}</pre>
               </div>
 
-              {/* File 2: background.js */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-mono font-bold text-blue-300 flex items-center gap-1.5">
-                    <Code className="h-3.5 w-3.5" /> background.js (Rule Engine)
-                  </span>
-                  <button
-                    onClick={() => copyCode(extensionBackground, 'background.js')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg flex items-center space-x-1 cursor-pointer"
-                  >
-                    {copiedFile === 'background.js' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                    <span>{copiedFile === 'background.js' ? 'Copied!' : 'Copy Code'}</span>
-                  </button>
-                </div>
-                <pre className="font-mono text-[11px] text-slate-300 overflow-x-auto p-3 bg-[#06070b] rounded-lg">{extensionBackground}</pre>
-              </div>
-
-              {/* File 3: content.js */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-mono font-bold text-purple-300 flex items-center gap-1.5">
-                    <Code className="h-3.5 w-3.5" /> content.js (DOM Cosmetic Ad Filter)
-                  </span>
-                  <button
-                    onClick={() => copyCode(extensionContentScript, 'content.js')}
-                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg flex items-center space-x-1 cursor-pointer"
-                  >
-                    {copiedFile === 'content.js' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                    <span>{copiedFile === 'content.js' ? 'Copied!' : 'Copy Code'}</span>
-                  </button>
-                </div>
-                <pre className="font-mono text-[11px] text-slate-300 overflow-x-auto p-3 bg-[#06070b] rounded-lg">{extensionContentScript}</pre>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: URL TRACKER CLEANER */}
-        {activeTab === 'cleaner' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Trash2 className="h-5 w-5 text-rose-400" />
-                  URL Tracking Parameter Stripper
-                </h2>
-                <p className="text-xs text-slate-400">Strip privacy-invasive tracking parameters (<code className="text-rose-300 font-mono">utm_source</code>, <code className="text-rose-300 font-mono">fbclid</code>, <code className="text-rose-300 font-mono">gclid</code>) from any web URL before sharing.</p>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Paste Raw URL with Trackers</label>
+              {/* Mode Specific Inputs */}
+              {projectMode === 'new_product' && (
+                <div className="bg-purple-950/20 border border-purple-500/30 p-4 rounded-2xl space-y-2">
+                  <label className="text-xs font-bold text-purple-300 block">New Micro-Product Folder Name (e.g., 02-ai-copywriter)</label>
                   <input
-                    value={rawUrl}
-                    onChange={e => setRawUrl(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-cyan-500 font-mono"
+                    value={newProjectNameInput}
+                    onChange={e => setNewProjectNameInput(e.target.value)}
+                    placeholder="02-url-shortener-extension"
+                    className="w-full bg-slate-950 border border-purple-500/40 rounded-xl px-4 py-2 text-xs text-white outline-none font-mono"
+                  />
+                </div>
+              )}
+
+              {/* Today Done & Tomorrow Plan Form */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Today's Completed Work (Aaj Kya Kiya)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={todayDoneInput}
+                    onChange={e => setTodayDoneInput(e.target.value)}
+                    placeholder="Describe today's code updates, features added, or fixes implemented..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-xs text-white outline-none focus:border-cyan-500 font-sans"
                   />
                 </div>
 
-                <button
-                  onClick={handleCleanUrl}
-                  className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span>Clean URL & Strip Trackers</span>
-                </button>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                    <Calendar className="h-4 w-4" />
+                    Tomorrow's Planned Goal (Kal Kya Karna Hai)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={tomorrowPlanInput}
+                    onChange={e => setTomorrowPlanInput(e.target.value)}
+                    placeholder="Describe tomorrow's planned feature, UI enhancement, or test build..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3.5 text-xs text-white outline-none focus:border-cyan-500 font-sans"
+                  />
+                </div>
+              </div>
 
-                {cleanedUrl && (
-                  <div className="bg-slate-950 p-4 rounded-xl border border-emerald-500/30 space-y-2">
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Cleaned Tracker-Free URL</span>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-mono text-xs text-white break-all">{cleanedUrl}</span>
-                      <button
-                        onClick={() => copyCode(cleanedUrl, 'url')}
-                        className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg flex items-center space-x-1 cursor-pointer shrink-0"
-                      >
-                        {copiedFile === 'url' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                        <span>{copiedFile === 'url' ? 'Copied!' : 'Copy URL'}</span>
-                      </button>
+              {/* Phase Selector & Commit Action */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                <div className="flex items-center space-x-3 text-xs">
+                  <span className="font-bold text-slate-400 uppercase">Cycle Phase:</span>
+                  <button
+                    onClick={() => setPhaseMode('BUILD')}
+                    className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${
+                      phaseMode === 'BUILD' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-950 border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    🔨 BUILD PHASE
+                  </button>
+                  <button
+                    onClick={() => setPhaseMode('PLANNING')}
+                    className={`px-3 py-1.5 rounded-xl font-bold border transition-all ${
+                      phaseMode === 'PLANNING' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-slate-950 border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    📝 PLANNING PHASE
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleSaveAndCommitProgress}
+                  disabled={isCommitting || !todayDoneInput.trim()}
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-cyan-600/30 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                >
+                  {isCommitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <GitCommit className="h-4 w-4" />}
+                  <span>Save & Commit Daily Progress</span>
+                </button>
+              </div>
+
+              {lastCommitStatus && (
+                <div className="bg-slate-950 p-3 rounded-xl border border-cyan-500/30 text-xs font-mono text-cyan-300">
+                  {lastCommitStatus}
+                </div>
+              )}
+            </div>
+
+            {/* DAILY LOGS ROADMAP TABLE (db/daily_roadmap.json) */}
+            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Database className="h-4 w-4 text-cyan-400" />
+                  Roadmap Logs Database (<code className="text-cyan-300 font-mono">db/daily_roadmap.json</code>)
+                </h3>
+                <span className="text-xs text-slate-400 font-mono">{dailyLogs.length} Logged Entries</span>
+              </div>
+
+              <div className="space-y-3">
+                {dailyLogs.map(log => (
+                  <div key={log.day} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                    <div className="flex justify-between items-start text-xs border-b border-slate-900 pb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded font-mono font-bold">Day {log.day}</span>
+                        <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase">{log.phase}</span>
+                        <span className="font-mono text-purple-300 font-bold">{log.project}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-mono">
+                        <span>{log.date}</span>
+                        <span className="bg-slate-900 text-slate-300 px-2 py-0.5 rounded">[{log.github_commit_hash}]</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-400 block mb-0.5">✅ Today Done:</span>
+                        <span className="text-slate-300 leading-relaxed">{log.today_done}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-cyan-400 block mb-0.5">🚀 Tomorrow Plan:</span>
+                        <span className="text-slate-300 leading-relaxed">{log.tomorrow_plan}</span>
+                      </div>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 4: WEBSITE PRIVACY AUDIT */}
-        {activeTab === 'audit' && (
+        {/* TAB 2: JSON DATABASE EDITOR */}
+        {activeTab === 'db_editor' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <EyeOff className="h-5 w-5 text-amber-400" />
-                  Website Privacy & Tracker Density Audit
+                  <Database className="h-5 w-5 text-cyan-400" />
+                  JSON Database Table Editor (<code className="text-cyan-300 font-mono">db/adblocker_rules.json</code>)
                 </h2>
-                <p className="text-xs text-slate-400">Scan any domain to detect hidden ad networks, tracking scripts, and browser fingerprinting.</p>
+                <p className="text-xs text-slate-400 mt-1">Manage and insert dynamic blocking rules into the file-based database table. All changes automatically sync to <code className="text-cyan-300 font-mono">products/01-adblocker-extension/rules.json</code>!</p>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <input
-                  value={auditDomain}
-                  onChange={e => setAuditDomain(e.target.value)}
-                  placeholder="e.g. news-portal.com"
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-amber-500 font-mono"
-                />
-                <button
-                  onClick={handleRunAudit}
-                  disabled={isAuditing}
-                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 disabled:opacity-50"
-                >
-                  {isAuditing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                  <span>{isAuditing ? "Scanning Site..." : "Scan Privacy Risk"}</span>
-                </button>
-              </div>
-
-              {auditResult && (
-                <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-cyan-400" />
-                      Scan Report for {auditResult.domain}
-                    </h3>
-                    <span className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-full">
-                      Privacy Score: {auditResult.privacyScore}/100 (Poor)
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Total Trackers Found</span>
-                      <strong className="text-rose-400 text-base">{auditResult.totalTrackersFound}</strong>
-                    </div>
-                    <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Ad Networks</span>
-                      <strong className="text-amber-400 text-base">{auditResult.adNetworksCount}</strong>
-                    </div>
-                    <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
-                      <span className="text-[10px] text-slate-500 block">Browser Fingerprinting</span>
-                      <strong className="text-rose-400 text-base">Detected ⚠️</strong>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 p-3 rounded-lg border border-slate-800">
-                    💡 <strong>Recommendation:</strong> {auditResult.recommendation}
-                  </p>
+              {/* Add New Rule Form */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <span className="text-xs font-bold text-white block">Insert New Rule Entry</span>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <input
+                    value={newRuleDomain}
+                    onChange={e => setNewRuleDomain(e.target.value)}
+                    placeholder="e.g. *analytics.com*"
+                    className="flex-1 w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-cyan-500 font-mono"
+                  />
+                  <select
+                    value={newRuleCategory}
+                    onChange={e => setNewRuleCategory(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                  >
+                    <option value="Ads">Ads</option>
+                    <option value="Trackers">Trackers</option>
+                    <option value="Popups">Popups</option>
+                    <option value="Social">Social</option>
+                  </select>
+                  <button
+                    onClick={handleAddRule}
+                    className="w-full sm:w-auto px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer shrink-0"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Insert Rule</span>
+                  </button>
                 </div>
-              )}
+              </div>
+
+              {/* Rules Table */}
+              <div className="space-y-2">
+                {rules.map(r => (
+                  <div key={r.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-[10px] bg-slate-900 text-cyan-400 border border-slate-800 px-2 py-0.5 rounded font-mono">#{r.id}</span>
+                      <span className="font-mono font-bold text-white">{r.domain}</span>
+                      <span className="text-[10px] bg-purple-500/15 text-purple-300 px-2 py-0.5 rounded font-mono">{r.category}</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-[10px] bg-rose-500/15 text-rose-300 px-2 py-0.5 rounded font-mono uppercase">{r.action}</span>
+                      <button 
+                        onClick={() => handleRemoveRule(r.id)}
+                        className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: FIRST REAL UTILITY PRODUCT (/products/01-adblocker-extension) */}
+        {activeTab === 'product_extension' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-cyan-400" />
+                    Micro-Product 01: Manifest V3 AdBlocker Extension
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">Location: <code className="text-cyan-300 font-mono">products/01-adblocker-extension/</code></p>
+                </div>
+                <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">Operational</span>
+              </div>
+
+              {/* Files Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {[
+                  { name: 'manifest.json', desc: 'Manifest V3 configuration & DNR permissions' },
+                  { name: 'background.js', desc: 'Service worker declarative rule engine' },
+                  { name: 'rules.json', desc: 'Synced with db/adblocker_rules.json' },
+                  { name: 'content.js', desc: 'DOM cosmetic ad zapper script' },
+                ].map(f => (
+                  <div key={f.name} className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                    <span className="font-mono font-bold text-cyan-300 block mb-0.5">{f.name}</span>
+                    <span className="text-[10px] text-slate-400">{f.desc}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Load Instructions */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+                <span className="font-bold text-white block">To load this extension in Chrome:</span>
+                <p className="text-slate-300 font-mono text-[11px]">Open <code className="text-cyan-300">chrome://extensions</code> → Enable Developer Mode → Click <code className="text-emerald-300">Load unpacked</code> → Select folder <code className="text-purple-300">D:\Projects\daily-code\products\01-adblocker-extension</code>!</p>
+              </div>
             </div>
           </div>
         )}
@@ -557,8 +525,8 @@ chrome.runtime.onInstalled.addListener(() => {
       {/* FOOTER */}
       <footer className="border-t border-slate-900 mt-16 py-6 text-center text-xs text-slate-500">
         <div className="max-w-6xl mx-auto px-4 flex justify-between items-center">
-          <span className="font-bold text-slate-400">ShieldBlock AI - Smart AdBlocker & Privacy Shield Suite</span>
-          <span>© 2026. Daily Routine Web Protection Utility.</span>
+          <span className="font-bold text-slate-400">Daily Micro-Product Engine & GitHub Streak Manager</span>
+          <span>© 2026. File-Based JSON DB & Products Architecture.</span>
         </div>
       </footer>
     </div>

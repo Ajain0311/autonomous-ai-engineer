@@ -1,0 +1,6 @@
+[
+  { "id": 1, "domain": "*doubleclick.net*", "type": "script", "action": "block", "category": "Ads" },
+  { "id": 2, "domain": "*google-analytics.com*", "type": "script", "action": "block", "category": "Trackers" },
+  { "id": 3, "domain": "*connect.facebook.net*", "type": "script", "action": "block", "category": "Social" },
+  { "id": 4, "domain": "*popads.net*", "type": "script", "action": "block", "category": "Popups" }
+]

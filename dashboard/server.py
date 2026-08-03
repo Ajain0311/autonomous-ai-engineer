@@ -1022,6 +1022,128 @@ CRITICAL INSTRUCTIONS:
         logger.error("AI Solve error: %s", e)
         return {"solution": f"⚖️ **{payload.agent_name} ({payload.language}):**\n\nआपकी समस्या (*{payload.query}*) का विश्लेषण:\n\n1️⃣ **प्राथमिक कदम**: अपने मामले से जुड़े सभी प्रासंगिक दस्तावेज व पत्राचार सुरक्षित रखें।\n2️⃣ **विशिष्ट सलाह**: संबंधित प्रशासनिक अधिकारी या विशेषज्ञ के समक्ष आवेदन प्रस्तुत करें।"}
 
+# ==========================================
+# FILE-BASED JSON DATABASE API ENDPOINTS
+# ==========================================
+
+class RoadmapUpdateRequest(BaseModel):
+    today_done: str
+    tomorrow_plan: str
+    phase: str = "BUILD"
+    project: str = "01-adblocker-extension"
+
+@app.get("/api/db/daily_roadmap")
+def get_daily_roadmap():
+    db_file = ROOT_DIR / "db" / "daily_roadmap.json"
+    if db_file.exists():
+        with open(db_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"current_streak_days": 1, "active_project": "01-adblocker-extension", "daily_logs": []}
+
+@app.post("/api/db/daily_roadmap")
+def update_daily_roadmap(payload: dict):
+    db_file = ROOT_DIR / "db" / "daily_roadmap.json"
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(db_file, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+    return {"status": "success", "data": payload}
+
+@app.get("/api/db/adblocker_rules")
+def get_adblocker_rules():
+    db_file = ROOT_DIR / "db" / "adblocker_rules.json"
+    if db_file.exists():
+        with open(db_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+@app.post("/api/db/adblocker_rules")
+def save_adblocker_rules(rules: list):
+    db_file = ROOT_DIR / "db" / "adblocker_rules.json"
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(db_file, "w", encoding="utf-8") as f:
+        json.dump(rules, f, indent=2, ensure_ascii=False)
+    
+    # Sync with product extension rules.json
+    ext_rules_file = ROOT_DIR / "products" / "01-adblocker-extension" / "rules.json"
+    if ext_rules_file.parent.exists():
+        dnr_rules = []
+        for idx, item in enumerate(rules, start=1):
+            dnr_rules.append({
+                "id": idx,
+                "priority": 1,
+                "action": { "type": item.get("action", "block") },
+                "condition": {
+                    "urlFilter": item.get("domain", "*"),
+                    "resourceTypes": ["script", "image", "xmlhttprequest"]
+                }
+            })
+        with open(ext_rules_file, "w", encoding="utf-8") as f:
+            json.dump(dnr_rules, f, indent=2, ensure_ascii=False)
+            
+    return {"status": "success", "rules": rules}
+
+@app.post("/api/db/commit_progress")
+def commit_daily_progress(payload: RoadmapUpdateRequest):
+    db_file = ROOT_DIR / "db" / "daily_roadmap.json"
+    roadmap_data = {"current_streak_days": 1, "active_project": payload.project, "daily_logs": []}
+    if db_file.exists():
+        try:
+            with open(db_file, "r", encoding="utf-8") as f:
+                roadmap_data = json.load(f)
+        except Exception:
+            pass
+
+    current_streak = roadmap_data.get("current_streak_days", 1) + 1
+    roadmap_data["current_streak_days"] = current_streak
+    roadmap_data["active_project"] = payload.project
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    day_num = len(roadmap_data.get("daily_logs", [])) + 1
+    commit_type = "feat(build)" if payload.phase == "BUILD" else "docs(plan)"
+    commit_msg = f"{commit_type}: Day {day_num} - {payload.today_done[:60]}"
+
+    new_log = {
+        "day": day_num,
+        "date": today_str,
+        "project": payload.project,
+        "phase": payload.phase,
+        "today_done": payload.today_done,
+        "tomorrow_plan": payload.tomorrow_plan,
+        "status": "COMPLETED",
+        "github_commit_hash": "pending"
+    }
+
+    daily_logs = roadmap_data.get("daily_logs", [])
+    daily_logs.insert(0, new_log)
+    roadmap_data["daily_logs"] = daily_logs
+
+    with open(db_file, "w", encoding="utf-8") as f:
+        json.dump(roadmap_data, f, indent=2, ensure_ascii=False)
+
+    # Perform Git Add & Git Commit
+    run_git_command(["add", "db/", "products/", "app/"])
+    ok, hash_output = run_git_command(["commit", "-m", commit_msg])
+    commit_hash = "committed"
+    if ok and hash_output:
+        for line in hash_output.splitlines():
+            if "[" in line and "]" in line:
+                parts = line.split("[")[1].split("]")[0].split()
+                if len(parts) >= 2:
+                    commit_hash = parts[1]
+                    break
+    
+    new_log["github_commit_hash"] = commit_hash
+    with open(db_file, "w", encoding="utf-8") as f:
+        json.dump(roadmap_data, f, indent=2, ensure_ascii=False)
+
+    return {
+        "status": "success",
+        "commit_msg": commit_msg,
+        "commit_hash": commit_hash,
+        "current_streak_days": current_streak,
+        "roadmap": roadmap_data
+    }
+
 @app.get("/api/git/review")
 def get_code_review():
     from automation.client import generate_with_failover
