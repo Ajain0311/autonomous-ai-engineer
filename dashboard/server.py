@@ -690,6 +690,8 @@ def run_terminal_command_task(command: str):
         env = os.environ.copy()
         user_home = str(Path.home())
         extra_paths = [
+            "/opt/render/.local/bin",
+            "/opt/render/.antigravity/bin",
             os.path.join(user_home, "AppData", "Local", "agy", "bin"),
             os.path.join(user_home, ".antigravity", "bin"),
             os.path.join(user_home, ".local", "bin"),
@@ -699,7 +701,7 @@ def run_terminal_command_task(command: str):
         path_sep = ";" if is_windows else ":"
         current_path = env.get("PATH", "")
         for p in extra_paths:
-            if os.path.exists(p) and p not in current_path:
+            if p not in current_path:
                 current_path = f"{p}{path_sep}{current_path}"
         env["PATH"] = current_path
 
