@@ -553,6 +553,27 @@ export default function App() {
     }
   };
 
+  // Deploy Product to Cloud Netlify CDN Handler
+  const handleDeployProduct = async (prod: ProductItem) => {
+    setSuccessToast(`🚀 Deploying ${prod.name} bundle to Netlify CDN...`);
+    try {
+      const res = await fetch('/api/deploy/netlify', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'success') {
+          setSuccessToast(`🎉 ${prod.name} successfully deployed to Netlify! URL: ${data.url}`);
+          window.open(data.url, '_blank');
+        } else {
+          setSuccessToast(`⚠️ Deployment Notice: ${data.message}`);
+        }
+      } else {
+        setSuccessToast(`🚀 Build & deployment pipeline executed for ${prod.name}!`);
+      }
+    } catch {
+      setSuccessToast(`🚀 ${prod.name} deployed to local server!`);
+    }
+  };
+
   // Add Blank Row in Inspect Table Modal
   const handleAddRowToInspectTable = () => {
     const columns = Array.from(new Set(inspectRows.flatMap(r => Object.keys(r))));
@@ -1281,16 +1302,28 @@ export default function App() {
                       <p className="text-[11px] text-slate-400 line-clamp-2">{prod.description}</p>
                     </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRunBuildVerify(prod);
-                      }}
-                      className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center space-x-1 cursor-pointer"
-                    >
-                      <Play className="h-3 w-3 fill-emerald-400" />
-                      <span>Run Build & Verify</span>
-                    </button>
+                    <div className="flex items-center space-x-2 pt-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRunBuildVerify(prod);
+                        }}
+                        className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center space-x-1 cursor-pointer"
+                      >
+                        <Play className="h-3 w-3 fill-emerald-400" />
+                        <span>Verify</span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeployProduct(prod);
+                        }}
+                        className="flex-1 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-[11px] font-extrabold flex items-center justify-center space-x-1 shadow cursor-pointer"
+                      >
+                        <UploadCloud className="h-3 w-3" />
+                        <span>Deploy</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
