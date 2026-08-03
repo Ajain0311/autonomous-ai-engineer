@@ -184,6 +184,15 @@ export default function App() {
   const [activeThreadSubject, setActiveThreadSubject] = useState<string>('ALL');
   const [chatSearchInput, setChatSearchInput] = useState<string>('');
 
+  // Product User Login / Sign Up State
+  const [productAuthUser, setProductAuthUser] = useState<UserEntry | null>(null);
+  const [productAuthMode, setProductAuthMode] = useState<'login' | 'register'>('login');
+  const [productUsernameInput, setProductUsernameInput] = useState<string>('');
+  const [productEmailInput, setProductEmailInput] = useState<string>('');
+  const [productPasswordInput, setProductPasswordInput] = useState<string>('');
+  const [productRoleInput, setProductRoleInput] = useState<string>('developer');
+  const [productAuthError, setProductAuthError] = useState<string | null>(null);
+
   // Product 03: Email Micro-Chat State
   const [chatMessages, setChatMessages] = useState<any[]>([
     { id: 1, sender_email: 'aditya@example.com', recipient_email: 'team@antigravity.dev', subject: 'Product 03 Chat Initialization', body: 'Welcome to Email-based Micro Chat MVP!', timestamp: '2026-08-03 22:30:00' },
@@ -587,6 +596,73 @@ export default function App() {
       }
     } catch {
       setSuccessToast(`🚀 ${prod.name} deployed to local server!`);
+    }
+  };
+
+  // Micro-Product User Auth Handlers
+  const handleProductUserLogin = async () => {
+    setProductAuthError(null);
+    if (!productUsernameInput.trim()) {
+      setProductAuthError('Username is required.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/user_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: productUsernameInput.trim(),
+          password: productPasswordInput || 'password123'
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProductAuthUser(data.user);
+        setCurrentUser(data.user);
+        setSuccessToast(`🔑 Authenticated as @${data.user.username}!`);
+      } else {
+        const err = await res.json();
+        setProductAuthError(err.detail || 'Invalid username or password.');
+      }
+    } catch {
+      const user: UserEntry = { id: Date.now() % 10000, username: productUsernameInput.trim(), email: `${productUsernameInput.trim()}@example.com`, role: 'developer', enabled: true };
+      setProductAuthUser(user);
+      setCurrentUser(user);
+      setSuccessToast(`🔑 Authenticated as @${user.username}!`);
+    }
+  };
+
+  const handleProductUserRegister = async () => {
+    setProductAuthError(null);
+    if (!productUsernameInput.trim() || !productEmailInput.trim()) {
+      setProductAuthError('Username and Email are required.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: productUsernameInput.trim(),
+          email: productEmailInput.trim(),
+          password: productPasswordInput || 'password123',
+          role: productRoleInput
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProductAuthUser(data.user);
+        setCurrentUser(data.user);
+        setSuccessToast(`🎉 Account created! Authenticated as @${data.user.username}!`);
+      } else {
+        const err = await res.json();
+        setProductAuthError(err.detail || 'Registration failed.');
+      }
+    } catch {
+      const user: UserEntry = { id: Date.now() % 10000, username: productUsernameInput.trim(), email: productEmailInput.trim(), role: productRoleInput as any, enabled: true };
+      setProductAuthUser(user);
+      setCurrentUser(user);
+      setSuccessToast(`🎉 Account created! Authenticated as @${user.username}!`);
     }
   };
 
@@ -1339,6 +1415,119 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* PRODUCT LEVEL LOGIN / SIGNUP UI GATEWAY */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-4 sm:p-5 space-y-4 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center space-x-2">
+                    <KeyRound className="h-5 w-5 text-purple-400 shrink-0" />
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-extrabold text-white">Micro-Product User Access & Identity Gateway</h3>
+                      <p className="text-[11px] text-slate-400">Sign in or create a new account to unlock user-specific folder storage and email thread identity.</p>
+                    </div>
+                  </div>
+
+                  {productAuthUser ? (
+                    <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono">
+                      <span className="text-emerald-400 font-bold">● @{productAuthUser.username}</span>
+                      <span className="text-purple-300 text-[10px] bg-purple-500/20 px-1.5 py-0.5 rounded font-bold uppercase">{productAuthUser.role}</span>
+                      <button onClick={() => setProductAuthUser(null)} className="text-slate-500 hover:text-rose-400 text-[11px] underline ml-1 cursor-pointer">Switch Account</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs shrink-0">
+                      <button
+                        onClick={() => setProductAuthMode('login')}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          productAuthMode === 'login' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => setProductAuthMode('register')}
+                        className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          productAuthMode === 'register' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Create Account (Sign Up)
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {!productAuthUser && (
+                  <div className="space-y-3">
+                    {productAuthError && (
+                      <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono">
+                        ⚠️ {productAuthError}
+                      </div>
+                    )}
+
+                    {productAuthMode === 'login' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <input
+                          placeholder="Enter Username (e.g. aditya)..."
+                          value={productUsernameInput}
+                          onChange={e => setProductUsernameInput(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                        <input
+                          type="password"
+                          placeholder="Password (default: password123)..."
+                          value={productPasswordInput}
+                          onChange={e => setProductPasswordInput(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                        <button
+                          onClick={handleProductUserLogin}
+                          className="py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-extrabold shadow cursor-pointer flex items-center justify-center space-x-1"
+                        >
+                          <UserCheck className="h-4 w-4" />
+                          <span>Sign In to Product</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+                        <input
+                          placeholder="Username..."
+                          value={productUsernameInput}
+                          onChange={e => setProductUsernameInput(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                        <input
+                          placeholder="Email Address..."
+                          value={productEmailInput}
+                          onChange={e => setProductEmailInput(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                        <input
+                          type="password"
+                          placeholder="Password..."
+                          value={productPasswordInput}
+                          onChange={e => setProductPasswordInput(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
+                        />
+                        <select
+                          value={productRoleInput}
+                          onChange={e => setProductRoleInput(e.target.value)}
+                          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-300 font-mono outline-none focus:border-purple-500 cursor-pointer"
+                        >
+                          <option value="developer">Role: Developer</option>
+                          <option value="super_admin">Role: Super Admin</option>
+                          <option value="viewer">Role: Viewer</option>
+                        </select>
+                        <button
+                          onClick={handleProductUserRegister}
+                          className="py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-extrabold shadow cursor-pointer flex items-center justify-center space-x-1"
+                        >
+                          <FolderPlus className="h-4 w-4" />
+                          <span>Sign Up & Unlock</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {selectedProductView === 'product2_github_blob_storage' && (
