@@ -6,4 +6,4 @@ venv/
 node_modules/
 app/node_modules/
 dashboard/frontend/node_modules/
-dist/
+!dashboard/dist/
