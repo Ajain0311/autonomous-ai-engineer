@@ -1564,22 +1564,24 @@ def get_audit_trail_logs():
     state = state_manager.load_state()
     return state.get("audit_trail", [])
 
-# Serve the preview of the generated app
-preview_dir = ROOT_DIR / "app" / "dist"
-preview_dir.mkdir(parents=True, exist_ok=True)
-preview_index = preview_dir / "index.html"
+# Serve the MVP Daily Micro-Product Engine & Streak Manager at Root '/'
+mvp_app_dir = ROOT_DIR / "app" / "dist"
+mvp_app_dir.mkdir(parents=True, exist_ok=True)
+preview_index = mvp_app_dir / "index.html"
 if not preview_index.exists():
     try:
         with open(preview_index, "w") as f:
-            f.write("<html><body style='background:#0f0f13;color:#a78bfa;font-family:sans-serif;padding:40px;text-align:center;'><h2>App is being built...</h2><p style='color:#6b7280;'>Click 'Build & Launch Preview' in the dashboard to generate and run the live UI preview.</p></body></html>")
+            f.write("<html><body style='background:#0f0f13;color:#a78bfa;font-family:sans-serif;padding:40px;text-align:center;'><h2>Daily Engine MVP is starting...</h2></body></html>")
     except Exception as e:
         logger.warning("Could not write default preview index.html: %s", e)
 
-app.mount("/preview", StaticFiles(directory=str(preview_dir), html=True), name="preview")
+app.mount("/preview", StaticFiles(directory=str(mvp_app_dir), html=True), name="preview")
 
-# Serve the static UI files from the frontend build
-static_dir = ROOT_DIR / "dashboard" / "dist"
-if static_dir.exists() and static_dir.is_dir():
-    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
-else:
-    logger.warning("Dashboard static folder '%s' does not exist yet.", static_dir)
+# Serve main MVP Dashboard at '/'
+if mvp_app_dir.exists() and mvp_app_dir.is_dir():
+    app.mount("/", StaticFiles(directory=str(mvp_app_dir), html=True), name="mvp_root")
+
+# Serve secondary admin dashboard at '/admin'
+admin_dir = ROOT_DIR / "dashboard" / "dist"
+if admin_dir.exists() and admin_dir.is_dir():
+    app.mount("/admin", StaticFiles(directory=str(admin_dir), html=True), name="admin_panel")
