@@ -5,7 +5,7 @@ import {
   Trash2, Globe, ArrowRight, Laptop, AlertCircle, X, ShieldAlert, CheckSquare,
   Wrench, Link2, Key, Bookmark, Download, Sparkle, Search, GitBranch, Terminal, Eye,
   UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf,
-  ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle
+  ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle, Menu
 } from 'lucide-react';
 
 interface ColumnSchema {
@@ -67,6 +67,7 @@ interface ProductItem {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'master_tables' | 'my_products' | 'user_auth'>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   
   // Auth State
   const [currentUser, setCurrentUser] = useState<UserEntry | null>({
@@ -75,9 +76,6 @@ export default function App() {
     role: 'super_admin',
     enabled: true
   });
-  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
-  const [loginUsername, setLoginUsername] = useState<string>('admin');
-  const [loginPassword, setLoginPassword] = useState<string>('admin_password_123');
 
   // Today & Tomorrow State
   const [todayDoneInput, setTodayDoneInput] = useState<string>('Built Master Tables Studio, Interactive Data Inspector Modal, and GitHub Blob Storage Tool');
@@ -238,14 +236,6 @@ export default function App() {
     }
   };
 
-  // Add Record to Inspected Table
-  const handleAddRecordToInspectTable = () => {
-    if (Object.keys(newRowFieldValues).length === 0) return;
-    const newRecord = { id: Date.now() % 10000, ...newRowFieldValues };
-    setInspectRows([newRecord, ...inspectRows]);
-    setNewRowFieldValues({});
-  };
-
   // Add Queue Item
   const handleAddQueueItem = async () => {
     if (!newQueueTitle.trim()) return;
@@ -351,28 +341,28 @@ export default function App() {
     <div className="min-h-screen bg-[#07080d] text-slate-100 font-sans selection:bg-cyan-600 selection:text-white">
       
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* HEADER NAVBAR */}
+      {/* MOBILE-OPTIMIZED HEADER NAVBAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 bg-[#0a0b14]/90 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-[#0a0b14]/95 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
           
           {/* Brand */}
-          <div className="flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <ShieldCheck className="h-5 w-5 text-white animate-pulse" />
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-pulse" />
             </div>
             <div>
-              <span className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
+              <span className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-1.5">
                 DailyCode<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Engine</span>
-                <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                <span className="hidden sm:inline-flex text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
                   🔥 Active
                 </span>
               </span>
             </div>
           </div>
 
-          {/* Clean Navigation Pills */}
-          <nav className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
+          {/* Desktop Nav Pills */}
+          <nav className="hidden md:flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
             {[
               { id: 'home', label: 'Dashboard Home', icon: LayoutDashboard },
               { id: 'master_tables', label: 'Master Tables Studio', icon: Database },
@@ -397,7 +387,45 @@ export default function App() {
               );
             })}
           </nav>
+
+          {/* Mobile Hamburger Toggle Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
+
+        {/* Mobile Dropdown Nav Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-slate-950 border-b border-slate-800 px-4 py-3 space-y-1">
+            {[
+              { id: 'home', label: 'Dashboard Home', icon: LayoutDashboard },
+              { id: 'master_tables', label: 'Master Tables Studio', icon: Database },
+              { id: 'my_products', label: 'My Products Portfolio', icon: Box },
+              { id: 'user_auth', label: 'User Auth Table', icon: Users },
+            ].map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id as any);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive ? 'bg-cyan-600 text-white font-extrabold' : 'text-slate-400 hover:bg-slate-900'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </header>
 
       {/* TOAST ALERTS */}
@@ -416,64 +444,64 @@ export default function App() {
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* MAIN CONTAINER */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         
-        {/* PAGE 1: DASHBOARD HOME (AAJ KYA BANAYA, KAL KYA BANEGA & EDITABLE QUEUE) */}
+        {/* PAGE 1: DASHBOARD HOME */}
         {activeTab === 'home' && (
           <div className="space-y-6">
             
-            {/* AAJ KYA BANAYA & KAL KYA BANEGA SUMMARY */}
+            {/* AAJ KYA BANAYA & KAL KYA BANEGA */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-900/60 p-5 rounded-3xl border border-emerald-500/30 shadow-xl space-y-3">
+              <div className="bg-slate-900/60 p-4 sm:p-5 rounded-3xl border border-emerald-500/30 shadow-xl space-y-3">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                  <h2 className="text-sm font-extrabold text-white">Aaj Kya Banaya (Completed Work)</h2>
+                  <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
+                  <h2 className="text-xs sm:text-sm font-extrabold text-white">Aaj Kya Banaya (Completed Work)</h2>
                 </div>
                 <textarea
                   rows={3}
                   value={todayDoneInput}
                   onChange={e => setTodayDoneInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-white outline-none focus:border-emerald-500 font-sans"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-2.5 sm:p-3 text-xs text-white outline-none focus:border-emerald-500 font-sans"
                 />
               </div>
 
-              <div className="bg-slate-900/60 p-5 rounded-3xl border border-cyan-500/30 shadow-xl space-y-3">
+              <div className="bg-slate-900/60 p-4 sm:p-5 rounded-3xl border border-cyan-500/30 shadow-xl space-y-3">
                 <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-cyan-400" />
-                  <h2 className="text-sm font-extrabold text-white">Kal Kya Banega (Tomorrow Plan)</h2>
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
+                  <h2 className="text-xs sm:text-sm font-extrabold text-white">Kal Kya Banega (Tomorrow Plan)</h2>
                 </div>
                 <textarea
                   rows={3}
                   value={tomorrowPlanInput}
                   onChange={e => setTomorrowPlanInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-white outline-none focus:border-cyan-500 font-sans"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-2.5 sm:p-3 text-xs text-white outline-none focus:border-cyan-500 font-sans"
                 />
               </div>
             </div>
 
             {/* EDITABLE UPCOMING PRODUCT QUEUE */}
-            <div className="bg-slate-900/60 p-6 rounded-3xl border border-purple-500/20 shadow-2xl space-y-4">
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-purple-500/20 shadow-2xl space-y-4">
               <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                 <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <ListOrdered className="h-4 w-4 text-purple-400" />
                     Current Upcoming Product Building Queue
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Queue items for upcoming streak products with 1-click single-click add, remove & promote.</p>
+                  <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">Queue items for upcoming streak products with 1-click single-click add, remove & promote.</p>
                 </div>
               </div>
 
-              {/* Single Click Add to Queue Form */}
-              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center gap-3">
+              {/* Single Click Add Form */}
+              <div className="bg-slate-950 p-3 sm:p-3.5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-2.5">
                 <input
-                  placeholder="Enter new product idea title (e.g. Product 08: Password Manager)"
+                  placeholder="Enter product idea title..."
                   value={newQueueTitle}
                   onChange={e => setNewQueueTitle(e.target.value)}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
+                  className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
                 />
                 <button
                   onClick={handleAddQueueItem}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1 shrink-0 cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shrink-0 cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Single-Click Add</span>
@@ -483,16 +511,16 @@ export default function App() {
               {/* Queue List */}
               <div className="space-y-2">
                 {productQueue.map(item => (
-                  <div key={item.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-3">
-                      <span className="font-mono bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold">Day {item.target_day}</span>
-                      <span className="font-bold text-white">{item.title}</span>
+                  <div key={item.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <span className="font-mono bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold shrink-0">Day {item.target_day}</span>
+                      <span className="font-bold text-white leading-tight">{item.title}</span>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
                       <button
                         onClick={() => handlePromoteQueueItem(item.id)}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center space-x-1"
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center space-x-1 text-xs"
                       >
                         <Zap className="h-3.5 w-3.5 fill-white" />
                         <span>Promote</span>
@@ -508,14 +536,14 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 2: MASTER TABLES STUDIO (FUZZY SEARCH & EDITABLE SPREADSHEET INSPECT MODAL) */}
+        {/* PAGE 2: MASTER TABLES STUDIO */}
         {activeTab === 'master_tables' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-5">
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-5">
               
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                 <div>
-                  <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
                     <Database className="h-5 w-5 text-cyan-400" />
                     Master Tables Directory Studio
                   </h1>
@@ -524,7 +552,7 @@ export default function App() {
 
                 <button
                   onClick={() => setShowCreateTableModal(true)}
-                  className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md cursor-pointer shrink-0"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-md cursor-pointer shrink-0"
                 >
                   <FolderPlus className="h-4 w-4" />
                   <span>Create New Table</span>
@@ -537,22 +565,22 @@ export default function App() {
                 <input
                   value={masterSearch}
                   onChange={e => setMasterSearch(e.target.value)}
-                  placeholder="Fuzzy search across table names, projects, and descriptions..."
+                  placeholder="Fuzzy search tables, projects, and descriptions..."
                   className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white outline-none focus:border-cyan-500 font-mono"
                 />
               </div>
 
               {/* Master Tables Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredMasterTables.map(tbl => (
-                  <div key={`${tbl.projectId}-${tbl.tableName}`} className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between hover:border-slate-700 transition-all">
+                  <div key={`${tbl.projectId}-${tbl.tableName}`} className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 flex flex-col justify-between hover:border-slate-700 transition-all">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-bold text-cyan-300 flex items-center gap-1.5">
-                          <FileCode className="h-4 w-4 text-cyan-400" />
+                        <span className="text-xs font-mono font-bold text-cyan-300 flex items-center gap-1.5 truncate">
+                          <FileCode className="h-4 w-4 text-cyan-400 shrink-0" />
                           {tbl.tableName}.json
                         </span>
-                        <span className="text-[10px] bg-slate-900 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                        <span className="text-[10px] bg-slate-900 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
                           {tbl.rowCount} Rows
                         </span>
                       </div>
@@ -562,13 +590,13 @@ export default function App() {
                     </div>
 
                     <div className="pt-3 border-t border-slate-900 flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500 font-mono">app/{tbl.projectId}/db/</span>
+                      <span className="text-[10px] text-slate-500 font-mono truncate max-w-[120px]">app/{tbl.projectId}/db/</span>
                       <button
                         onClick={() => openInspectTableModal(tbl.projectId, tbl.tableName)}
-                        className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1 shadow-md cursor-pointer"
+                        className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1 shadow-md cursor-pointer shrink-0"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        <span>Inspect & Edit Data</span>
+                        <span>Inspect & Edit</span>
                       </button>
                     </div>
                   </div>
@@ -578,21 +606,21 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 3: MY PRODUCTS (SELECTION STUDIO WITH GITHUB BLOB STORAGE INTEGRATED) */}
+        {/* PAGE 3: MY PRODUCTS PORTFOLIO */}
         {activeTab === 'my_products' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 space-y-5">
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-slate-800 space-y-5">
               
               <div className="border-b border-slate-800 pb-4">
-                <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
                   <Box className="h-5 w-5 text-purple-400" />
                   My Products Portfolio
                 </h1>
                 <p className="text-xs text-slate-400 mt-0.5">Select any micro-product to launch and manage its operational tool interface.</p>
               </div>
 
-              {/* Products Cards Selector */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Products Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {productsList.map(prod => (
                   <div
                     key={prod.id}
@@ -611,22 +639,22 @@ export default function App() {
                 ))}
               </div>
 
-              {/* OPERATIONAL TOOL PANEL FOR SELECTED PRODUCT */}
+              {/* OPERATIONAL TOOL PANEL */}
               {selectedProductView === 'product2_github_blob_storage' && (
-                <div className="bg-slate-950 p-6 rounded-3xl border border-purple-500/30 space-y-5 mt-4">
+                <div className="bg-slate-950 p-4 sm:p-6 rounded-3xl border border-purple-500/30 space-y-4 mt-4">
                   <div>
                     <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold mb-1">
                       <UploadCloud className="h-3.5 w-3.5 text-purple-400" />
                       <span>Product 02 Tool Operational View</span>
                     </div>
-                    <h2 className="text-lg font-extrabold text-white">GitHub Blob Storage Utility Tool</h2>
+                    <h2 className="text-base sm:text-lg font-extrabold text-white">GitHub Blob Storage Utility Tool</h2>
                     <p className="text-xs text-slate-400 mt-0.5">Upload images, MP4 videos, and PDF documents into organized storage subfolders with raw access URLs.</p>
                   </div>
 
                   {/* Upload Form */}
-                  <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
                     <span className="text-xs font-bold text-white block">Upload Media Asset</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
                       <input
                         placeholder="Filename (e.g. screenshot.png)"
                         value={newBlobFilename}
@@ -650,7 +678,7 @@ export default function App() {
                       />
                       <button
                         onClick={handleUploadBlobAsset}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold flex items-center justify-center space-x-1"
+                        className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold flex items-center justify-center space-x-1 cursor-pointer"
                       >
                         <UploadCloud className="h-4 w-4" />
                         <span>Upload & Commit</span>
@@ -658,15 +686,15 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Asset Catalog Table */}
+                  {/* Asset Catalog */}
                   <div className="space-y-2">
                     {blobAssets.map(asset => (
-                      <div key={asset.id} className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                        <div className="flex items-center space-x-3">
+                      <div key={asset.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+                        <div className="flex flex-col">
                           <span className="font-bold text-white">{asset.filename}</span>
-                          <span className="text-[10px] text-purple-300">{asset.url}</span>
+                          <span className="text-[10px] text-purple-300 truncate max-w-[240px] sm:max-w-none">{asset.url}</span>
                         </div>
-                        <a href={asset.url} target="_blank" rel="noreferrer" className="px-3 py-1 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 rounded-lg font-bold">
+                        <a href={asset.url} target="_blank" rel="noreferrer" className="self-start sm:self-auto px-3 py-1 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 rounded-lg font-bold">
                           View / Download
                         </a>
                       </div>
@@ -681,9 +709,9 @@ export default function App() {
         {/* PAGE 4: ROOT LEVEL USER AUTH TABLE */}
         {activeTab === 'user_auth' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/60 p-6 rounded-3xl border border-slate-800 space-y-4">
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-slate-800 space-y-4">
               <div>
-                <h1 className="text-xl font-extrabold text-white flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
                   <Users className="h-5 w-5 text-emerald-400" />
                   Root Level User Authentication & RBAC Table
                 </h1>
@@ -707,42 +735,42 @@ export default function App() {
       </main>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* EDITABLE SPREADSHEET INSPECT DATA MODAL WITH IN-MODAL SEARCH */}
+      {/* MOBILE-RESPONSIVE SPREADSHEET INSPECT MODAL */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {inspectTableModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-4xl w-full space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 w-[96vw] max-w-4xl max-h-[92vh] space-y-3 sm:space-y-4 shadow-2xl flex flex-col">
             
             {/* Modal Header */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-3 shrink-0">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Database className="h-5 w-5 text-cyan-400" />
+                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <Database className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
                   Table Data Inspector: <code className="text-cyan-300 font-mono">{inspectTableModal.tableName}.json</code>
                 </h3>
-                <span className="text-xs text-slate-400">Location: app/{inspectTableModal.projectId}/db/{inspectTableModal.tableName}.json</span>
+                <span className="text-[11px] text-slate-400">app/{inspectTableModal.projectId}/db/{inspectTableModal.tableName}.json</span>
               </div>
               <button onClick={() => setInspectTableModal(null)} className="text-slate-500 hover:text-white p-1"><X className="h-5 w-5" /></button>
             </div>
 
-            {/* In-Modal Search Bar */}
+            {/* Search Bar */}
             <div className="relative shrink-0">
-              <Search className="h-4 w-4 text-slate-500 absolute left-3.5 top-2.5" />
+              <Search className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
               <input
                 value={inspectModalSearch}
                 onChange={e => setInspectModalSearch(e.target.value)}
-                placeholder="Search rows in this table to quickly edit..."
+                placeholder="Search rows in this table..."
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white outline-none focus:border-cyan-500 font-mono"
               />
             </div>
 
-            {/* INTERACTIVE SPREADSHEET DATA TABLE */}
-            <div className="flex-1 overflow-auto border border-slate-800 rounded-2xl bg-slate-950">
-              <table className="w-full text-left text-xs font-mono border-collapse">
+            {/* SPREADSHEET SCROLL CONTAINER */}
+            <div className="flex-1 overflow-auto border border-slate-800 rounded-2xl bg-slate-950 max-h-[55vh]">
+              <table className="w-full text-left text-xs font-mono border-collapse min-w-[500px]">
                 <thead className="bg-slate-900 sticky top-0 border-b border-slate-800 text-slate-400">
                   <tr>
                     {tableColumns.map(col => (
-                      <th key={col} className="p-3 border-r border-slate-800 font-bold text-cyan-300 uppercase">{col}</th>
+                      <th key={col} className="p-2.5 sm:p-3 border-r border-slate-800 font-bold text-cyan-300 uppercase min-w-[100px]">{col}</th>
                     ))}
                   </tr>
                 </thead>
@@ -750,7 +778,7 @@ export default function App() {
                   {filteredInspectRows.map((row, rIdx) => (
                     <tr key={rIdx} className="hover:bg-slate-900/50">
                       {tableColumns.map(col => (
-                        <td key={col} className="p-2.5 border-r border-slate-800">
+                        <td key={col} className="p-2 border-r border-slate-800 min-w-[120px]">
                           <input
                             value={row[col] !== undefined ? String(row[col]) : ''}
                             onChange={e => handleCellEdit(rIdx, col, e.target.value)}
@@ -764,13 +792,13 @@ export default function App() {
               </table>
             </div>
 
-            {/* Modal Footer with Save Button */}
-            <div className="flex justify-between items-center pt-2 border-t border-slate-800 shrink-0">
-              <span className="text-xs text-slate-400 font-mono">{filteredInspectRows.length} rows displayed</span>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => setInspectTableModal(null)} className="px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold">Cancel</button>
-                <button onClick={handleSaveInspectTableData} className="px-5 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl text-xs font-extrabold shadow-md">
-                  Save & Commit Table Changes
+            {/* Modal Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-800 shrink-0">
+              <span className="text-[11px] text-slate-400 font-mono">{filteredInspectRows.length} rows displayed</span>
+              <div className="flex items-center space-x-2 w-full sm:w-auto">
+                <button onClick={() => setInspectTableModal(null)} className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold">Cancel</button>
+                <button onClick={handleSaveInspectTableData} className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl text-xs font-extrabold shadow-md">
+                  Save & Commit
                 </button>
               </div>
             </div>
@@ -781,10 +809,10 @@ export default function App() {
       {/* CREATE TABLE MODAL */}
       {showCreateTableModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl">
             <h3 className="text-sm font-bold text-white">Create New Table</h3>
             <input
-              placeholder="Table Name (e.g. analytics_logs)"
+              placeholder="Table Name (e.g. session_logs)"
               value={newTableNameInput}
               onChange={e => setNewTableNameInput(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
