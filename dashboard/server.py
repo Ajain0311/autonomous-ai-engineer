@@ -689,7 +689,9 @@ def run_terminal_command_task(command: str):
         is_windows = sys.platform == "win32"
         env = os.environ.copy()
         user_home = str(Path.home())
+        project_bin = str(ROOT_DIR / "bin")
         extra_paths = [
+            project_bin,
             "/opt/render/.local/bin",
             "/opt/render/.antigravity/bin",
             os.path.join(user_home, "AppData", "Local", "agy", "bin"),
@@ -704,6 +706,24 @@ def run_terminal_command_task(command: str):
             if p not in current_path:
                 current_path = f"{p}{path_sep}{current_path}"
         env["PATH"] = current_path
+
+        # Auto-install AGY CLI on Linux/Render if not present when agy is invoked
+        if "agy" in command and not is_windows:
+            agy_exists = any(os.path.exists(os.path.join(p, "agy")) for p in extra_paths if p)
+            if not agy_exists:
+                terminal_process_output += "⚡ [Auto-Installer] Antigravity CLI binary not found. Installing agy CLI...\n"
+                install_proc = subprocess.run(
+                    "curl -fsSL https://antigravity.google/cli/install.sh | bash",
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    env=env
+                )
+                terminal_process_output += install_proc.stdout + install_proc.stderr + "\n"
+
+        # If user runs explicit /opt/render/.local/bin/agy and it's missing, rewrite to agy
+        if "/opt/render/.local/bin/agy" in command and not os.path.exists("/opt/render/.local/bin/agy"):
+            command = command.replace("/opt/render/.local/bin/agy", "agy")
 
         terminal_process = subprocess.Popen(
             command,

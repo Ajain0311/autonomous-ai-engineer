@@ -3886,7 +3886,7 @@ export default function App() {
                 {/* Custom command presets */}
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-1">Presets:</span>
-                  {['/opt/render/.local/bin/agy --help', 'agy --help', 'agy.exe --help', 'npm run build', 'npm run dev', 'git status', 'node -v'].map(cmd => (
+                  {['agy --help', 'agy status', 'agy.exe --help', 'npm run build', 'npm run dev', 'git status', 'node -v'].map(cmd => (
                     <button
                       key={cmd}
                       onClick={() => setTerminalCommand(cmd)}
