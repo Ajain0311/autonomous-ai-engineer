@@ -6,7 +6,8 @@ import {
   Wrench, Link2, Key, Bookmark, Download, Sparkle, Search, GitBranch, Terminal, Eye,
   UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf,
   ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle, Menu, Play, FileUp, KeyRound, ShieldAlert as ShieldIcon,
-  Mail, Send, CheckSquare as CheckSquareIcon, ShieldCheck as ShieldCheckIcon
+  Mail, Send, CheckSquare as CheckSquareIcon, ShieldCheck as ShieldCheckIcon, Copy, Filter, Maximize2, ExternalLink,
+  MessageSquare, Hash, PieChart, BarChart3, Sliders
 } from 'lucide-react';
 
 interface ColumnSchema {
@@ -166,6 +167,22 @@ export default function App() {
   const [newRuleCategory, setNewRuleCategory] = useState<string>('Ads');
   const [testUrlInput, setTestUrlInput] = useState<string>('https://doubleclick.net/pagead/ads.js');
   const [testResult, setTestResult] = useState<{ blocked: boolean; rule?: any } | null>(null);
+
+  // Product 01 Enhancements: Whitelist, Category Filter & Cosmetic Hiding
+  const [ruleCategoryFilter, setRuleCategoryFilter] = useState<string>('All');
+  const [whitelistDomains, setWhitelistDomains] = useState<string[]>(['github.com', 'antigravity.dev']);
+  const [newWhitelistInput, setNewWhitelistInput] = useState<string>('');
+  const [cosmeticSelectorInput, setCosmeticSelectorInput] = useState<string>('.ad-banner-overlay');
+  const [cosmeticTestResult, setCosmeticTestResult] = useState<string | null>(null);
+
+  // Product 02 Enhancements: Filter, Search & Lightbox Preview
+  const [blobFilterType, setBlobFilterType] = useState<string>('all');
+  const [blobSearchInput, setBlobSearchInput] = useState<string>('');
+  const [previewBlobAsset, setPreviewBlobAsset] = useState<BlobAsset | null>(null);
+
+  // Product 03 Enhancements: Thread Channels & Search
+  const [activeThreadSubject, setActiveThreadSubject] = useState<string>('ALL');
+  const [chatSearchInput, setChatSearchInput] = useState<string>('');
 
   // Product 03: Email Micro-Chat State
   const [chatMessages, setChatMessages] = useState<any[]>([
@@ -446,6 +463,15 @@ export default function App() {
   const handleTestUrl = () => {
     if (!testUrlInput.trim()) return;
     const url = testUrlInput.trim().toLowerCase();
+
+    // Check whitelist first
+    const isWhitelisted = whitelistDomains.some(w => url.includes(w.toLowerCase()));
+    if (isWhitelisted) {
+      setTestResult({ blocked: false, isWhitelisted: true } as any);
+      setSuccessToast(`🌐 URL domain is Whitelisted! Protection bypassed.`);
+      return;
+    }
+
     const matched = adblockRules.find(r => {
       if (!r.enabled) return false;
       const cleanDomain = r.domain.replace(/\*/g, '');
@@ -536,6 +562,70 @@ export default function App() {
     });
     setInspectRows([...inspectRows, newRow]);
     setSuccessToast('➕ New row added to inspector table. Click Save & Commit to persist!');
+  };
+
+  // Delete Row in Inspect Modal
+  const handleDeleteInspectRow = (rowIndex: number) => {
+    const updated = inspectRows.filter((_, idx) => idx !== rowIndex);
+    setInspectRows(updated);
+    setSuccessToast('🗑️ Row deleted from inspector preview.');
+  };
+
+  // Export Inspect Table to JSON File
+  const handleExportInspectTableJSON = () => {
+    if (!inspectTableModal) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inspectRows, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `${inspectTableModal.tableName}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    setSuccessToast(`📥 Downloaded ${inspectTableModal.tableName}.json!`);
+  };
+
+  // Whitelist Handlers (Product 01)
+  const handleAddWhitelistDomain = () => {
+    if (!newWhitelistInput.trim()) return;
+    const dom = newWhitelistInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!whitelistDomains.includes(dom)) {
+      setWhitelistDomains([...whitelistDomains, dom]);
+      setNewWhitelistInput('');
+      setSuccessToast(`✅ Added '${dom}' to whitelisted domains!`);
+    }
+  };
+
+  const handleRemoveWhitelistDomain = (domain: string) => {
+    setWhitelistDomains(whitelistDomains.filter(d => d !== domain));
+    setSuccessToast(`✅ Removed '${domain}' from whitelist.`);
+  };
+
+  const handleTestCosmeticSelector = () => {
+    if (!cosmeticSelectorInput.trim()) return;
+    const sel = cosmeticSelectorInput.trim();
+    setCosmeticTestResult(`[COSMETIC HIDE RULE GENERATED] Target CSS Selector "${sel}" injected with { display: none !important; visibility: hidden; }`);
+    setSuccessToast(`✨ Dynamic cosmetic rule applied for ${sel}`);
+  };
+
+  // Blob Asset Handlers (Product 02)
+  const handleCopyBlobUrl = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setSuccessToast(`📋 Asset URL '${url}' copied to clipboard!`);
+  };
+
+  const handleDeleteBlobAsset = async (id: number) => {
+    const updated = blobAssets.filter(b => b.id !== id);
+    setBlobAssets(updated);
+    try {
+      await fetch('/api/products/data/product2_github_blob_storage/blob_assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+      setSuccessToast('🗑️ Asset removed from catalog & DB!');
+    } catch {
+      setSuccessToast('🗑️ Asset removed locally!');
+    }
   };
 
   // Inspect Table Handler
@@ -1277,30 +1367,90 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Filter & Search Bar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <div className="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px]">
+                      {[
+                        { id: 'all', label: 'All Assets' },
+                        { id: 'image', label: '📷 Images' },
+                        { id: 'video', label: '🎬 Videos' },
+                        { id: 'doc', label: '📄 Docs' },
+                      ].map(flt => (
+                        <button
+                          key={flt.id}
+                          onClick={() => setBlobFilterType(flt.id)}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                            blobFilterType === flt.id ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {flt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative w-full sm:w-64">
+                      <Search className="h-3.5 w-3.5 text-slate-500 absolute left-3 top-2.5" />
+                      <input
+                        value={blobSearchInput}
+                        onChange={e => setBlobSearchInput(e.target.value)}
+                        placeholder="Filter assets catalog..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Stored Assets Catalog (<code className="text-purple-300 font-mono">app/product2_github_blob_storage/storage/</code>)</span>
-                    {blobAssets.map(asset => (
-                      <div key={asset.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-8 w-8 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-purple-400 shrink-0">
-                            {asset.type === 'image' && <ImageIcon className="h-4 w-4" />}
-                            {asset.type === 'video' && <Film className="h-4 w-4" />}
-                            {asset.type === 'doc' && <FilePdf className="h-4 w-4" />}
+                    {blobAssets
+                      .filter(a => blobFilterType === 'all' || a.type === blobFilterType)
+                      .filter(a => !blobSearchInput.trim() || a.filename.toLowerCase().includes(blobSearchInput.toLowerCase()) || a.url.toLowerCase().includes(blobSearchInput.toLowerCase()))
+                      .map(asset => (
+                        <div key={asset.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono hover:border-slate-700 transition-all">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              onClick={() => setPreviewBlobAsset(asset)}
+                              className="h-9 w-9 rounded-xl bg-slate-950 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0 cursor-pointer hover:border-purple-500 transition-all"
+                              title="Click to preview asset media"
+                            >
+                              {asset.type === 'image' && <ImageIcon className="h-4 w-4" />}
+                              {asset.type === 'video' && <Film className="h-4 w-4 text-cyan-400" />}
+                              {asset.type === 'doc' && <FilePdf className="h-4 w-4 text-emerald-400" />}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-white flex items-center gap-1.5 cursor-pointer hover:text-cyan-300" onClick={() => setPreviewBlobAsset(asset)}>
+                                {asset.filename}
+                              </span>
+                              <span className="text-[10px] text-purple-300 truncate max-w-[200px] sm:max-w-none">{asset.url}</span>
+                            </div>
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-white">{asset.filename}</span>
-                            <span className="text-[10px] text-purple-300 truncate max-w-[200px] sm:max-w-none">{asset.url}</span>
-                          </div>
-                        </div>
 
-                        <div className="flex items-center space-x-3 self-end sm:self-auto shrink-0">
-                          <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">{asset.size}</span>
-                          <a href={asset.url} target="_blank" rel="noreferrer" className="px-3 py-1 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 rounded-lg font-bold">
-                            View / Download
-                          </a>
+                          <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+                            <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-400">{asset.size}</span>
+                            <button
+                              onClick={() => setPreviewBlobAsset(asset)}
+                              className="px-2.5 py-1 bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600 hover:text-white rounded-lg font-bold flex items-center space-x-1 text-xs cursor-pointer transition-all"
+                            >
+                              <Maximize2 className="h-3 w-3" />
+                              <span>Preview</span>
+                            </button>
+                            <button
+                              onClick={() => handleCopyBlobUrl(asset.url)}
+                              className="px-2.5 py-1 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-600 hover:text-white rounded-lg font-bold flex items-center space-x-1 text-xs cursor-pointer transition-all"
+                              title="Copy direct URL"
+                            >
+                              <Copy className="h-3 w-3" />
+                              <span>Copy URL</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBlobAsset(asset.id)}
+                              className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
+                              title="Delete asset"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               )}
@@ -1314,7 +1464,27 @@ export default function App() {
                       <span>Product 01 Tool Operational View</span>
                     </div>
                     <h2 className="text-base sm:text-lg font-extrabold text-white">Manifest V3 AdBlocker & Tracker Zapper</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Manage isolated dynamic network rules, run live URL ad-blocking simulations, and inspect Chrome extension assets.</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Manage isolated dynamic network rules, run live URL ad-blocking simulations, manage whitelisted domains, and test cosmetic DOM element hiders.</p>
+                  </div>
+
+                  {/* Live Metric Stats Bar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                    <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Active Rules</span>
+                      <span className="text-lg font-bold text-cyan-400">{adblockRules.filter(r => r.enabled).length}</span>
+                    </div>
+                    <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Whitelisted</span>
+                      <span className="text-lg font-bold text-emerald-400">{whitelistDomains.length}</span>
+                    </div>
+                    <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Ads Blocked Today</span>
+                      <span className="text-lg font-bold text-purple-400">14,892</span>
+                    </div>
+                    <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Data Saved</span>
+                      <span className="text-lg font-bold text-amber-400">42.6 MB</span>
+                    </div>
                   </div>
 
                   {/* Section 1: Live URL AdBlock Test Simulator */}
@@ -1340,36 +1510,114 @@ export default function App() {
 
                     {testResult && (
                       <div className={`p-3 rounded-xl text-xs font-mono border flex items-center justify-between ${
-                        testResult.blocked
+                        (testResult as any).isWhitelisted
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                          : testResult.blocked
                           ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
                           : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                       }`}>
                         <div className="flex items-center space-x-2">
-                          {testResult.blocked ? (
+                          {(testResult as any).isWhitelisted ? (
+                            <Globe className="h-4 w-4 text-amber-400 shrink-0" />
+                          ) : testResult.blocked ? (
                             <ShieldAlert className="h-4 w-4 text-rose-400 shrink-0" />
                           ) : (
                             <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                           )}
                           <span>
-                            {testResult.blocked
+                            {(testResult as any).isWhitelisted
+                              ? '[WHITELISTED] Domain is in whitelist bypass table. Request allowed.'
+                              : testResult.blocked
                               ? `[BLOCKED] Matched Rule #${testResult.rule.id} (${testResult.rule.domain})`
                               : '[ALLOWED] No active block rule matched this URL.'}
                           </span>
                         </div>
                         <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-black/40">
-                          {testResult.blocked ? 'Block Action' : 'Allow Action'}
+                          {(testResult as any).isWhitelisted ? 'Bypass Action' : testResult.blocked ? 'Block Action' : 'Allow Action'}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Section 2: Active Dynamic DNR Rules List & Add Form */}
+                  {/* Section 2: Whitelisted Domains Manager & Cosmetic Element Hider */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Whitelist Manager */}
+                    <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-emerald-400" /> Whitelisted Domains Bypass Table
+                      </h3>
+                      <div className="flex gap-2">
+                        <input
+                          value={newWhitelistInput}
+                          onChange={e => setNewWhitelistInput(e.target.value)}
+                          placeholder="Add domain (e.g. youtube.com)..."
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500 font-mono"
+                        />
+                        <button
+                          onClick={handleAddWhitelistDomain}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                        >
+                          Add Whitelist
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {whitelistDomains.map(dom => (
+                          <span key={dom} className="inline-flex items-center space-x-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-xs font-mono text-emerald-300">
+                            <span>{dom}</span>
+                            <button onClick={() => handleRemoveWhitelistDomain(dom)} className="hover:text-rose-400 text-slate-500"><X className="h-3 w-3" /></button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Cosmetic Element Hider Simulator */}
+                    <div className="bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                      <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Code className="h-4 w-4 text-purple-400" /> Dynamic Cosmetic DOM Element Hider
+                      </h3>
+                      <div className="flex gap-2">
+                        <input
+                          value={cosmeticSelectorInput}
+                          onChange={e => setCosmeticSelectorInput(e.target.value)}
+                          placeholder="CSS Selector (e.g. .ad-banner-overlay)..."
+                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500 font-mono"
+                        />
+                        <button
+                          onClick={handleTestCosmeticSelector}
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                        >
+                          Inject Rule
+                        </button>
+                      </div>
+                      {cosmeticTestResult && (
+                        <div className="p-2.5 rounded-xl bg-slate-950 border border-purple-500/30 text-[11px] font-mono text-purple-300">
+                          {cosmeticTestResult}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Section 3: Active Dynamic DNR Rules List & Add Form */}
                   <div className="space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
                       <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
                         <Database className="h-4 w-4 text-cyan-400" /> Active Dynamic Rules Catalog (<code className="text-cyan-300 font-mono">app/product1_adblocker_extension/db/rules.json</code>)
                       </h3>
-                      <span className="text-[11px] text-slate-400 font-mono">{adblockRules.length} Active Rules</span>
+                      
+                      {/* Category Filter Pills */}
+                      <div className="flex items-center space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-[11px]">
+                        {['All', 'Ads', 'Trackers', 'Social', 'Popups'].map(cat => (
+                          <button
+                            key={cat}
+                            onClick={() => setRuleCategoryFilter(cat)}
+                            className={`px-2.5 py-0.5 rounded-lg font-bold transition-all ${
+                              ruleCategoryFilter === cat ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-2">
@@ -1399,7 +1647,7 @@ export default function App() {
                     </div>
 
                     <div className="space-y-2">
-                      {adblockRules.map(rule => (
+                      {adblockRules.filter(r => ruleCategoryFilter === 'All' || r.category === ruleCategoryFilter).map(rule => (
                         <div key={rule.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
                           <div className="flex items-center space-x-3">
                             <span className="text-[10px] bg-slate-950 text-cyan-300 px-2 py-0.5 rounded font-bold">#{rule.id}</span>
@@ -1439,32 +1687,79 @@ export default function App() {
                     <p className="text-xs text-slate-400 mt-0.5">Real-time email threads integrated into isolated JSON database (<code className="text-purple-300 font-mono">app/product3_email_chat_mvp/db/messages.json</code>).</p>
                   </div>
 
-                  {/* Section 1: Live Threaded Email Chat Window */}
-                  <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-4 max-h-[400px] overflow-y-auto">
-                    <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
-                      <span className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-purple-400" /> Email Conversation Thread
+                  {/* Section 1: Live Threaded Email Chat Window with Sidebar Channels */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Left Sidebar: Threads Channels */}
+                    <div className="bg-slate-900 rounded-2xl border border-slate-800 p-3 space-y-3">
+                      <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block px-1 flex items-center gap-1.5">
+                        <Hash className="h-3.5 w-3.5 text-purple-400" /> Email Thread Channels
                       </span>
-                      <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono">{chatMessages.length} Messages</span>
+                      
+                      <div className="space-y-1">
+                        {['ALL', ...Array.from(new Set(chatMessages.map(m => m.subject)))].map(subj => (
+                          <button
+                            key={subj}
+                            onClick={() => {
+                              setActiveThreadSubject(subj);
+                              if (subj !== 'ALL') setChatSubject(subj);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              activeThreadSubject === subj
+                                ? 'bg-purple-600 text-white shadow-md'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-950'
+                            }`}
+                          >
+                            <span className="truncate">{subj === 'ALL' ? '💬 All Conversations' : `# ${subj}`}</span>
+                            <span className="text-[10px] bg-slate-950/60 px-1.5 py-0.5 rounded font-mono">
+                              {subj === 'ALL' ? chatMessages.length : chatMessages.filter(m => m.subject === subj).length}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                      {chatMessages.map(msg => (
-                        <div key={msg.id} className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] font-mono">
-                            <div className="flex items-center space-x-2">
-                              <span className="font-bold text-cyan-300">{msg.sender_email}</span>
-                              <span className="text-slate-500">➜</span>
-                              <span className="text-purple-300">{msg.recipient_email}</span>
-                            </div>
-                            <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
-                          </div>
-                          <div className="text-xs font-bold text-white">{msg.subject}</div>
-                          <div className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900 p-2.5 rounded-xl border border-slate-800/60">
-                            {msg.body}
-                          </div>
+                    {/* Main Chat Messages Panel */}
+                    <div className="md:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3 max-h-[420px] flex flex-col justify-between">
+                      <div className="border-b border-slate-800 pb-2 flex justify-between items-center shrink-0">
+                        <div className="flex items-center space-x-2">
+                          <MessageSquare className="h-4 w-4 text-purple-400" />
+                          <span className="text-xs font-extrabold text-white">
+                            {activeThreadSubject === 'ALL' ? 'All Email Threads' : activeThreadSubject}
+                          </span>
                         </div>
-                      ))}
+                        
+                        <div className="relative w-40 sm:w-48">
+                          <Search className="h-3 w-3 text-slate-500 absolute left-2.5 top-2" />
+                          <input
+                            value={chatSearchInput}
+                            onChange={e => setChatSearchInput(e.target.value)}
+                            placeholder="Search chat..."
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-7 pr-2 py-1 text-[11px] text-white outline-none focus:border-purple-500 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+                        {chatMessages
+                          .filter(m => activeThreadSubject === 'ALL' || m.subject === activeThreadSubject)
+                          .filter(m => !chatSearchInput.trim() || m.body.toLowerCase().includes(chatSearchInput.toLowerCase()) || m.sender_email.toLowerCase().includes(chatSearchInput.toLowerCase()) || m.subject.toLowerCase().includes(chatSearchInput.toLowerCase()))
+                          .map(msg => (
+                            <div key={msg.id} className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-mono">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-bold text-cyan-300">{msg.sender_email}</span>
+                                  <span className="text-slate-500">➜</span>
+                                  <span className="text-purple-300">{msg.recipient_email}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
+                              </div>
+                              <div className="text-xs font-bold text-white">{msg.subject}</div>
+                              <div className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900 p-2.5 rounded-xl border border-slate-800/60">
+                                {msg.body}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   </div>
 
@@ -1585,6 +1880,7 @@ export default function App() {
                     {tableColumns.map(col => (
                       <th key={col} className="p-2.5 sm:p-3 border-r border-slate-800 font-bold text-cyan-300 uppercase min-w-[100px]">{col}</th>
                     ))}
+                    <th className="p-2.5 sm:p-3 font-bold text-rose-400 uppercase w-12 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-900">
@@ -1599,6 +1895,15 @@ export default function App() {
                           />
                         </td>
                       ))}
+                      <td className="p-2 text-center">
+                        <button
+                          onClick={() => handleDeleteInspectRow(rIdx)}
+                          className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                          title="Delete this row"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1615,12 +1920,66 @@ export default function App() {
                   <Plus className="h-3 w-3" />
                   <span>Add Row</span>
                 </button>
+                <button
+                  onClick={handleExportInspectTableJSON}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                >
+                  <Download className="h-3 w-3" />
+                  <span>Export JSON</span>
+                </button>
               </div>
               <div className="flex items-center space-x-2 w-full sm:w-auto">
                 <button onClick={() => setInspectTableModal(null)} className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold cursor-pointer">Cancel</button>
                 <button onClick={handleSaveInspectTableData} className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold shadow-md cursor-pointer">
                   Save & Commit
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDIA LIGHTBOX PREVIEW MODAL */}
+      {previewBlobAsset && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-2xl w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2 font-bold text-white text-sm">
+                <Maximize2 className="h-4 w-4 text-purple-400" />
+                <span>{previewBlobAsset.filename}</span>
+              </div>
+              <button onClick={() => setPreviewBlobAsset(null)} className="text-slate-400 hover:text-white p-1 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex items-center justify-center min-h-[220px] max-h-[60vh] overflow-hidden">
+              {previewBlobAsset.type === 'image' && (
+                <img src={previewBlobAsset.url} alt={previewBlobAsset.filename} className="max-h-[50vh] object-contain rounded-xl shadow-lg" onError={(e: any) => { e.target.src = 'https://via.placeholder.com/600x350/0f172a/38bdf8?text=Image+Preview'; }} />
+              )}
+              {previewBlobAsset.type === 'video' && (
+                <video controls src={previewBlobAsset.url} className="w-full max-h-[50vh] rounded-xl shadow-lg" />
+              )}
+              {previewBlobAsset.type === 'doc' && (
+                <div className="text-center space-y-3 font-mono p-6">
+                  <FilePdf className="h-12 w-12 text-emerald-400 mx-auto" />
+                  <span className="text-xs text-slate-300 block">{previewBlobAsset.filename}</span>
+                  <span className="text-[11px] text-slate-500 block">{previewBlobAsset.size} — PDF / Document Asset</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs font-mono">
+              <span className="text-purple-300 truncate max-w-[280px]">{previewBlobAsset.url}</span>
+              <div className="flex items-center space-x-2">
+                <button onClick={() => handleCopyBlobUrl(previewBlobAsset.url)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl font-bold flex items-center space-x-1 cursor-pointer">
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>Copy URL</span>
+                </button>
+                <a href={previewBlobAsset.url} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold flex items-center space-x-1 cursor-pointer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Open Original</span>
+                </a>
               </div>
             </div>
           </div>
