@@ -277,26 +277,111 @@ export default function App() {
     setInputMessage('');
     setIsAgentTyping(true);
 
-    // Simulate real-time AI Agent problem-solving response based on category & language
+    // Simulate real-time AI Agent problem-solving response based on context & language
     setTimeout(() => {
       let aiResponseText = '';
+      const q = query.toLowerCase();
 
-      if (selectedAgent.category === 'health') {
-        aiResponseText = selectedLanguage === 'Hindi' || selectedLanguage === 'Hinglish'
-          ? `🩺 **Dr. Medico AI परामर्श (${selectedLanguage}):**\n\nआपकी बताई समस्या (${query.substring(0, 30)}...) के आधार पर:\n\n1️⃣ **प्राथमिक सुझाव**: खूब पानी पीजिए, पर्याप्त आराम करें और तनाव से बचें।\n2️⃣ **घरेलू राहत**: गुनगुने पानी का सेवन करें और हल्का सुपाच्य भोजन लें।\n3️⃣ **सावधानी**: यदि लक्षण 24 घंटे से अधिक रहते हैं या दर्द बढ़ता है, तो तुरंत निकटतम फिजिशियन से जांच करवाएं।`
-          : `🩺 **Dr. Medico AI Medical Assessment:**\n\nBased on your symptoms (${query.substring(0, 30)}...):\n\n1. **Primary Advice**: Stay well hydrated and ensure 7-8 hours of restful sleep.\n2. **Immediate Relief**: Take light meals and avoid extreme temperatures.\n3. **Warning**: Please consult a licensed general practitioner if symptoms persist for over 24 hours.`;
-      } else if (selectedAgent.category === 'legal') {
-        aiResponseText = selectedLanguage === 'Hindi' || selectedLanguage === 'Hinglish'
-          ? `⚖️ **Advocate Nyaya AI कानूनी सलाह (${selectedLanguage}):**\n\nआपकी कानूनी समस्या का चरणबद्ध समाधान:\n\n1️⃣ **स्टेप 1 (सबूत जुटाएं)**: सभी लिखित संचार, रसीदें और व्हाट्सएप्प मैसेज की कॉपी सुरक्षित रखें।\n2️⃣ **स्टेप 2 (लीगल नोटिस)**: अधिवक्ता के माध्यम से 15 दिनों का कानूनी नोटिस रजिस्टर्ड डाक से भेजें।\n3️⃣ **स्टेप 3 (कंज्यूमर कोर्ट / एफआईआर)**: समय सीमा के भीतर राष्ट्रीय उपभोक्ता हेल्पलाइन या नजदीकी अदालत में शिकायत दर्ज करें।`
-          : `⚖️ **Advocate Nyaya AI Legal Guidance:**\n\nStep-by-step resolution roadmap:\n\n1. **Document Evidence**: Preserve all contract agreements, rent receipts, and chat logs.\n2. **Issue Legal Notice**: Send a 15-day statutory legal notice via registered post.\n3. **Approach Forum**: File a formal petition under the Consumer Protection Act or relevant court.`;
-      } else if (selectedAgent.category === 'tech') {
-        aiResponseText = `💻 **DevGuru AI Solution Patch:**\n\nHere is the verified fix for your technical issue:\n\n\`\`\`javascript\n// Optimized Cleanup Solution\nuseEffect(() => {\n  const handler = (data) => console.log(data);\n  socket.on("event", handler);\n  return () => socket.off("event", handler); // Prevent memory leaks\n}, []);\n\`\`\`\n\n✅ **Key Fix**: Always return a cleanup function in your \`useEffect\` hooks to unbind WebSocket listeners and prevent memory growth.`;
-      } else if (selectedAgent.category === 'finance') {
-        aiResponseText = selectedLanguage === 'Hindi' || selectedLanguage === 'Hinglish'
-          ? `📊 **FinVision AI वित्तीय सलाह:**\n\nआपकी बचत और टैक्स योजना:\n1️⃣ **इमरजेंसी फंड**: 6 महीने के खर्च के बराबर राशि 4% ब्याज वाले लिक्विड फंड में रखें।\n2️⃣ **टैक्स सेविंग**: 80C के तहत PPF या ELSS फंड्स में SIP शुरू करें।\n3️⃣ **निवेश नियम**: 50/30/20 नियम लागू करें (50% जरूरत, 30% इच्छाएं, 20% बचत)।`
-          : `📊 **FinVision AI Financial Plan:**\n\n1. **Emergency Buffer**: Maintain 6 months of expenses in a high-yield liquid fund.\n2. **SIP Allocation**: Invest in low-cost Nifty 50 Index funds for long-term compounding.\n3. **Tax Optimization**: Maximize deductions under Section 80C & 80D.`;
-      } else {
-        aiResponseText = `🤖 **${selectedAgent.name} (${selectedLanguage}):**\n\nआपकी समस्या का सटीक और व्यावहारिक समाधान तैयार है। क्या आप इसमें कुछ और विस्तार से जानना चाहते हैं?`;
+      // ⚖️ LEGAL ADVISOR (Advocate Nyaya AI)
+      if (selectedAgent.category === 'legal') {
+        if (q.includes('land') || q.includes('bhoomi') || q.includes('zameen') || q.includes('patta') || q.includes('convert') || q.includes('rajsthan') || q.includes('rajasthan') || q.includes('krishi') || q.includes('parivar') || q.includes('vivad') || q.includes('property')) {
+          aiResponseText = `⚖️ **Advocate Nyaya AI - राजस्थान भूमि व संपत्ति विवाद समाधान (${selectedLanguage}):**
+
+आपके द्वारा बताई गई राजस्थान कृषि भूमि व परिवार विवाद की स्थिति का कानूनी व तकनीकी समाधान:
+
+1️⃣ **धारा 90A (Rajasthan Land Revenue Act Section 90A)**:
+   - यदि कृषि भूमि का व्यावसायिक या आवासीय रूपांतरण (Conversion) नहीं हो पा रहा है, तो राजस्थान भू-राजस्व अधिनियम की धारा **90A** के तहत तहसीलदार/उपखंड अधिकारी (SDM) कार्यालय में आवेदन करें।
+   - परिवार के अन्य सदस्यों की असहमति पर धारा 90A के तहत सरकारी नियमन (Regularization) की कार्रवाई की जाती है।
+
+2️⃣ **राजस्व न्यायालय में पारिवारिक बंटवारा (Partition Suit - Section 53 Rajasthan Tenancy Act)**:
+   - खातेदारी कृषि भूमि में अपना हिस्सा कानूनी रूप से अलग करने के लिए उपखंड अधिकारी (SDM Court) के समक्ष **धारा 53 राजस्थान काश्तकारी अधिनियम** के तहत विभाजन का दावा (Partition Suit) दायर करें।
+   - इसके साथ ही कोर्ट से विवादित भूमि पर निर्माण या बिक्री रोकने हेतु **अस्थाई निषेधाज्ञा (Stay Order)** प्राप्त करें।
+
+3️⃣ **प्रत्यक्ष पट्टा प्राप्त करने का विकल्प (प्रशासन शहरों/गांवों के संग अभियान)**:
+   - यदि भूमि निकाय क्षेत्र (JDA / UIT / नगर पालिका / ग्राम पंचायत) की सीमा में आती है, तो 'प्रशासन शहरों/गांवों के संग' के तहत **धारा 69A (Rajasthan Municipalities Act)** के अंतर्गत व्यक्तिगत कब्जे के आधार पर प्रत्यक्ष पट्टा (Individual Patta) हेतु आवेदन कर सकते हैं।
+
+4️⃣ **आवश्यक दस्तावेज**:
+   - जमाबंदी (खसरा नक़्शा), म्यूटेशन (नामांतरण की प्रति), आधार कार्ड, और भूमि पर आपके भौतिक कब्जे (Possession) का प्रमाण।`;
+        } else if (q.includes('rent') || q.includes('landlord') || q.includes('deposit') || q.includes('मकान मालिक')) {
+          aiResponseText = `⚖️ **Advocate Nyaya AI - रेंट व डिपॉजिट विवाद समाधान:**
+
+1️⃣ **लीगल नोटिस (15 Days Statutory Notice)**:
+   - वकील के माध्यम से धारा 106 Transfer of Property Act के तहत 15 दिनों का कानूनी नोटिस भेजें।
+2️⃣ **रेंट कंट्रोल ट्रिब्यूनल**:
+   - नजदीकी Rent Control Tribunal में सिक्योरिटी डिपॉजिट की वसूली हेतु आवेदन दायर करें।`;
+        } else {
+          aiResponseText = `⚖️ **Advocate Nyaya AI कानूनी विश्लेषण (${selectedLanguage}):**
+
+आपकी समस्या: "*${query}*"
+
+1️⃣ **कानूनी स्थिति**: आपके मामले में दीवानी (Civil) व प्रशासनिक राहत का प्रावधान है।
+2️⃣ **अगला कदम**: संबंधित संबंधित न्यायाधिकरण या प्रशासनिक अधिकारी (SDM/तहसीलदार/कोर्ट) के समक्ष आवश्यक दस्तावेज प्रस्तुत करें।
+3️⃣ **लीगल नोटिस**: प्रथम दृष्टया 15 दिनों का लिखित नोटिस देना कानूनी रूप से प्रभावी रहेगा।`;
+        }
+      }
+
+      // 🩺 HEALTHCARE (Dr. Medico AI)
+      else if (selectedAgent.category === 'health') {
+        if (q.includes('fever') || q.includes('बुखार') || q.includes('सिरदर्द') || q.includes('headache')) {
+          aiResponseText = `🩺 **Dr. Medico AI - सिरदर्द व बुखार परामर्श:**
+
+1️⃣ **तत्काल देखभाल**: पर्याप्त पानी पिएं, ओआरएस (ORS) लें और ठंडी पट्टी सिर पर रखें।
+2️⃣ **दवा सलाह**: पेरासिटामोल (Paracetamol) डॉक्टर की सलाह अनुसार ली जा सकती है।
+3️⃣ **सावधानी**: यदि बुखार 102°F से अधिक है या 48 घंटे से बना हुआ है, तो तुरंत CBC व डेंगू टेस्ट करवाएं।`;
+        } else if (q.includes('acidity') || q.includes('gas') || q.includes('एसिडिटी') || q.includes('पेट')) {
+          aiResponseText = `🩺 **Dr. Medico AI - पेट व एसिडिटी समाधान:**
+
+1️⃣ **घरेलू उपाय**: गुनगुना पानी, ठंडा दूध या सौंफ का पानी पिएं।
+2️⃣ **आहार**: मसालेदार व तला हुआ भोजन पूरी तरह बंद करें।
+3️⃣ **चिकित्सीय परामर्श**: एंटासिड (Antacid) टैबलेट ले सकते हैं।`;
+        } else {
+          aiResponseText = `🩺 **Dr. Medico AI स्वास्थ विश्लेषण (${selectedLanguage}):**
+
+आपकी स्वास्थ्य संबंधी जिज्ञासा: "*${query}*"
+
+1️⃣ **प्राथमिक सुझाव**: आराम करें, तरल पदार्थों का अधिक सेवन करें।
+2️⃣ **विशेषज्ञ राय**: लक्षणों पर 24 घंटे नजर रखें और आवश्यकता पड़ने पर चिकित्सकीय परामर्श लें।`;
+        }
+      }
+
+      // 💻 TECH ARCHITECT (DevGuru AI)
+      else if (selectedAgent.category === 'tech') {
+        aiResponseText = `💻 **DevGuru AI Architect Solution:**
+
+Regarding your code query: "*${query}*"
+
+\`\`\`typescript
+// Verified Production Solution
+export function resolveIssue(data: any) {
+  if (!data) return null;
+  // Apply memoization & clean state updates
+  return React.useMemo(() => data.filter(Boolean), [data]);
+}
+\`\`\`
+
+✅ **Technical Breakdown**:
+1. Optimized memory footprint and eliminated unnecessary re-renders.
+2. Verified type safety and clean asynchronous execution path.`;
+      }
+
+      // 📊 FINANCE (FinVision AI)
+      else if (selectedAgent.category === 'finance') {
+        aiResponseText = `📊 **FinVision AI Tax & Investment Plan:**
+
+आपके वित्तीय प्रश्न (*${query}*) का समाधान:
+
+1️⃣ **Tax Optimization**: 80C के तहत ₹1.5 लाख (ELSS/PPF) और 80CCD(1B) में ₹50,000 (NPS) बचाएं।
+2️⃣ **Investment**: SIP के माध्यम से डाइवर्सिफाइड लार्ज व फ्लेक्सीकैप फंड्स में निवेश करें।
+3️⃣ **Emergency Buffer**: 6 महीने के अनिवार्य खर्च का लिक्विड फंड बनाएं।`;
+      }
+
+      // DEFAULT AGENT RESPONSE
+      else {
+        aiResponseText = `🤖 **${selectedAgent.name} (${selectedLanguage}):**
+
+आपकी समस्या: "*${query}*"
+
+विशेषज्ञ समाधान तैयार है। कृपया आगे के किसी विशिष्ट विवरण के लिए निसंकोच प्रश्न पूछें।`;
       }
 
       const agentReply: ChatMessage = {
@@ -310,7 +395,7 @@ export default function App() {
 
       setChatMessages(prev => [...prev, agentReply]);
       setIsAgentTyping(false);
-    }, 1200);
+    }, 1000);
   };
 
   // Handle New Ticket Submission
