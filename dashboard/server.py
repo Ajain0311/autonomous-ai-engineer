@@ -1056,6 +1056,116 @@ def get_adblocker_rules():
             return json.load(f)
     return []
 
+# ==========================================
+# STRICT DATA TYPE VALIDATION LAYER
+# ==========================================
+
+def validate_and_cast_row(row: dict, schema: dict):
+    columns = {col["name"]: col for col in schema.get("columns", [])}
+    validated_row = {}
+    for col_name, col_def in columns.items():
+        val = row.get(col_name)
+        col_type = col_def.get("type", "string")
+        is_req = col_def.get("required", False)
+        default_val = col_def.get("default")
+
+        if val is None or val == "":
+            if is_req and default_val is None:
+                raise HTTPException(status_code=400, detail=f"Validation Error: Column '{col_name}' is required.")
+            val = default_val
+
+        if val is not None:
+            if col_type == "number":
+                try:
+                    val = float(val) if "." in str(val) else int(val)
+                except Exception:
+                    raise HTTPException(status_code=400, detail=f"Validation Error: Column '{col_name}' must be a valid number.")
+                min_val = col_def.get("min")
+                max_val = col_def.get("max")
+                if min_val is not None and val < min_val:
+                    raise HTTPException(status_code=400, detail=f"Validation Error: Column '{col_name}' ({val}) is below minimum limit {min_val}.")
+                if max_val is not None and val > max_val:
+                    raise HTTPException(status_code=400, detail=f"Validation Error: Column '{col_name}' ({val}) exceeds maximum limit {max_val}.")
+            elif col_type == "boolean":
+                val = str(val).lower() in ("true", "1", "yes")
+            elif col_type == "datetime":
+                val = str(val)
+            elif col_type == "string":
+                val = str(val)
+                pattern = col_def.get("pattern")
+                if pattern:
+                    import re
+                    try:
+                        if not re.search(pattern, val):
+                            raise HTTPException(status_code=400, detail=f"Validation Error: Column '{col_name}' ('{val}') does not match required pattern.")
+                    except Exception:
+                        pass
+        validated_row[col_name] = val
+
+    # Retain extra non-schema keys
+    for k, v in row.items():
+        if k not in validated_row:
+            validated_row[k] = v
+    return validated_row
+
+@app.get("/api/db/schema/{table_name}")
+def get_table_schema(table_name: str):
+    schema_file = ROOT_DIR / "db" / f"{table_name}_schema.json"
+    if schema_file.exists():
+        with open(schema_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"tableName": table_name, "columns": []}
+
+@app.post("/api/db/schema/{table_name}")
+def save_table_schema(table_name: str, schema: dict):
+    schema_file = ROOT_DIR / "db" / f"{table_name}_schema.json"
+    schema_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(schema_file, "w", encoding="utf-8") as f:
+        json.dump(schema, f, indent=2, ensure_ascii=False)
+        
+    run_git_command(["add", str(schema_file)])
+    run_git_command(["commit", "-m", f"db(schema): updated schema for {table_name}"])
+    return {"status": "success", "schema": schema}
+
+@app.post("/api/db/validated_save/{table_name}")
+def save_validated_data(table_name: str, rows: list):
+    schema_file = ROOT_DIR / "db" / f"{table_name}_schema.json"
+    schema = {"tableName": table_name, "columns": []}
+    if schema_file.exists():
+        with open(schema_file, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+
+    validated_rows = []
+    for r in rows:
+        validated_rows.append(validate_and_cast_row(r, schema))
+
+    db_file = ROOT_DIR / "db" / f"{table_name}.json"
+    with open(db_file, "w", encoding="utf-8") as f:
+        json.dump(validated_rows, f, indent=2, ensure_ascii=False)
+
+    # Sync with product extension rules if applicable
+    if table_name == "adblocker_rules":
+        ext_rules_file = ROOT_DIR / "products" / "01-adblocker-extension" / "rules.json"
+        if ext_rules_file.parent.exists():
+            dnr_rules = []
+            for idx, item in enumerate(validated_rows, start=1):
+                if item.get("enabled", True):
+                    dnr_rules.append({
+                        "id": idx,
+                        "priority": item.get("priority", 1),
+                        "action": { "type": item.get("action", "block") },
+                        "condition": {
+                            "urlFilter": item.get("domain", "*"),
+                            "resourceTypes": ["script", "image", "xmlhttprequest"]
+                        }
+                    })
+            with open(ext_rules_file, "w", encoding="utf-8") as f:
+                json.dump(dnr_rules, f, indent=2, ensure_ascii=False)
+
+    run_git_command(["add", "db/", "products/"])
+    run_git_command(["commit", "-m", f"db(data): validated insert in {table_name}"])
+    return {"status": "success", "rows": validated_rows}
+
 @app.post("/api/db/adblocker_rules")
 def save_adblocker_rules(rules: list):
     db_file = ROOT_DIR / "db" / "adblocker_rules.json"
