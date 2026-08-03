@@ -1007,6 +1007,7 @@ export default function App() {
                   <div key={u.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs font-mono">
                     <div className="flex items-center space-x-3">
                       <span className="font-bold text-white">@{u.username}</span>
+                      <span className="text-cyan-300 text-[11px]">{u.email || `${u.username}@example.com`}</span>
                       <span className="bg-purple-500/15 text-purple-300 px-2 py-0.5 rounded text-[10px] uppercase font-bold">{u.role}</span>
                     </div>
                     <span className="text-[10px] text-emerald-400 font-bold">● Active Account</span>

@@ -1619,18 +1619,43 @@ def verify_email_otp(payload: VerifyOTPRequest):
     stored_otp = OTP_STORE.get(email)
     if stored_otp and (stored_otp == otp or otp == "123456"):
         OTP_STORE.pop(email, None)
+        
+        users_file = ROOT_DIR / "db" / "users.json"
+        users = []
+        if users_file.exists():
+            try:
+                with open(users_file, "r", encoding="utf-8") as f:
+                    users = json.load(f)
+            except Exception:
+                pass
+
+        # Check existing user by email
+        existing_user = next((u for u in users if u.get("email", "").lower() == email or u.get("username", "").lower() == email.split("@")[0]), None)
+        if existing_user:
+            existing_user["email"] = email
+            with open(users_file, "w", encoding="utf-8") as f:
+                json.dump(users, f, indent=2)
+            return {"status": "success", "user": existing_user}
+
+        # Create new verified user profile
         role = "super_admin" if "admin" in email else "developer"
         username = email.split("@")[0]
-        return {
-            "status": "success",
-            "user": {
-                "id": random.randint(100, 999),
-                "username": username,
-                "email": email,
-                "role": role,
-                "enabled": True
-            }
+        new_user = {
+            "id": len(users) + 1,
+            "username": username,
+            "email": email,
+            "role": role,
+            "enabled": True
         }
+        users.append(new_user)
+
+        with open(users_file, "w", encoding="utf-8") as f:
+            json.dump(users, f, indent=2)
+
+        run_git_command(["add", "db/users.json"])
+        run_git_command(["commit", "-m", f"feat(auth): registered new verified OTP user @{username} ({email})"])
+
+        return {"status": "success", "user": new_user}
     
     raise HTTPException(status_code=401, detail="Invalid 6-digit OTP code.")
 

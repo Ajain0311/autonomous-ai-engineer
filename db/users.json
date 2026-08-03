@@ -1,5 +1,5 @@
 [
-  { "id": 1, "username": "admin", "password": "admin_password_123", "role": "super_admin", "enabled": true },
-  { "id": 2, "username": "aditya", "password": "password123", "role": "developer", "enabled": true },
-  { "id": 3, "username": "user1", "password": "user_password_123", "role": "viewer", "enabled": true }
+  { "id": 1, "username": "admin", "email": "admin@antigravity.dev", "password": "admin_password_123", "role": "super_admin", "enabled": true },
+  { "id": 2, "username": "aditya", "email": "aditya@example.com", "password": "password123", "role": "developer", "enabled": true },
+  { "id": 3, "username": "user1", "email": "user1@example.com", "password": "user_password_123", "role": "viewer", "enabled": true }
 ]
