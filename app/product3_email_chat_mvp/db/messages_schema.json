@@ -1,0 +1,11 @@
+{
+  "tableName": "messages",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "sender_email", "type": "string", "required": true },
+    { "name": "recipient_email", "type": "string", "required": true },
+    { "name": "subject", "type": "string", "required": true },
+    { "name": "body", "type": "string", "required": true },
+    { "name": "timestamp", "type": "string", "required": true }
+  ]
+}

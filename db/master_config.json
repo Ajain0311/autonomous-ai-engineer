@@ -14,6 +14,13 @@
       "description": "Uploads and organizes Images, MP4 Videos, and PDF Documents into distinct folders with raw access/download URLs.",
       "db_folder": "app/product2_github_blob_storage/db",
       "status": "OPERATIONAL"
+    },
+    {
+      "id": "product3_email_chat_mvp",
+      "name": "Product 03: Email-Based Micro-Chat MVP (Rocket.Chat Style)",
+      "description": "Lightweight thread engine supporting real-time chat conversations over email protocols.",
+      "db_folder": "app/product3_email_chat_mvp/db",
+      "status": "OPERATIONAL"
     }
   ]
 }
