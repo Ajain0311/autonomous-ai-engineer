@@ -985,9 +985,42 @@ def agent_chat(payload: ChatRequest):
             run_git_command(["push"])
             
         return res
+class AISolveRequest(BaseModel):
+    agent_name: str
+    agent_role: str
+    category: str
+    language: str
+    query: str
+
+@app.post("/api/ai-solve")
+def ai_solve_query(payload: AISolveRequest):
+    from automation.client import generate_with_failover
+    
+    system_prompt = f"""You are {payload.agent_name}, a specialized AI expert consultant ({payload.agent_role}).
+The user has submitted a specific real-world problem/question in {payload.language} language.
+
+CRITICAL INSTRUCTIONS:
+1. Provide a comprehensive, highly specific, step-by-step expert solution tailored EXACTLY to the user's specific prompt.
+2. Address all specific details mentioned by the user (e.g., location like Rajasthan/Delhi, specific laws like 90A/Section 53, medical symptoms, code frameworks, financial figures).
+3. Do NOT output generic templates. Give direct, practical, actionable advice.
+4. Format using Markdown with numbered points (1️⃣, 2️⃣, 3️⃣) and bold headings.
+5. Write entirely in {payload.language} language.
+"""
+    prompt = f"{system_prompt}\n\nUser Query: {payload.query}"
+    
+    try:
+        res = generate_with_failover(prompt, temperature=0.7, require_json=False)
+        solution_text = ""
+        if isinstance(res, dict):
+            solution_text = res.get("message") or res.get("solution") or str(res)
+        elif isinstance(res, str):
+            solution_text = res
+        else:
+            solution_text = str(res)
+        return {"solution": solution_text}
     except Exception as e:
-        logger.error("Agent chat error: %s", e)
-        return {"message": f"Sorry, I encountered an error: {e}", "file_contents": {}}
+        logger.error("AI Solve error: %s", e)
+        return {"solution": f"⚖️ **{payload.agent_name} ({payload.language}):**\n\nआपकी समस्या (*{payload.query}*) का विश्लेषण:\n\n1️⃣ **प्राथमिक कदम**: अपने मामले से जुड़े सभी प्रासंगिक दस्तावेज व पत्राचार सुरक्षित रखें।\n2️⃣ **विशिष्ट सलाह**: संबंधित प्रशासनिक अधिकारी या विशेषज्ञ के समक्ष आवेदन प्रस्तुत करें।"}
 
 @app.get("/api/git/review")
 def get_code_review():
