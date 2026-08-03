@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Flame, GitCommit, Calendar, Sparkles, Shield, Database, Plus, CheckCircle2, 
+  Flame, GitCommit, Calendar, Sparkles, Shield, ShieldCheck, Database, Plus, CheckCircle2, 
   RefreshCw, Save, Edit3, Layers, Settings, FileText, Code, Check, 
   Trash2, Globe, ArrowRight, Laptop, AlertCircle, X, ShieldAlert, CheckSquare
 } from 'lucide-react';
