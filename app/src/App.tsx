@@ -1,212 +1,376 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Rocket, Search, Star, GitFork, ExternalLink, Filter, Plus, 
-  Sparkles, Code2, Cpu, Globe, BookOpen, MessageSquare, Flame, 
-  ThumbsUp, User, ShieldCheck, CheckCircle2, ChevronRight, X, ArrowUpRight,
-  TrendingUp, Layers, Terminal, Compass
+  Bot, MessageSquare, Send, Globe, Shield, Sparkles, User, 
+  Stethoscope, Scale, Code2, TrendingUp, Heart, GraduationCap, 
+  Search, CheckCircle2, Clock, ThumbsUp, Plus, ArrowRight, X, 
+  Languages, Zap, AlertCircle, RefreshCw, Star
 } from 'lucide-react';
 
-interface Project {
+// Specialized AI Agent User Interface
+interface AIAgent {
+  id: string;
+  name: string;
+  role: string;
+  category: 'health' | 'legal' | 'tech' | 'finance' | 'wellness' | 'education' | 'translation';
+  avatar: string;
+  icon: any;
+  online: boolean;
+  rating: number;
+  languages: string[];
+  description: string;
+  specialty: string;
+  systemPrompt: string;
+  samplePrompts: string[];
+}
+
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'agent';
+  agentId?: string;
+  text: string;
+  language: string;
+  timestamp: string;
+}
+
+interface ProblemTicket {
   id: string;
   title: string;
-  tagline: string;
   description: string;
-  category: 'ai' | 'web3' | 'fullstack' | 'devops' | 'mobile' | 'design';
-  tags: string[];
-  stars: number;
-  forks: number;
+  category: string;
+  language: string;
+  user: string;
+  assignedAgent: string;
+  status: 'open' | 'solving' | 'resolved';
   upvotes: number;
-  author: { name: string; avatar: string; handle: string };
-  demoUrl?: string;
-  repoUrl?: string;
-  featured?: boolean;
+  createdAt: string;
+  solutionSummary?: string;
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'explore' | 'trending' | 'roadmaps' | 'community'>('explore');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'agents' | 'chat' | 'tickets'>('agents');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('Hindi');
+  const [selectedAgent, setSelectedAgent] = useState<AIAgent | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'stars' | 'upvotes' | 'recent'>('stars');
-  
-  // Modals & User Session
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Real-Time Chat Engine State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'm1',
+      sender: 'agent',
+      agentId: 'dr-medico',
+      text: 'नमस्ते! मैं Dr. Medico AI हूँ। आपकी सेहत, आहार या किसी लक्षण से जुड़ी सहायता के लिए मैं यहाँ हूँ। आप अपनी भाषा में सवाल पूछ सकते हैं।',
+      language: 'Hindi',
+      timestamp: '10:00 AM'
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState<string>('');
+  const [isAgentTyping, setIsAgentTyping] = useState<boolean>(false);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Problem Submission Modal
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [ticketTitle, setTicketTitle] = useState<string>('');
+  const [ticketDesc, setTicketDesc] = useState<string>('');
+  const [ticketCategory, setTicketCategory] = useState<string>('health');
 
-  // New Project Form
-  const [newTitle, setNewTitle] = useState('');
-  const [newTagline, setNewTagline] = useState('');
-  const [newCategory, setNewCategory] = useState<'ai' | 'web3' | 'fullstack' | 'devops' | 'mobile' | 'design'>('ai');
-  const [newTags, setNewTags] = useState('');
-  const [newRepoUrl, setNewRepoUrl] = useState('');
+  // Specialized AI Expert Agents (Active AI Users)
+  const agents: AIAgent[] = [
+    {
+      id: 'dr-medico',
+      name: 'Dr. Medico AI',
+      role: 'Healthcare & Medical Wellness Specialist',
+      category: 'health',
+      avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
+      icon: Stethoscope,
+      online: true,
+      rating: 4.9,
+      languages: ['Hindi', 'English', 'Hinglish', 'Bengali', 'Marathi'],
+      description: 'Provides instant medical guidance, symptom analysis, dietary plans, and wellness advice in your native language.',
+      specialty: 'Symptom Checker, Diet Plans, First Aid & Preventive Care',
+      systemPrompt: 'You are Dr. Medico AI, an empathetic healthcare expert assistant.',
+      samplePrompts: [
+        'मुझे पिछले 2 दिन से सिरदर्द और हल्का बुखार है, क्या उपाय करूँ?',
+        'What should I eat to improve hemoglobin levels naturally?',
+        'गैस और एसिडिटी की समस्या का घरेलू इलाज बताइए।'
+      ]
+    },
+    {
+      id: 'advocate-nyaya',
+      name: 'Advocate Nyaya AI',
+      role: 'Legal Rights & Property Law Advisor',
+      category: 'legal',
+      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+      icon: Scale,
+      online: true,
+      rating: 4.95,
+      languages: ['Hindi', 'English', 'Hinglish', 'Tamil', 'Gujarati'],
+      description: 'Simplifies legal notices, property disputes, consumer rights, labor law, and contract drafting step-by-step.',
+      specialty: 'Consumer Rights, Rent Agreements, Consumer Forum Complaints',
+      systemPrompt: 'You are Advocate Nyaya AI, a knowledgeable legal advice consultant.',
+      samplePrompts: [
+        'मकान मालिक सिक्योरिटी डिपॉजिट वापस नहीं कर रहा, क्या लीगल नोटिस भेजें?',
+        'How to file a consumer court complaint for a defective product online?',
+        'रेंट एग्रीमेंट ड्राफ्ट करते समय किन बातों का ध्यान रखना चाहिए?'
+      ]
+    },
+    {
+      id: 'dev-guru',
+      name: 'DevGuru AI Architect',
+      role: 'Senior Fullstack & System Design Architect',
+      category: 'tech',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      icon: Code2,
+      online: true,
+      rating: 5.0,
+      languages: ['English', 'Hinglish', 'Hindi'],
+      description: 'Solves complex code bugs, performs security code reviews, and designs scalable cloud architectures.',
+      specialty: 'React, Node.js, Python, System Design, Debugging',
+      systemPrompt: 'You are DevGuru AI, an expert system architect and code debugger.',
+      samplePrompts: [
+        'React component state render loop infinity error kaise fix karein?',
+        'How to design a high-concurrency microservice API rate limiter?',
+        'Python script pandas memory leak error resolve code give me.'
+      ]
+    },
+    {
+      id: 'fin-vision',
+      name: 'FinVision AI Advisor',
+      role: 'Personal Finance & Tax Strategist',
+      category: 'finance',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      icon: TrendingUp,
+      online: true,
+      rating: 4.85,
+      languages: ['Hindi', 'English', 'Hinglish'],
+      description: 'Helps users build monthly budgets, save taxes under New/Old regime, and plan mutual fund investments.',
+      specialty: 'Income Tax Savings, SIP Planning, Emergency Fund Allocation',
+      systemPrompt: 'You are FinVision AI, a certified personal financial planning consultant.',
+      samplePrompts: [
+        '7 लाख सैलरी पर Old vs New Tax Regime में कौन सा बेहतर है?',
+        'How to start investing 5000 INR per month in Index Mutual Funds?',
+        'क्रेडिट कार्ड का कर्ज जल्दी चुकाने की बेस्ट स्ट्रेटजी क्या है?'
+      ]
+    },
+    {
+      id: 'mind-ease',
+      name: 'MindEase Therapy AI',
+      role: 'Mental Wellbeing & Stress Relief Guide',
+      category: 'wellness',
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+      icon: Heart,
+      online: true,
+      rating: 4.98,
+      languages: ['Hindi', 'English', 'Hinglish', 'Spanish', 'French'],
+      description: 'A compassionate, non-judgmental space for managing anxiety, exam stress, burnout, and emotional healing.',
+      specialty: 'CBT Exercises, Mindfulness Breathing, Anxiety Support',
+      systemPrompt: 'You are MindEase Therapy AI, a gentle and empathetic mental health guide.',
+      samplePrompts: [
+        'मुझे नौकरी की वजह से बहुत ज्यादा स्ट्रेस और एंग्जायटी हो रही है।',
+        'How to overcome overthinking before sleeping at night?',
+        'मन शांत करने की 5 मिनट की माइंडफुलनेस एक्सरसाइज बताइए।'
+      ]
+    },
+    {
+      id: 'edu-master',
+      name: 'EduMaster Tutor AI',
+      role: 'Multilingual Academic Tutor & Mentor',
+      category: 'education',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      icon: GraduationCap,
+      online: true,
+      rating: 4.9,
+      languages: ['Hindi', 'English', 'Hinglish', 'Spanish', 'French', 'German'],
+      description: 'Explains complex Math, Science, History, and Coding concepts simply in your preferred language with examples.',
+      specialty: 'Class 9-12 Science/Maths, Competitive Exam Prep, Homework Solver',
+      systemPrompt: 'You are EduMaster Tutor AI, an engaging academic teacher.',
+      samplePrompts: [
+        'क्वांटम मैकेनिक्स और फोटोइलेक्ट्रिक इफेक्ट को हिंदी में आसान उदाहरण से समझाओ।',
+        'Solve step-by-step calculus integration by parts equation.',
+        'IIT JEE Physics ke Newton Laws solved numerical problems show karo.'
+      ]
+    }
+  ];
 
-  // Sample TechHub Projects Database
-  const [projects, setProjects] = useState<Project[]>([
+  // Sample User Problem Tickets
+  const [tickets, setTickets] = useState<ProblemTicket[]>([
     {
-      id: 'p1',
-      title: 'NeuralFlow AI',
-      tagline: 'Autonomous multi-agent LLM workflow orchestrator with real-time streaming DAG visualization.',
-      description: 'NeuralFlow AI allows developers to connect LLM agents in dynamic graphs. Built with React 18, TypeScript, FastAPI, and WebSockets. Supports local Ollama models and cloud APIs.',
-      category: 'ai',
-      tags: ['AI/ML', 'React', 'Python', 'LLM', 'TypeScript'],
-      stars: 4820,
-      forks: 512,
-      upvotes: 894,
-      author: { name: 'Aditya Jain', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', handle: '@aditya_jain' },
-      demoUrl: 'https://demo.neuralflow.ai',
-      repoUrl: 'https://github.com/example/neuralflow',
-      featured: true
+      id: 't101',
+      title: 'मकान मालिक 50,000 डिपॉजिट वापस नहीं कर रहा - कानूनी सलाह चाहिए',
+      description: 'मैंने 2 साल का लीज पीरियड पूरा किया और फ्लैट बिना नुकसान दिए खाली किया, लेकिन मकान मालिक फोन नहीं उठा रहा।',
+      category: 'legal',
+      language: 'Hindi',
+      user: 'Rahul Sharma (Delhi)',
+      assignedAgent: 'Advocate Nyaya AI',
+      status: 'solving',
+      upvotes: 38,
+      createdAt: '2 घंटे पहले',
+      solutionSummary: 'Advocate Nyaya AI ने 15 दिनों का लीगल नोटिस ड्राफ्ट करके भेजा है।'
     },
     {
-      id: 'p2',
-      title: 'KubeVault Ops',
-      tagline: 'Zero-trust Kubernetes secret rotation engine with automated cloud backup.',
-      description: 'KubeVault seamlessly manages ephemeral secrets across AWS EKS and GCP GKE clusters with automated SSL renewal and audit logging.',
-      category: 'devops',
-      tags: ['Kubernetes', 'Go', 'DevOps', 'Docker', 'Security'],
-      stars: 2140,
-      forks: 188,
-      upvotes: 432,
-      author: { name: 'Elena Rostova', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', handle: '@elena_dev' },
-      demoUrl: 'https://kubevault.io',
-      repoUrl: 'https://github.com/example/kubevault',
-      featured: true
+      id: 't102',
+      title: 'React State Management memory leak causing web app crash',
+      description: 'Our web app freezes after 15 minutes of usage due to uncleaned WebSocket event listeners in useEffect.',
+      category: 'tech',
+      language: 'English',
+      user: 'Priya Mehta (Bangalore)',
+      assignedAgent: 'DevGuru AI Architect',
+      status: 'resolved',
+      upvotes: 54,
+      createdAt: '5 घंटे पहले',
+      solutionSummary: 'DevGuru AI provided cleanup function code patch for useEffect hook.'
     },
     {
-      id: 'p3',
-      title: 'EtherPulse DEX',
-      tagline: 'Next-gen decentralized liquidity protocol featuring gasless swaps and instant finality.',
-      description: 'EtherPulse leverages Layer-2 ZK-rollups to provide sub-second crypto trading with near-zero gas fees.',
-      category: 'web3',
-      tags: ['Solidity', 'Web3', 'Ethereum', 'Next.js', 'Tailwind'],
-      stars: 3290,
-      forks: 410,
-      upvotes: 621,
-      author: { name: 'Marcus Chen', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', handle: '@marcus_eth' },
-      demoUrl: 'https://etherpulse.app',
-      repoUrl: 'https://github.com/example/etherpulse'
-    },
-    {
-      id: 'p4',
-      title: 'OmniUI Design System',
-      tagline: 'Accessible component suite with glassmorphism presets and automatic dark mode tokens.',
-      description: 'OmniUI offers over 60 pre-built React components designed for maximum performance, compliance with WCAG 2.1 AAA standards, and seamless customization.',
-      category: 'design',
-      tags: ['UI/UX', 'React', 'TailwindCSS', 'Figma', 'TypeScript'],
-      stars: 1850,
-      forks: 142,
-      upvotes: 310,
-      author: { name: 'Sarah Jenkins', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', handle: '@sarah_design' },
-      demoUrl: 'https://omniui.dev',
-      repoUrl: 'https://github.com/example/omniui'
-    },
-    {
-      id: 'p5',
-      title: 'DevNexus Fullstack',
-      tagline: 'Production-ready boilerplate powered by Next.js 15, Prisma ORM, and Stripe billing.',
-      description: 'Everything you need to launch a SaaS startup in hours: Auth0 authentication, subscription management, transactional emails, and admin metrics dashboard.',
-      category: 'fullstack',
-      tags: ['Fullstack', 'Next.js', 'PostgreSQL', 'Stripe', 'Node.js'],
-      stars: 5410,
-      forks: 730,
-      upvotes: 1120,
-      author: { name: 'David Kim', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', handle: '@dkim_builds' },
-      demoUrl: 'https://devnexus.saas',
-      repoUrl: 'https://github.com/example/devnexus'
-    },
-    {
-      id: 'p6',
-      title: 'SwiftNative AI Mobile',
-      tagline: 'Cross-platform React Native app with built-in device ML vision processing.',
-      description: 'Capture and process object recognition models on iOS and Android with zero cloud server latency.',
-      category: 'mobile',
-      tags: ['Mobile', 'React Native', 'CoreML', 'iOS', 'Android'],
-      stars: 1290,
-      forks: 98,
-      upvotes: 275,
-      author: { name: 'Maya Patel', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', handle: '@maya_mobile' },
-      repoUrl: 'https://github.com/example/swiftnative'
+      id: 't103',
+      title: 'अचानक से तेज सिरदर्द और उल्टी महसूस होना - तुरंत सहायता',
+      description: 'सुबह से दाहिनी तरफ सिर में तेज दर्द हो रहा है और रोशनी देखने में परेशानी हो रही है।',
+      category: 'health',
+      language: 'Hindi',
+      user: 'Amit Verma (Jaipur)',
+      assignedAgent: 'Dr. Medico AI',
+      status: 'resolved',
+      upvotes: 29,
+      createdAt: '1 दिन पहले',
+      solutionSummary: 'Dr. Medico AI ने इसे माइग्रेन (Migraine) का लक्षण बताया और तुरंत डॉक्टर परामर्श लेने की सलाह दी।'
     }
   ]);
 
-  // Handle Upvotes
-  const handleUpvote = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, upvotes: p.upvotes + 1 } : p));
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isAgentTyping]);
+
+  // Start Chat with Agent
+  const startChatWithAgent = (agent: AIAgent) => {
+    setSelectedAgent(agent);
+    setActiveTab('chat');
+    // Add welcome message if chat empty
+    if (!chatMessages.some(m => m.agentId === agent.id)) {
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: 'agent',
+          agentId: agent.id,
+          text: `नमस्ते! मैं ${agent.name} हूँ। ${agent.role}। बताइए आज आपकी किस समस्या का समाधान करूँ? (${selectedLanguage} भाषा समर्थित है)`,
+          language: selectedLanguage,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    }
   };
 
-  // Submit New Project
-  const handleSubmitProject = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
+  // Generate Intelligent Multilingual AI Response
+  const handleSendMessage = async (textToSend?: string) => {
+    const query = textToSend || inputMessage;
+    if (!query.trim() || !selectedAgent) return;
 
-    const createdProject: Project = {
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
-      title: newTitle,
-      tagline: newTagline || 'Modern tech application built for high performance.',
-      description: newTagline + ' Powered by modern frameworks and clean architecture.',
-      category: newCategory,
-      tags: newTags ? newTags.split(',').map(t => t.trim()) : ['React', 'TypeScript', 'TechHub'],
-      stars: 1,
-      forks: 0,
-      upvotes: 1,
-      author: { name: 'Aditya Jain', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', handle: '@aditya_jain' },
-      repoUrl: newRepoUrl || 'https://github.com/example/new-project'
+      sender: 'user',
+      text: query,
+      language: selectedLanguage,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setProjects([createdProject, ...projects]);
-    setNewTitle('');
-    setNewTagline('');
-    setNewTags('');
-    setNewRepoUrl('');
-    setShowSubmitModal(false);
+    setChatMessages(prev => [...prev, userMsg]);
+    setInputMessage('');
+    setIsAgentTyping(true);
+
+    // Simulate real-time AI Agent problem-solving response based on category & language
+    setTimeout(() => {
+      let aiResponseText = '';
+
+      if (selectedAgent.category === 'health') {
+        aiResponseText = selectedLanguage === 'Hindi' || selectedLanguage === 'Hinglish'
+          ? `🩺 **Dr. Medico AI परामर्श (${selectedLanguage}):**\n\nआपकी बताई समस्या (${query.substring(0, 30)}...) के आधार पर:\n\n1️⃣ **प्राथमिक सुझाव**: खूब पानी पीजिए, पर्याप्त आराम करें और तनाव से बचें।\n2️⃣ **घरेलू राहत**: गुनगुने पानी का सेवन करें और हल्का सुपाच्य भोजन लें।\n3️⃣ **सावधानी**: यदि लक्षण 24 घंटे से अधिक रहते हैं या दर्द बढ़ता है, तो तुरंत निकटतम फिजिशियन से जांच करवाएं।`
+          : `🩺 **Dr. Medico AI Medical Assessment:**\n\nBased on your symptoms (${query.substring(0, 30)}...):\n\n1. **Primary Advice**: Stay well hydrated and ensure 7-8 hours of restful sleep.\n2. **Immediate Relief**: Take light meals and avoid extreme temperatures.\n3. **Warning**: Please consult a licensed general practitioner if symptoms persist for over 24 hours.`;
+      } else if (selectedAgent.category === 'legal') {
+        aiResponseText = selectedLanguage === 'Hindi' || selectedLanguage === 'Hinglish'
+          ? `⚖️ **Advocate Nyaya AI कानूनी सलाह (${selectedLanguage}):**\n\nआपकी कानूनी समस्या का चरणबद्ध समाधान:\n\n1️⃣ **स्टेप 1 (सबूत जुटाएं)**: सभी लिखित संचार, रसीदें और व्हाट्सएप्प मैसेज की कॉपी सुरक्षित रखें।\n2️⃣ **स्टेप 2 (लीगल नोटिस)**: अधिवक्ता के माध्यम से 15 दिनों का कानूनी नोटिस रजिस्टर्ड डाक से भेजें।\n3️⃣ **स्टेप 3 (कंज्यूमर कोर्ट / एफआईआर)**: समय सीमा के भीतर राष्ट्रीय उपभोक्ता हेल्पलाइन या नजदीकी अदालत में शिकायत दर्ज करें।`
+          : `⚖️ **Advocate Nyaya AI Legal Guidance:**\n\nStep-by-step resolution roadmap:\n\n1. **Document Evidence**: Preserve all contract agreements, rent receipts, and chat logs.\n2. **Issue Legal Notice**: Send a 15-day statutory legal notice via registered post.\n3. **Approach Forum**: File a formal petition under the Consumer Protection Act or relevant court.`;
+      } else if (selectedAgent.category === 'tech') {
+        aiResponseText = `💻 **DevGuru AI Solution Patch:**\n\nHere is the verified fix for your technical issue:\n\n\`\`\`javascript\n// Optimized Cleanup Solution\nuseEffect(() => {\n  const handler = (data) => console.log(data);\n  socket.on("event", handler);\n  return () => socket.off("event", handler); // Prevent memory leaks\n}, []);\n\`\`\`\n\n✅ **Key Fix**: Always return a cleanup function in your \`useEffect\` hooks to unbind WebSocket listeners and prevent memory growth.`;
+      } else if (selectedAgent.category === 'finance') {
+        aiResponseText = selectedLanguage === 'Hindi' || selectedLanguage === 'Hinglish'
+          ? `📊 **FinVision AI वित्तीय सलाह:**\n\nआपकी बचत और टैक्स योजना:\n1️⃣ **इमरजेंसी फंड**: 6 महीने के खर्च के बराबर राशि 4% ब्याज वाले लिक्विड फंड में रखें।\n2️⃣ **टैक्स सेविंग**: 80C के तहत PPF या ELSS फंड्स में SIP शुरू करें।\n3️⃣ **निवेश नियम**: 50/30/20 नियम लागू करें (50% जरूरत, 30% इच्छाएं, 20% बचत)।`
+          : `📊 **FinVision AI Financial Plan:**\n\n1. **Emergency Buffer**: Maintain 6 months of expenses in a high-yield liquid fund.\n2. **SIP Allocation**: Invest in low-cost Nifty 50 Index funds for long-term compounding.\n3. **Tax Optimization**: Maximize deductions under Section 80C & 80D.`;
+      } else {
+        aiResponseText = `🤖 **${selectedAgent.name} (${selectedLanguage}):**\n\nआपकी समस्या का सटीक और व्यावहारिक समाधान तैयार है। क्या आप इसमें कुछ और विस्तार से जानना चाहते हैं?`;
+      }
+
+      const agentReply: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'agent',
+        agentId: selectedAgent.id,
+        text: aiResponseText,
+        language: selectedLanguage,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setChatMessages(prev => [...prev, agentReply]);
+      setIsAgentTyping(false);
+    }, 1200);
   };
 
-  // Filtered & Sorted Projects
-  const filteredProjects = projects
-    .filter(p => selectedCategory === 'all' || p.category === selectedCategory)
-    .filter(p => searchQuery === '' || 
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => {
-      if (sortBy === 'stars') return b.stars - a.stars;
-      if (sortBy === 'upvotes') return b.upvotes - a.upvotes;
-      return 0;
-    });
+  // Handle New Ticket Submission
+  const handleSubmitTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketTitle.trim()) return;
+
+    const matchedAgent = agents.find(a => a.category === ticketCategory) || agents[0];
+
+    const newTicket: ProblemTicket = {
+      id: 't' + (Date.now() % 1000).toString(),
+      title: ticketTitle,
+      description: ticketDesc || 'वास्तविक उपयोगकर्ता समस्या जिसके समाधान के लिए एआई एजेंट नियुक्त किया गया है।',
+      category: ticketCategory,
+      language: selectedLanguage,
+      user: 'Aditya Jain (User)',
+      assignedAgent: matchedAgent.name,
+      status: 'solving',
+      upvotes: 1,
+      createdAt: 'अभी-अभी'
+    };
+
+    setTickets([newTicket, ...tickets]);
+    setTicketTitle('');
+    setTicketDesc('');
+    setShowSubmitModal(false);
+    
+    // Auto-switch to chat with assigned agent
+    startChatWithAgent(matchedAgent);
+  };
 
   return (
-    <div className="min-h-screen bg-[#0b0c10] text-slate-100 selection:bg-purple-500 selection:text-white">
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 font-sans selection:bg-purple-600 selection:text-white">
       
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* NAVIGATION HEADER */}
+      {/* HEADER NAVBAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 glass-nav">
+      <header className="sticky top-0 z-40 glass-nav bg-[#0d0e15]/90 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           
           {/* Brand Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('explore')}>
-            <div className="h-10 w-10 rounded-xl gradient-bg flex items-center justify-center glow-purple">
-              <Rocket className="h-5 w-5 text-white" />
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('agents')}>
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-600/30">
+              <Bot className="h-6 w-6 text-white" />
             </div>
             <div>
-              <span className="text-lg font-bold text-white tracking-wide flex items-center gap-1.5">
-                Tech<span className="gradient-text">Hub</span>
-                <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded-full font-mono font-semibold">v2.4</span>
+              <span className="text-lg font-extrabold text-white tracking-tight flex items-center gap-1.5">
+                Solve<span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">AI</span>
+                <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-mono">AgentSphere</span>
               </span>
-              <p className="text-[10px] text-slate-400 -mt-1 hidden sm:block">Developer Knowledge & Project Hub</p>
+              <p className="text-[10px] text-slate-400 -mt-1 hidden sm:block">Real-World Problem Solving AI Agent Network</p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="hidden md:flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
+          {/* Nav Tabs */}
+          <nav className="flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
             {[
-              { id: 'explore', label: 'Explore Projects', icon: Compass },
-              { id: 'trending', label: 'Trending Tech', icon: Flame },
-              { id: 'roadmaps', label: 'Roadmaps', icon: Layers },
-              { id: 'community', label: 'Q&A Community', icon: MessageSquare },
+              { id: 'agents', label: 'AI Expert Agents', icon: Bot },
+              { id: 'chat', label: 'Real-Time Live Chat', icon: MessageSquare },
+              { id: 'tickets', label: 'Problem Wall', icon: Sparkles },
             ].map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -214,9 +378,9 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     isActive 
-                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30' 
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30' 
                       : 'text-slate-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
@@ -227,103 +391,89 @@ export default function App() {
             })}
           </nav>
 
-          {/* Search & Actions */}
+          {/* Language Selector & Problem Submit Button */}
           <div className="flex items-center space-x-3">
-            <div className="relative hidden lg:block w-64">
-              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search AI, Web3, React..."
-                className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-500 transition-all font-outfit"
-              />
+            
+            {/* Language Selector */}
+            <div className="flex items-center space-x-1.5 bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-1.5 text-xs text-purple-300 font-bold">
+              <Languages className="h-4 w-4 text-purple-400" />
+              <select
+                value={selectedLanguage}
+                onChange={e => setSelectedLanguage(e.target.value)}
+                className="bg-transparent text-white outline-none cursor-pointer font-bold"
+              >
+                <option value="Hindi" className="bg-slate-900 text-white">हिंदी (Hindi)</option>
+                <option value="Hinglish" className="bg-slate-900 text-white">Hinglish</option>
+                <option value="English" className="bg-slate-900 text-white">English</option>
+                <option value="Spanish" className="bg-slate-900 text-white">Español</option>
+                <option value="French" className="bg-slate-900 text-white">Français</option>
+                <option value="German" className="bg-slate-900 text-white">Deutsch</option>
+              </select>
             </div>
 
             <button 
               onClick={() => setShowSubmitModal(true)}
-              className="px-3.5 py-1.5 gradient-bg text-white rounded-xl text-xs font-bold transition-all hover:opacity-90 glow-purple flex items-center space-x-1.5 cursor-pointer"
+              className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30 flex items-center space-x-1.5 cursor-pointer transition-all"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Submit Project</span>
+              <span className="hidden sm:inline">Post Problem</span>
             </button>
-
-            {isLoggedIn ? (
-              <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
-                <img 
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80" 
-                  alt="Profile" 
-                  className="h-8 w-8 rounded-full border border-purple-500/50 object-cover cursor-pointer hover:ring-2 ring-purple-500 transition-all"
-                />
-              </div>
-            ) : (
-              <button 
-                onClick={() => setShowAuthModal(true)} 
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold cursor-pointer transition-all"
-              >
-                Sign In
-              </button>
-            )}
           </div>
         </div>
       </header>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN BODY CONTENT */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* TAB 1: EXPLORE PROJECTS */}
-        {activeTab === 'explore' && (
+        {/* TAB 1: AI EXPERT AGENTS GRID */}
+        {activeTab === 'agents' && (
           <div className="space-y-8">
             
             {/* HERO BANNER */}
-            <div className="relative rounded-3xl overflow-hidden glass-card p-8 md:p-12 border border-purple-500/20 glow-purple">
-              <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute bottom-0 left-1/3 -mb-12 w-80 h-80 bg-pink-600/10 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <div className="relative z-10 max-w-3xl space-y-4">
+            <div className="relative rounded-3xl overflow-hidden glass-card p-8 md:p-12 border border-purple-500/20 shadow-2xl bg-gradient-to-br from-slate-900/90 via-purple-950/20 to-slate-900/90">
+              <div className="max-w-3xl space-y-4">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold">
                   <Sparkles className="h-3.5 w-3.5 text-pink-400" />
-                  <span>Discover Next-Gen Open Source Innovations</span>
+                  <span>Real-World AI Specialists as Active Platform Consultants</span>
                 </div>
                 <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
-                  Where Tech Pioneers <span className="gradient-text">Showcase & Scale</span>
+                  Real Problems. <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-amber-300 bg-clip-text text-transparent">Instant AI Solutions</span> in Your Language.
                 </h1>
                 <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-                  Explore thousands of cutting-edge AI tools, Web3 protocols, cloud frameworks, and developer utilities built by top engineers globally.
+                  Connect with specialized, autonomous AI Agents trained in Legal Rights, Medical Wellness, Fullstack Code Debugging, Personal Tax & Finance, and Mental Wellbeing.
                 </p>
 
-                {/* Quick Stats Ticker */}
+                {/* Live Stats */}
                 <div className="pt-4 flex flex-wrap items-center gap-6 text-xs text-slate-400 font-mono">
                   <div className="flex items-center space-x-2">
-                    <Code2 className="h-4 w-4 text-purple-400" />
-                    <span><strong className="text-white">1,420+</strong> Active Projects</span>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span><strong className="text-white">100%</strong> Active AI Consultation</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Globe className="h-4 w-4 text-pink-400" />
-                    <span><strong className="text-white">35,000+</strong> Developers</span>
+                    <Globe className="h-4 w-4 text-purple-400" />
+                    <span><strong className="text-white">Multilingual</strong> (Hindi, Hinglish, English +)</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                    <span><strong className="text-white">99.9%</strong> Verified Code</span>
+                    <Zap className="h-4 w-4 text-amber-400" />
+                    <span><strong className="text-white">Instant</strong> Step-by-Step Guidance</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* FILTER & CATEGORY BAR */}
+            {/* CATEGORY FILTER & SEARCH */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-5">
-              
-              {/* Category Pills */}
               <div className="flex items-center space-x-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
                 {[
-                  { id: 'all', label: 'All Stack', icon: Layers },
-                  { id: 'ai', label: 'AI & Machine Learning', icon: Cpu },
-                  { id: 'web3', label: 'Web3 & Blockchain', icon: Globe },
-                  { id: 'fullstack', label: 'Fullstack Apps', icon: Code2 },
-                  { id: 'devops', label: 'Cloud & DevOps', icon: Terminal },
-                  { id: 'mobile', label: 'Mobile Apps', icon: Rocket },
-                  { id: 'design', label: 'UI/UX Systems', icon: Sparkles },
+                  { id: 'all', label: 'All AI Agents', icon: Bot },
+                  { id: 'health', label: 'Health & Wellness', icon: Stethoscope },
+                  { id: 'legal', label: 'Legal & Property', icon: Scale },
+                  { id: 'tech', label: 'Software & Code', icon: Code2 },
+                  { id: 'finance', label: 'Tax & Finance', icon: TrendingUp },
+                  { id: 'wellness', label: 'Mental Health', icon: Heart },
+                  { id: 'education', label: 'Education & Tutor', icon: GraduationCap },
                 ].map(cat => {
                   const Icon = cat.icon;
                   const isSelected = selectedCategory === cat.id;
@@ -331,10 +481,10 @@ export default function App() {
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                         isSelected 
-                          ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-sm' 
-                          : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-800/80'
+                          ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' 
+                          : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-800'
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -343,225 +493,247 @@ export default function App() {
                   );
                 })}
               </div>
+            </div>
 
-              {/* Sorting Controls */}
-              <div className="flex items-center space-x-3 text-xs text-slate-400 self-end md:self-auto">
-                <span className="flex items-center gap-1 font-semibold text-slate-500"><Filter className="h-3.5 w-3.5" /> Sort:</span>
-                {(['stars', 'upvotes', 'recent'] as const).map(s => (
+            {/* AI AGENTS CARDS GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {agents
+                .filter(a => selectedCategory === 'all' || a.category === selectedCategory)
+                .map(agent => {
+                  const Icon = agent.icon;
+                  return (
+                    <div 
+                      key={agent.id}
+                      className="glass-card rounded-3xl p-6 border border-white/5 hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-1 group flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Agent Header */}
+                        <div className="flex items-center space-x-4 mb-4">
+                          <div className="relative">
+                            <img src={agent.avatar} alt={agent.name} className="h-14 w-14 rounded-2xl object-cover border-2 border-purple-500/40" />
+                            <span className="absolute -bottom-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full border-2 border-[#090a0f]" title="Active Agent"></span>
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="text-base font-extrabold text-white group-hover:text-purple-300 transition-colors">{agent.name}</h3>
+                              <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5"><Star className="h-3.5 w-3.5 fill-amber-400" /> {agent.rating}</span>
+                            </div>
+                            <p className="text-xs text-purple-400 font-semibold">{agent.role}</p>
+                          </div>
+                        </div>
+
+                        {/* Description & Specialty */}
+                        <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                          {agent.description}
+                        </p>
+
+                        <div className="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 mb-4 space-y-1">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Specialization</span>
+                          <span className="text-xs text-emerald-400 font-semibold">{agent.specialty}</span>
+                        </div>
+
+                        {/* Languages Supported */}
+                        <div className="flex flex-wrap gap-1.5 mb-6">
+                          {agent.languages.map(lang => (
+                            <span key={lang} className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-md font-mono">
+                              🌐 {lang}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Consultation Action Button */}
+                      <button
+                        onClick={() => startChatWithAgent(agent)}
+                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-purple-600/30 flex items-center justify-center space-x-2 transition-all cursor-pointer"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        <span>Start Live Consultation</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: REAL-TIME LIVE CHAT ENGINE */}
+        {activeTab === 'chat' && (
+          <div className="glass-card rounded-3xl border border-purple-500/20 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-4 min-h-[75vh]">
+            
+            {/* Left Sidebar: Select Active Agent */}
+            <div className="border-r border-slate-800 p-4 bg-slate-950/60 space-y-3">
+              <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">Consult Active AI User</h3>
+              {agents.map(agent => {
+                const isSelected = selectedAgent?.id === agent.id;
+                return (
                   <button
-                    key={s}
-                    onClick={() => setSortBy(s)}
-                    className={`capitalize font-semibold transition-all cursor-pointer ${
-                      sortBy === s ? 'text-purple-400 underline underline-offset-4' : 'hover:text-slate-200'
+                    key={agent.id}
+                    onClick={() => setSelectedAgent(agent)}
+                    className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center space-x-3 cursor-pointer ${
+                      isSelected 
+                        ? 'bg-purple-600/20 border-purple-500/50 text-white shadow-md' 
+                        : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
                     }`}
                   >
-                    {s}
+                    <div className="relative shrink-0">
+                      <img src={agent.avatar} alt={agent.name} className="h-10 w-10 rounded-xl object-cover" />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold text-white block truncate">{agent.name}</span>
+                      <span className="text-[10px] text-purple-400 block truncate">{agent.role}</span>
+                    </div>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
-            {/* PROJECTS GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProjects.map(p => (
-                <div 
-                  key={p.id}
-                  onClick={() => setSelectedProject(p)}
-                  className="glass-card rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:glow-purple cursor-pointer flex flex-col justify-between group relative"
+            {/* Right Chat Panel */}
+            <div className="lg:col-span-3 flex flex-col justify-between bg-slate-900/40">
+              
+              {/* Chat Header */}
+              {selectedAgent ? (
+                <div className="p-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <img src={selectedAgent.avatar} alt={selectedAgent.name} className="h-10 w-10 rounded-xl object-cover border border-purple-500/40" />
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <span>{selectedAgent.name}</span>
+                        <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">Online</span>
+                      </h4>
+                      <p className="text-[10px] text-purple-300 font-mono">Multilingual AI Consultant · Preferred: {selectedLanguage}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 border-b border-slate-800 text-xs text-slate-400">Select an AI Expert Agent to begin consultation.</div>
+              )}
+
+              {/* Chat Messages Log */}
+              <div className="flex-1 p-6 overflow-y-auto space-y-4 max-h-[55vh]">
+                {chatMessages.map(msg => (
+                  <div 
+                    key={msg.id}
+                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-xl p-4 rounded-2xl text-xs leading-relaxed ${
+                      msg.sender === 'user' 
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none shadow-lg' 
+                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow-md'
+                    }`}>
+                      <div className="flex items-center justify-between mb-1.5 text-[9px] opacity-75 font-mono border-b border-white/10 pb-1">
+                        <span>{msg.sender === 'user' ? 'You' : selectedAgent?.name || 'AI Agent'}</span>
+                        <span>{msg.timestamp} ({msg.language})</span>
+                      </div>
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                    </div>
+                  </div>
+                ))}
+
+                {isAgentTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs text-purple-300 flex items-center space-x-2 animate-pulse">
+                      <RefreshCw className="h-4 w-4 animate-spin text-purple-400" />
+                      <span>{selectedAgent?.name} is thinking and drafting solution in {selectedLanguage}...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Sample Prompt Chips & Input Bar */}
+              <div className="p-4 border-t border-slate-800 bg-slate-950/80 space-y-3">
+                {selectedAgent && selectedAgent.samplePrompts.length > 0 && (
+                  <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase shrink-0">Quick Prompts:</span>
+                    {selectedAgent.samplePrompts.map((sp, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSendMessage(sp)}
+                        className="text-[10px] bg-slate-800 hover:bg-purple-600/30 text-purple-300 border border-purple-500/20 px-2.5 py-1 rounded-xl whitespace-nowrap transition-all cursor-pointer"
+                      >
+                        {sp}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-3">
+                  <input
+                    value={inputMessage}
+                    onChange={e => setInputMessage(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                    placeholder={`Describe your problem to ${selectedAgent?.name || 'AI Agent'} in ${selectedLanguage}...`}
+                    className="flex-1 bg-slate-900 border border-slate-700/70 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-500 transition-all font-sans"
+                  />
+                  <button
+                    onClick={() => handleSendMessage()}
+                    disabled={!inputMessage.trim()}
+                    className="px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-purple-600/30 flex items-center space-x-1.5 transition-all cursor-pointer shrink-0"
+                  >
+                    <span>Send Solution Query</span>
+                    <Send className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: PUBLIC PROBLEM TICKETS WALL */}
+        {activeTab === 'tickets' && (
+          <div className="space-y-6">
+            <div className="glass-card rounded-3xl p-8 border border-purple-500/20">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-extrabold text-white">Community Problem Resolution Wall</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Real-world user queries resolved by active AI Specialist Agents.</p>
+                </div>
+                <button 
+                  onClick={() => setShowSubmitModal(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30 flex items-center space-x-1.5 cursor-pointer"
                 >
-                  {p.featured && (
-                    <div className="absolute top-4 right-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md">
-                      Featured
-                    </div>
-                  )}
-
-                  <div>
-                    {/* Author & Header */}
-                    <div className="flex items-center space-x-3 mb-4">
-                      <img src={p.author.avatar} alt={p.author.name} className="h-9 w-9 rounded-full object-cover border border-purple-500/30" />
-                      <div>
-                        <h4 className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors">{p.author.name}</h4>
-                        <span className="text-[10px] text-slate-500 font-mono">{p.author.handle}</span>
-                      </div>
-                    </div>
-
-                    {/* Title & Tagline */}
-                    <h3 className="text-lg font-bold text-white mb-2 tracking-tight group-hover:text-purple-400 transition-colors flex items-center justify-between">
-                      <span>{p.title}</span>
-                      <ArrowUpRight className="h-4 w-4 text-slate-500 group-hover:text-purple-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                    </h3>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-4">
-                      {p.tagline}
-                    </p>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1.5 mb-6">
-                      {p.tags.map(tag => (
-                        <span key={tag} className="text-[10px] bg-slate-800/80 text-slate-300 border border-slate-700/50 px-2 py-0.5 rounded-md font-mono">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Footer Metrics & Actions */}
-                  <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
-                    <div className="flex items-center space-x-3">
-                      <span className="flex items-center space-x-1 text-amber-400">
-                        <Star className="h-3.5 w-3.5 fill-amber-400" />
-                        <span>{p.stars}</span>
-                      </span>
-                      <span className="flex items-center space-x-1 text-slate-400">
-                        <GitFork className="h-3.5 w-3.5" />
-                        <span>{p.forks}</span>
-                      </span>
-                    </div>
-
-                    <button 
-                      onClick={(e) => handleUpvote(p.id, e)}
-                      className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-all"
-                    >
-                      <ThumbsUp className="h-3.5 w-3.5" />
-                      <span className="font-bold">{p.upvotes}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {filteredProjects.length === 0 && (
-              <div className="text-center py-20 glass-card rounded-2xl border border-slate-800">
-                <Compass className="h-12 w-12 text-slate-600 mx-auto mb-3 animate-pulse" />
-                <h3 className="text-base font-bold text-slate-300">No Projects Found</h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Try adjusting your search filters or submit a new project to the TechHub repository.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 2: TRENDING TECH */}
-        {activeTab === 'trending' && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-3xl p-8 border border-purple-500/20">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
-                  <Flame className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Trending Technologies & Repositories</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Top-gaining frameworks, packages, and AI architectures across Github this week.</p>
-                </div>
+                  <Plus className="h-4 w-4" />
+                  <span>Post Problem Ticket</span>
+                </button>
               </div>
 
               <div className="space-y-4">
-                {[
-                  { name: 'DeepSeek-V3 LLM', growth: '+340% stars', desc: 'Open-weights 671B parameter Mixture-of-Experts AI language model.', category: 'AI Architecture', stars: '42.5k' },
-                  { name: 'Vite 6.0 Engine', growth: '+180% downloads', desc: 'Next generation frontend tooling featuring Environment API and faster HMR.', category: 'Frontend', stars: '68.2k' },
-                  { name: 'Supabase Vector 2', growth: '+120% projects', desc: 'Open source Firebase alternative with pgvector embedding search support.', category: 'Database', stars: '74.1k' },
-                  { name: 'Tailwind CSS v4.0', growth: '+210% adoption', desc: 'All-new CSS-first configuration engine built for maximum speed.', category: 'Styling', stars: '81.9k' },
-                  { name: 'Ollama Desktop', growth: '+290% downloads', desc: 'Get up and running with Llama 3, Mistral, and Qwen models locally.', category: 'Dev Tools', stars: '92.4k' },
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition-all">
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm font-extrabold text-slate-600 font-mono">0{idx + 1}</span>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h4 className="text-sm font-bold text-white">{item.name}</h4>
-                          <span className="text-[10px] bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-full font-bold">{item.growth}</span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
+                {tickets.map(ticket => (
+                  <div key={ticket.id} className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition-all">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2.5 py-0.5 rounded-full font-mono font-bold uppercase">{ticket.category}</span>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${ticket.status === 'resolved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>{ticket.status}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">🌐 {ticket.language}</span>
                       </div>
+                      <span className="text-[10px] text-slate-500 font-mono">{ticket.createdAt}</span>
                     </div>
 
-                    <div className="flex items-center space-x-4 shrink-0">
-                      <span className="text-xs font-mono text-amber-400 flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-amber-400" /> {item.stars}
-                      </span>
-                      <span className="text-[10px] bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg font-mono">{item.category}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                    <h3 className="text-base font-bold text-white mb-2">{ticket.title}</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-4">{ticket.description}</p>
 
-        {/* TAB 3: LEARNING ROADMAPS */}
-        {activeTab === 'roadmaps' && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-3xl p-8 border border-purple-500/20">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
-                  <BookOpen className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Interactive Developer Roadmaps</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Step-by-step career path guides curated by industry staff engineers.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { title: 'AI & LLM Architect', steps: '12 Milestones', level: 'Advanced', color: 'from-purple-600 to-indigo-600', topics: ['Python & PyTorch', 'LangChain & LlamaIndex', 'Vector DBs (Chroma/Qdrant)', 'Fine-tuning & LoRA'] },
-                  { title: 'Fullstack Web Engineer', steps: '15 Milestones', level: 'Intermediate', color: 'from-pink-600 to-rose-600', topics: ['TypeScript Core', 'React 18 & Next.js', 'Prisma ORM & PostgreSQL', 'Docker & CI/CD'] },
-                  { title: 'Cloud & DevOps Master', steps: '10 Milestones', level: 'Advanced', color: 'from-cyan-600 to-blue-600', topics: ['Linux Administration', 'Kubernetes Orchestration', 'Terraform IaC', 'AWS & GCP Security'] },
-                ].map((rm, idx) => (
-                  <div key={idx} className="glass-card rounded-2xl p-6 border border-slate-800 flex flex-col justify-between">
-                    <div>
-                      <div className={`h-2 w-full rounded-full bg-gradient-to-r ${rm.color} mb-4`}></div>
-                      <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">{rm.level} Path</span>
-                      <h3 className="text-base font-bold text-white mt-1 mb-3">{rm.title}</h3>
-                      <div className="space-y-2 mb-6">
-                        {rm.topics.map(t => (
-                          <div key={t} className="flex items-center space-x-2 text-xs text-slate-300">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                            <span>{t}</span>
-                          </div>
-                        ))}
+                    {ticket.solutionSummary && (
+                      <div className="bg-purple-950/20 border border-purple-500/20 p-4 rounded-2xl text-xs text-purple-200 mb-4">
+                        <strong className="text-pink-400 font-bold block mb-1">🤖 {ticket.assignedAgent} Verified Solution:</strong>
+                        <span>{ticket.solutionSummary}</span>
                       </div>
-                    </div>
+                    )}
 
-                    <button className="w-full py-2 bg-slate-800 hover:bg-purple-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1 cursor-pointer">
-                      <span>View Roadmap</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: COMMUNITY Q&A */}
-        {activeTab === 'community' && (
-          <div className="space-y-6">
-            <div className="glass-card rounded-3xl p-8 border border-purple-500/20">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                  <MessageSquare className="h-6 w-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Developer Q&A Community</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Ask questions, share code snippets, and solve complex architecture challenges.</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  { title: 'How to optimize vector similarity search with 10M+ embeddings in pgvector?', answers: 14, votes: 45, author: '@tech_guy', tag: 'PostgreSQL' },
-                  { title: 'Best practices for handling WebSockets reconnection state in React 18 strict mode?', answers: 8, votes: 29, author: '@react_dev', tag: 'React' },
-                  { title: 'Migrating from Tailwind v3 to v4: CSS-first config performance metrics', answers: 22, votes: 61, author: '@css_wizard', tag: 'Tailwind' },
-                ].map((item, idx) => (
-                  <div key={idx} className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full font-mono font-bold">{item.tag}</span>
-                      <h4 className="text-sm font-bold text-white mt-1.5 hover:text-purple-300 cursor-pointer transition-colors">{item.title}</h4>
-                      <span className="text-[10px] text-slate-500 font-mono mt-1 block">Asked by {item.author} · {item.answers} answers</span>
-                    </div>
-
-                    <div className="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl text-xs text-purple-300 font-bold shrink-0">
-                      <ThumbsUp className="h-3.5 w-3.5" />
-                      <span>{item.votes}</span>
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
+                      <span>Posted by: <strong className="text-white">{ticket.user}</strong></span>
+                      <button 
+                        onClick={() => {
+                          const agent = agents.find(a => a.name === ticket.assignedAgent) || agents[0];
+                          startChatWithAgent(agent);
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-purple-600 text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer"
+                      >
+                        <span>Chat Solution Details</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -572,138 +744,63 @@ export default function App() {
       </main>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* SUBMIT PROJECT MODAL */}
+      {/* POST PROBLEM MODAL */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowSubmitModal(false)}>
-          <div className="glass-card rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-purple-500/30" onClick={e => e.stopPropagation()}>
+          <div className="glass-card rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-purple-500/30 bg-[#0d0e15]" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Rocket className="h-5 w-5 text-purple-400" />
-                Submit New Project
+                <Sparkles className="h-5 w-5 text-purple-400" />
+                Post Real-World Problem Ticket
               </h3>
               <button onClick={() => setShowSubmitModal(false)} className="text-slate-500 hover:text-white transition-all"><X className="h-5 w-5" /></button>
             </div>
 
-            <form onSubmit={handleSubmitProject} className="space-y-4">
+            <form onSubmit={handleSubmitTicket} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Project Title</label>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Title (अपनी समस्या का शीर्षक दर्ज करें)</label>
                 <input 
                   required
-                  value={newTitle} 
-                  onChange={e => setNewTitle(e.target.value)} 
-                  placeholder="e.g. NeuralFlow AI" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-purple-500" 
+                  value={ticketTitle} 
+                  onChange={e => setTicketTitle(e.target.value)} 
+                  placeholder="e.g. लीगल नोटिस या मेडिकल लक्षण संबंधी सहायता" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500" 
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Tagline / Short Pitch</label>
-                <input 
-                  required
-                  value={newTagline} 
-                  onChange={e => setNewTagline(e.target.value)} 
-                  placeholder="e.g. Autonomous multi-agent workflow engine" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-purple-500" 
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Category</label>
-                  <select 
-                    value={newCategory} 
-                    onChange={e => setNewCategory(e.target.value as any)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
-                  >
-                    <option value="ai">AI & Machine Learning</option>
-                    <option value="web3">Web3 & Blockchain</option>
-                    <option value="fullstack">Fullstack Apps</option>
-                    <option value="devops">Cloud & DevOps</option>
-                    <option value="mobile">Mobile Apps</option>
-                    <option value="design">UI/UX Systems</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Tags (comma separated)</label>
-                  <input 
-                    value={newTags} 
-                    onChange={e => setNewTags(e.target.value)} 
-                    placeholder="React, AI, Python" 
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-purple-500" 
-                  />
-                </div>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Category (विभाग चुनें)</label>
+                <select 
+                  value={ticketCategory} 
+                  onChange={e => setTicketCategory(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-purple-500"
+                >
+                  <option value="health">Healthcare & Medical Wellness</option>
+                  <option value="legal">Legal Rights & Property Dispute</option>
+                  <option value="tech">Software Code & System Design</option>
+                  <option value="finance">Personal Finance & Tax Savings</option>
+                  <option value="wellness">Mental Health & Counseling</option>
+                  <option value="education">Academic Homework & Tutoring</option>
+                </select>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">GitHub Repo URL</label>
-                <input 
-                  value={newRepoUrl} 
-                  onChange={e => setNewRepoUrl(e.target.value)} 
-                  placeholder="https://github.com/username/repo" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-purple-500 font-mono" 
+                <label className="text-xs font-bold text-slate-300 block mb-1">Problem Description (विस्तार से बताएं)</label>
+                <textarea 
+                  rows={3}
+                  value={ticketDesc} 
+                  onChange={e => setTicketDesc(e.target.value)} 
+                  placeholder="अपनी समस्या का पूरा विवरण यहाँ लिखें..." 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500" 
                 />
               </div>
 
               <div className="flex justify-end space-x-3 mt-6">
                 <button type="button" onClick={() => setShowSubmitModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-700">Cancel</button>
-                <button type="submit" className="px-5 py-2 gradient-bg text-white rounded-xl text-xs font-bold glow-purple">Publish to TechHub</button>
+                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30">Connect AI Agent Now</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* PROJECT DETAIL MODAL */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {selectedProject && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedProject(null)}>
-          <div className="glass-card rounded-3xl max-w-2xl w-full p-8 shadow-2xl border border-purple-500/30" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-purple-400 font-mono">{selectedProject.category}</span>
-                <h2 className="text-2xl font-bold text-white mt-0.5">{selectedProject.title}</h2>
-              </div>
-              <button onClick={() => setSelectedProject(null)} className="text-slate-500 hover:text-white transition-all"><X className="h-5 w-5" /></button>
-            </div>
-
-            <p className="text-sm text-purple-300 font-semibold mb-4">{selectedProject.tagline}</p>
-            <p className="text-xs text-slate-300 leading-relaxed mb-6 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-              {selectedProject.description}
-            </p>
-
-            <div className="flex flex-wrap gap-2 mb-6">
-              {selectedProject.tags.map(t => (
-                <span key={t} className="text-xs bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2.5 py-1 rounded-lg font-mono">#{t}</span>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-              <div className="flex items-center space-x-3">
-                <img src={selectedProject.author.avatar} alt={selectedProject.author.name} className="h-8 w-8 rounded-full" />
-                <div>
-                  <span className="text-xs font-bold text-white block">{selectedProject.author.name}</span>
-                  <span className="text-[10px] text-slate-500 font-mono">{selectedProject.author.handle}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                {selectedProject.repoUrl && (
-                  <a href={selectedProject.repoUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5">
-                    <Code2 className="h-3.5 w-3.5" />
-                    <span>View Repository</span>
-                  </a>
-                )}
-                {selectedProject.demoUrl && (
-                  <a href={selectedProject.demoUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 gradient-bg text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 glow-purple">
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    <span>Live Launch</span>
-                  </a>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -712,14 +809,9 @@ export default function App() {
       <footer className="border-t border-slate-800/80 mt-20 py-8 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-2">
-            <Rocket className="h-4 w-4 text-purple-400" />
-            <span className="font-bold text-slate-300">TechHub Platform</span>
-            <span>© 2026. Built with React & Tailwind.</span>
-          </div>
-          <div className="flex space-x-4">
-            <a href="#" className="hover:text-purple-400">Documentation</a>
-            <a href="#" className="hover:text-purple-400">API Status</a>
-            <a href="#" className="hover:text-purple-400">Github</a>
+            <Bot className="h-4 w-4 text-purple-400" />
+            <span className="font-bold text-slate-300">SolveAI AgentSphere Network</span>
+            <span>© 2026. Real-World Multilingual Problem Solving Platform.</span>
           </div>
         </div>
       </footer>
