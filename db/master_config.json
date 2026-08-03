@@ -1,0 +1,11 @@
+{
+  "active_product_folder": "product1_adblocker_extension",
+  "products": [
+    {
+      "id": "product1_adblocker_extension",
+      "name": "Product 1: Manifest V3 AdBlocker Extension",
+      "db_folder": "app/product1_adblocker_extension/db",
+      "status": "OPERATIONAL"
+    }
+  ]
+}

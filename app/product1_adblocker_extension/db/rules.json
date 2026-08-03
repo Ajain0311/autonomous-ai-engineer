@@ -1,0 +1,6 @@
+[
+  { "id": 1, "domain": "*doubleclick.net*", "category": "Ads", "action": "block", "priority": 1, "enabled": true },
+  { "id": 2, "domain": "*google-analytics.com*", "category": "Trackers", "action": "block", "priority": 1, "enabled": true },
+  { "id": 3, "domain": "*connect.facebook.net*", "category": "Social", "action": "block", "priority": 2, "enabled": true },
+  { "id": 4, "domain": "*popads.net*", "category": "Popups", "action": "block", "priority": 1, "enabled": true }
+]
