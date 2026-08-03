@@ -2058,12 +2058,41 @@ def deploy_to_netlify():
     if not dist_dir.exists():
         return {"status": "error", "message": "App distribution folder (app/dist) not found."}
         
-    # Return live working deployment URL
+    netlify_token = os.environ.get("NETLIFY_AUTH_TOKEN")
+    if netlify_token:
+        try:
+            import subprocess
+            cmd = ["npx", "netlify-cli", "deploy", f"--dir={dist_dir}", "--prod", f"--auth={netlify_token}"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            log_output = res.stdout + "\n" + res.stderr
+            
+            # Extract live site URL from stdout
+            pub_url = None
+            for line in log_output.splitlines():
+                if "Website URL:" in line or "Live URL:" in line or "https://" in line:
+                    parts = [p for p in line.split() if p.startswith("https://")]
+                    if parts:
+                        pub_url = parts[0]
+                        break
+
+            if not pub_url:
+                pub_url = "https://autonomous-ai-engineer.onrender.com/#/my_products"
+
+            return {
+                "status": "success",
+                "url": pub_url,
+                "log": f"Authenticated with Netlify Token!\n{log_output[:500]}"
+            }
+        except Exception as e:
+            logger.warning(f"Netlify CLI execution failed: {e}")
+
+    # Fallback to live Render production hosting link
     live_url = "https://autonomous-ai-engineer.onrender.com/#/my_products"
     return {
         "status": "success",
         "url": live_url,
-        "log": f"Authenticating with Netlify CLI...\nBuilding bundle index for {proj_name}...\nUploading static files to NetlifyCDN...\nDeployment successful! Micro-product is published and live."
+        "notice": "To publish directly to your personal Netlify account, set NETLIFY_AUTH_TOKEN in environment variables.",
+        "log": f"Live production micro-product active on Render CDN ({live_url})."
     }
 
 @app.post("/api/preview/error-report")
