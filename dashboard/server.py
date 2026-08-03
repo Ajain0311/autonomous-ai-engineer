@@ -1204,6 +1204,69 @@ def get_products_list():
                 products.append(d.name)
     return {"products": sorted(products)}
 
+class InitProductRequest(BaseModel):
+    product_id: str
+    product_name: str
+    category: str = "Utility Tool"
+
+@app.post("/api/products/init")
+def init_new_product(payload: InitProductRequest):
+    folder_name = payload.product_id.lower().replace(" ", "_")
+    if not folder_name.startswith("product"):
+        folder_name = f"product_{folder_name}"
+
+    product_dir = ROOT_DIR / "app" / folder_name
+    product_db_dir = product_dir / "db"
+    product_db_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize isolated schema & rules
+    schema_file = product_db_dir / "rules_schema.json"
+    if not schema_file.exists():
+        with open(schema_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "tableName": "rules",
+                "columns": [
+                    { "name": "id", "type": "number", "required": True, "min": 1 },
+                    { "name": "title", "type": "string", "required": True },
+                    { "name": "enabled", "type": "boolean", "required": True, "default": True }
+                ]
+            }, f, indent=2)
+
+    data_file = product_db_dir / "rules.json"
+    if not data_file.exists():
+        with open(data_file, "w", encoding="utf-8") as f:
+            json.dump([
+                { "id": 1, "title": f"Initial item for {payload.product_name}", "enabled": True }
+            ], f, indent=2)
+
+    # Update master_config.json
+    master_file = ROOT_DIR / "db" / "master_config.json"
+    config = {"active_product_folder": folder_name, "products": []}
+    if master_file.exists():
+        try:
+            with open(master_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except Exception:
+            pass
+
+    products_list = config.get("products", [])
+    if not any(p.get("id") == folder_name for p in products_list):
+        products_list.append({
+            "id": folder_name,
+            "name": payload.product_name,
+            "db_folder": f"app/{folder_name}/db",
+            "status": "PLANNING"
+        })
+    config["products"] = products_list
+    config["active_product_folder"] = folder_name
+
+    with open(master_file, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+    run_git_command(["add", "db/", f"app/{folder_name}/"])
+    run_git_command(["commit", "-m", f"feat(product): initialized {folder_name} with isolated DB"])
+    return {"status": "success", "folder_name": folder_name, "config": config}
+
 @app.post("/api/db/adblocker_rules")
 def save_adblocker_rules(rules: list):
     db_file = ROOT_DIR / "db" / "adblocker_rules.json"
