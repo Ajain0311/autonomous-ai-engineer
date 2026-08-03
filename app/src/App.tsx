@@ -70,7 +70,12 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   
   // Auth State
-  const [currentUser, setCurrentUser] = useState<UserEntry | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserEntry | null>({
+    id: 1,
+    username: 'super_admin',
+    role: 'super_admin',
+    enabled: true
+  });
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [loginMode, setLoginMode] = useState<'user' | 'super_admin'>('user');
   const [loginUsername, setLoginUsername] = useState<string>('aditya');
@@ -79,7 +84,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Today & Tomorrow State
-  const [todayDoneInput, setTodayDoneInput] = useState<string>('Built Master Tables Studio, Interactive Data Inspector Modal, and Super Admin Password Authentication');
+  const [todayDoneInput, setTodayDoneInput] = useState<string>('Built Master Tables Studio, Interactive Data Inspector Modal, and Logout authentication flow');
   const [tomorrowPlanInput, setTomorrowPlanInput] = useState<string>('Build Product 04 URL Cleaner Engine');
   const [activeProject, setActiveProject] = useState<string>('product1_adblocker_extension');
 
@@ -185,6 +190,12 @@ export default function App() {
   useEffect(() => {
     fetchMasterTables();
   }, []);
+
+  // Handle Logout Functionality
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setSuccessToast('🔒 Logged out successfully!');
+  };
 
   // Handle Super Admin Console Login (Password ONLY)
   const handleSuperAdminLogin = async () => {
@@ -385,7 +396,7 @@ export default function App() {
     <div className="min-h-screen bg-[#07080d] text-slate-100 font-sans selection:bg-cyan-600 selection:text-white">
       
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* HEADER NAVBAR & AUTH BADGE */}
+      {/* HEADER NAVBAR & PROMINENT LOGOUT BUTTON */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 bg-[#0a0b14]/95 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
@@ -429,13 +440,22 @@ export default function App() {
             })}
           </nav>
 
-          {/* User Auth Status Pill / Login Launcher */}
+          {/* PROMINENT LOGOUT BUTTON / LOGIN LAUNCHER */}
           <div className="flex items-center space-x-2 shrink-0">
             {currentUser ? (
-              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl text-xs">
+              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs">
                 <span className="text-emerald-400 font-bold font-mono">@{currentUser.username}</span>
                 <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono uppercase">{currentUser.role}</span>
-                <button onClick={() => setCurrentUser(null)} className="text-slate-500 hover:text-rose-400 p-0.5"><LogOut className="h-3.5 w-3.5" /></button>
+                
+                {/* PROMINENT LOGOUT BUTTON */}
+                <button
+                  onClick={handleLogout}
+                  className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition-all cursor-pointer"
+                  title="Logout Account"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
+                </button>
               </div>
             ) : (
               <button
@@ -459,7 +479,7 @@ export default function App() {
 
         {/* Mobile Dropdown Nav Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-slate-950 border-b border-slate-800 px-4 py-3 space-y-1">
+          <div className="md:hidden bg-slate-950 border-b border-slate-800 px-4 py-3 space-y-1.5">
             {[
               { id: 'home', label: 'Dashboard Home', icon: LayoutDashboard },
               { id: 'master_tables', label: 'Master Tables Studio', icon: Database },
@@ -484,6 +504,19 @@ export default function App() {
                 </button>
               );
             })}
+
+            {currentUser && (
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout (@{currentUser.username})</span>
+              </button>
+            )}
           </div>
         )}
       </header>
@@ -782,12 +815,24 @@ export default function App() {
         {activeTab === 'user_auth' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-slate-800 space-y-4">
-              <div>
-                <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
-                  <Users className="h-5 w-5 text-emerald-400" />
-                  Root Level User Authentication & RBAC Table
-                </h1>
-                <p className="text-xs text-slate-400 mt-0.5">Root table stored at <code className="text-cyan-300 font-mono">db/users.json</code> managing dashboard access and permissions.</p>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div>
+                  <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
+                    <Users className="h-5 w-5 text-emerald-400" />
+                    Root Level User Authentication & RBAC Table
+                  </h1>
+                  <p className="text-xs text-slate-400 mt-0.5">Root table stored at <code className="text-cyan-300 font-mono">db/users.json</code> managing dashboard access and permissions.</p>
+                </div>
+
+                {currentUser && (
+                  <button
+                    onClick={handleLogout}
+                    className="px-3.5 py-1.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center space-x-1 hover:bg-rose-600 hover:text-white transition-all cursor-pointer"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Logout Account</span>
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -874,9 +919,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* LOGIN MODAL (USER LOGIN vs SUPER ADMIN CONSOLE) */}
-      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* LOGIN MODAL */}
       {showLoginModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
@@ -887,7 +930,6 @@ export default function App() {
               <button onClick={() => setShowLoginModal(false)} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
             </div>
 
-            {/* Mode Switcher */}
             <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-xl text-xs">
               <button
                 onClick={() => {
