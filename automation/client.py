@@ -3,8 +3,13 @@ import requests
 import json
 import time
 import re
-from google import genai
-from google.genai import errors, types
+try:
+    from google import genai
+    from google.genai import errors, types
+    HAS_GENAI = True
+except Exception:
+    HAS_GENAI = False
+    genai = None
 
 from automation import config, quota_tracker
 
@@ -57,6 +62,8 @@ class LLMClient:
 
     def generate(self, model: str, prompt: str, temperature: float, require_json: bool = False) -> str:
         if self.provider == "gemini":
+            if not HAS_GENAI:
+                raise APIError(500, "google-genai library not loaded")
             try:
                 client = genai.Client(api_key=self.api_key)
                 if model.startswith("gemma") or not require_json:

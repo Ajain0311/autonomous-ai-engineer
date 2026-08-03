@@ -985,6 +985,10 @@ def agent_chat(payload: ChatRequest):
             run_git_command(["push"])
             
         return res
+    except Exception as e:
+        logger.error("Agent chat error: %s", e)
+        return {"message": f"Sorry, I encountered an error: {e}", "file_contents": {}}
+
 class AISolveRequest(BaseModel):
     agent_name: str
     agent_role: str
