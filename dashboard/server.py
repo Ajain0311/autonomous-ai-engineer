@@ -1477,6 +1477,59 @@ def upload_blob_asset(payload: BlobUploadRequest):
     run_git_command(["commit", "-m", f"feat(blob): uploaded {payload.filename} to storage/{subfolder}"])
     return {"status": "success", "asset": new_asset, "rows": rows}
 
+@app.post("/api/blob/upload_file")
+async def upload_blob_file(file: UploadFile = File(...)):
+    filename = file.filename or "uploaded_asset"
+    ext = filename.split(".")[-1].lower() if "." in filename else ""
+    
+    subfolder = "images"
+    asset_type = "image"
+    if ext in ["mp4", "mkv", "avi", "mov", "webm"]:
+        subfolder = "videos"
+        asset_type = "video"
+    elif ext in ["pdf", "doc", "docx", "txt", "md", "csv"]:
+        subfolder = "docs"
+        asset_type = "doc"
+
+    storage_dir = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage" / subfolder
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    asset_file = storage_dir / filename
+    contents = await file.read()
+    with open(asset_file, "wb") as f:
+        f.write(contents)
+
+    size_mb = f"{round(len(contents) / (1024 * 1024), 2)} MB" if len(contents) > 1024*1024 else f"{round(len(contents) / 1024, 1)} KB font"
+    asset_url = f"/storage/{subfolder}/{filename}"
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    data_file = ROOT_DIR / "app" / "product2_github_blob_storage" / "db" / "blob_assets.json"
+    data_file.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    if data_file.exists():
+        try:
+            with open(data_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+        except Exception:
+            pass
+
+    new_asset = {
+        "id": len(rows) + 1,
+        "filename": filename,
+        "type": asset_type,
+        "url": asset_url,
+        "size": size_mb,
+        "created_at": today_str
+    }
+    rows.insert(0, new_asset)
+
+    with open(data_file, "w", encoding="utf-8") as f:
+        json.dump(rows, f, indent=2, ensure_ascii=False)
+
+    run_git_command(["add", "app/product2_github_blob_storage/"])
+    run_git_command(["commit", "-m", f"feat(blob): uploaded {filename} to storage/{subfolder}"])
+    return {"status": "success", "asset": new_asset, "rows": rows}
+
 @app.post("/api/products/queue/promote/{queue_id}")
 def promote_queue_item_to_product(queue_id: int):
     queue_file = ROOT_DIR / "db" / "product_queue.json"
@@ -1913,6 +1966,11 @@ if not preview_index.exists():
             f.write("<html><body style='background:#0f0f13;color:#a78bfa;font-family:sans-serif;padding:40px;text-align:center;'><h2>Daily Engine MVP is starting...</h2></body></html>")
     except Exception as e:
         logger.warning("Could not write default preview index.html: %s", e)
+
+# Serve storage directory for Product 02 blob storage
+storage_dir_path = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage"
+storage_dir_path.mkdir(parents=True, exist_ok=True)
+app.mount("/storage", StaticFiles(directory=str(storage_dir_path)), name="blob_storage")
 
 # Serve assets directory with high priority
 mvp_assets_dir = ROOT_DIR / "app" / "dist" / "assets"
