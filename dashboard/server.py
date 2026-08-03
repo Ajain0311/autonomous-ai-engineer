@@ -1478,10 +1478,41 @@ def upload_blob_asset(payload: BlobUploadRequest):
     run_git_command(["commit", "-m", f"feat(blob): uploaded {payload.filename} to storage/{subfolder}"])
     return {"status": "success", "asset": new_asset, "rows": rows}
 
+@app.get("/api/blob/assets")
+def get_blob_assets(username: Optional[str] = None, role: Optional[str] = None, search: Optional[str] = None):
+    data_file = ROOT_DIR / "app" / "product2_github_blob_storage" / "db" / "blob_assets.json"
+    rows = []
+    if data_file.exists():
+        try:
+            with open(data_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+        except Exception:
+            rows = []
+
+    # Role-based filtering: super_admin / developer sees all files; user sees their own files
+    is_admin = role in ["super_admin", "developer"] if role else False
+    if not is_admin and username:
+        user_lower = username.strip().lower()
+        rows = [r for r in rows if r.get("uploaded_by", "").strip().lower() == user_lower or not r.get("uploaded_by")]
+
+    # Search query filtering
+    if search and search.strip():
+        q = search.strip().lower()
+        rows = [
+            r for r in rows 
+            if q in r.get("filename", "").lower() 
+            or q in r.get("url", "").lower() 
+            or q in r.get("type", "").lower()
+            or q in r.get("uploaded_by", "").lower()
+        ]
+
+    return {"status": "success", "assets": rows, "total": len(rows), "is_admin": is_admin}
+
 @app.post("/api/blob/upload_file")
-async def upload_blob_file(file: UploadFile = File(...)):
+async def upload_blob_file(file: UploadFile = File(...), username: Optional[str] = Form(None)):
     filename = file.filename or "uploaded_asset"
     ext = filename.split(".")[-1].lower() if "." in filename else ""
+    user_str = username.strip() if username else "public"
     
     subfolder = "images"
     asset_type = "image"
@@ -1492,7 +1523,8 @@ async def upload_blob_file(file: UploadFile = File(...)):
         subfolder = "docs"
         asset_type = "doc"
 
-    storage_dir = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage" / subfolder
+    # User-based isolated folder structure
+    storage_dir = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage" / "users" / user_str / subfolder
     storage_dir.mkdir(parents=True, exist_ok=True)
 
     asset_file = storage_dir / filename
@@ -1501,7 +1533,7 @@ async def upload_blob_file(file: UploadFile = File(...)):
         f.write(contents)
 
     size_mb = f"{round(len(contents) / (1024 * 1024), 2)} MB" if len(contents) > 1024*1024 else f"{round(len(contents) / 1024, 1)} KB"
-    asset_url = f"/storage/{subfolder}/{filename}"
+    asset_url = f"/storage/users/{user_str}/{subfolder}/{filename}"
     today_str = datetime.now().strftime("%Y-%m-%d")
 
     data_file = ROOT_DIR / "app" / "product2_github_blob_storage" / "db" / "blob_assets.json"
@@ -1520,7 +1552,8 @@ async def upload_blob_file(file: UploadFile = File(...)):
         "type": asset_type,
         "url": asset_url,
         "size": size_mb,
-        "created_at": today_str
+        "created_at": today_str,
+        "uploaded_by": user_str
     }
     rows.insert(0, new_asset)
 
@@ -1528,11 +1561,42 @@ async def upload_blob_file(file: UploadFile = File(...)):
         with open(data_file, "w", encoding="utf-8") as f:
             json.dump(rows, f, indent=2, ensure_ascii=False)
         run_git_command(["add", "app/product2_github_blob_storage/"])
-        run_git_command(["commit", "-m", f"feat(blob): uploaded {filename} to storage/{subfolder}"])
+        run_git_command(["commit", "-m", f"feat(blob): uploaded {filename} for @{user_str} to storage/users/{user_str}/{subfolder}"])
     except Exception as e:
         logger.warning(f"Git commit failed during blob upload: {e}")
 
     return {"status": "success", "asset": new_asset, "rows": rows}
+
+@app.delete("/api/blob/assets/{asset_id}")
+def delete_blob_asset(asset_id: int):
+    data_file = ROOT_DIR / "app" / "product2_github_blob_storage" / "db" / "blob_assets.json"
+    rows = []
+    if data_file.exists():
+        try:
+            with open(data_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+        except Exception:
+            pass
+
+    target_asset = next((r for r in rows if r.get("id") == asset_id), None)
+    if not target_asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    updated_rows = [r for r in rows if r.get("id") != asset_id]
+    with open(data_file, "w", encoding="utf-8") as f:
+        json.dump(updated_rows, f, indent=2, ensure_ascii=False)
+
+    # Delete physical file if exists
+    rel_url = target_asset.get("url", "").lstrip("/")
+    if rel_url.startswith("storage/"):
+        file_path = ROOT_DIR / "app" / "product2_github_blob_storage" / rel_url
+        if file_path.exists():
+            try:
+                file_path.unlink()
+            except Exception as e:
+                logger.warning(f"Failed to delete disk file {file_path}: {e}")
+
+    return {"status": "success", "message": f"Asset #{asset_id} deleted successfully.", "assets": updated_rows}
 
 class SuperAdminLoginRequest(BaseModel):
     password: str

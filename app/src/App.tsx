@@ -402,12 +402,28 @@ export default function App() {
       .catch(() => {});
   };
 
+  const fetchBlobAssets = () => {
+    const username = currentUser?.username || '';
+    const role = currentUser?.role || '';
+    const query = new URLSearchParams({ username, role, search: blobSearchInput }).toString();
+    
+    fetch(`/api/blob/assets?${query}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success' && Array.isArray(data.assets)) {
+          setBlobAssets(data.assets);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchMasterTables();
     fetchAdblockRules();
     fetchChatMessages();
     fetchChatUsers();
-  }, []);
+    fetchBlobAssets();
+  }, [currentUser, blobSearchInput]);
 
   // Product 01 Action Handlers
   const handleAddRule = async () => {
@@ -635,16 +651,17 @@ export default function App() {
   };
 
   const handleDeleteBlobAsset = async (id: number) => {
-    const updated = blobAssets.filter(b => b.id !== id);
-    setBlobAssets(updated);
     try {
-      await fetch('/api/products/data/product2_github_blob_storage/blob_assets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
-      setSuccessToast('🗑️ Asset removed from catalog & DB!');
+      const res = await fetch(`/api/blob/assets/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchBlobAssets();
+        setSuccessToast('🗑️ Asset deleted from storage & DB!');
+      } else {
+        setBlobAssets(blobAssets.filter(b => b.id !== id));
+        setSuccessToast('🗑️ Asset removed locally!');
+      }
     } catch {
+      setBlobAssets(blobAssets.filter(b => b.id !== id));
       setSuccessToast('🗑️ Asset removed locally!');
     }
   };
@@ -715,6 +732,7 @@ export default function App() {
     const startTime = Date.now();
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('username', currentUser?.username || 'public');
 
     const xhr = new XMLHttpRequest();
     uploadXhrRef.current = xhr;
@@ -744,14 +762,9 @@ export default function App() {
     xhr.onload = () => {
       uploadXhrRef.current = null;
       setIsUploading(false);
+      fetchBlobAssets();
       if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          setBlobAssets(data.rows || [data.asset, ...blobAssets]);
-          setSuccessToast(`✅ File '${file.name}' uploaded in ${Math.round((Date.now() - startTime) / 1000)}s & committed to Git!`);
-        } catch {
-          setSuccessToast(`✅ File '${file.name}' uploaded successfully!`);
-        }
+        setSuccessToast(`✅ File '${file.name}' uploaded in ${Math.round((Date.now() - startTime) / 1000)}s & committed to Git!`);
       } else {
         setSuccessToast(`❌ Upload failed with status ${xhr.status}`);
       }
@@ -1336,7 +1349,22 @@ export default function App() {
                       <span>Product 02 Tool Operational View</span>
                     </div>
                     <h2 className="text-base sm:text-lg font-extrabold text-white">GitHub Blob Storage Utility Tool</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Upload images, MP4 videos, and PDF documents directly into organized storage subfolders with raw access URLs.</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Upload images, MP4 videos, and PDF documents directly into user-isolated storage folders.</p>
+                  </div>
+
+                  {/* User Isolated Workspace Banner */}
+                  <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-mono text-purple-300">
+                    <div className="flex items-center space-x-2">
+                      <FolderPlus className="h-4 w-4 text-purple-400 shrink-0" />
+                      <span>
+                        {['super_admin', 'developer'].includes(currentUser?.role || '')
+                          ? `👑 Admin Mode: Accessing all user files across storage/users/`
+                          : `🔒 Isolated Folder: storage/users/${currentUser?.username || 'public'}/ (Viewing your uploads)`}
+                      </span>
+                    </div>
+                    <span className="text-[10px] bg-slate-950 border border-purple-500/20 px-2 py-0.5 rounded text-cyan-300 font-bold">
+                      {blobAssets.length} Files Stored
+                    </span>
                   </div>
 
                   <div className="bg-slate-900 p-5 rounded-2xl border-2 border-dashed border-purple-500/40 text-center space-y-3 hover:border-purple-500 transition-all">
@@ -1345,7 +1373,7 @@ export default function App() {
                     </div>
                     <div>
                       <span className="text-xs font-bold text-white block">Drag & Drop or Click to Upload File</span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">Supports Images (.png, .jpg), MP4 Videos (.mp4), PDF/Docs (.pdf, .txt)</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">Will be saved to your user directory: <code className="text-purple-300 font-mono">storage/users/{currentUser?.username || 'public'}/</code></span>
                     </div>
 
                     <label className="inline-flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md cursor-pointer">
