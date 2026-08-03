@@ -1580,7 +1580,7 @@ def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
         """
         msg.attach(MIMEText(html_content, "html"))
 
-        server = smtplib.SMTP(smtp_host, smtp_port)
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
         server.starttls()
         server.login(smtp_user, smtp_pass)
         server.sendmail(sender_email, [to_email], msg.as_string())
@@ -1592,23 +1592,29 @@ def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
         return False
 
 @app.post("/api/auth/send_otp")
-def send_email_otp(payload: SendOTPRequest):
+async def send_email_otp(payload: SendOTPRequest, background_tasks: BackgroundTasks):
     email = payload.email.strip().lower()
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="Invalid email address.")
-    
+
     otp_code = f"{random.randint(100000, 999999)}"
     OTP_STORE[email] = otp_code
     logger.info(f"Generated 6-digit OTP {otp_code} for email {email}")
 
-    email_sent = dispatch_real_email_otp(email, otp_code)
+    # Fire email in background — API returns instantly
+    background_tasks.add_task(dispatch_real_email_otp, email, otp_code)
+
+    smtp_configured = bool(
+        os.environ.get("SMTP_USER") and os.environ.get("SMTP_PASSWORD")
+    )
 
     return {
         "status": "success",
-        "message": f"6-Digit OTP sent to {email}",
+        "message": f"6-Digit OTP dispatch initiated for {email}",
         "email": email,
-        "email_sent": email_sent,
-        "dev_otp": otp_code if not email_sent else None
+        "email_sent": smtp_configured,
+        "dev_otp": otp_code,
+        "notice": None if smtp_configured else "SMTP not configured — use Dev OTP shown below."
     }
 
 @app.post("/api/auth/verify_otp")
