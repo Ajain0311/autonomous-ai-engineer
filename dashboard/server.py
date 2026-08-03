@@ -1562,42 +1562,19 @@ OTP_HTML_TEMPLATE = """
 
 def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
     html_body = OTP_HTML_TEMPLATE.format(otp_code=otp_code)
+    sender_email = os.environ.get("SENDER_EMAIL", "kuldeepswarnkar4@gmail.com")
 
-    # --- Option 1: Resend API (HTTPS, works on Render free tier) ---
-    resend_key = os.environ.get("RESEND_API_KEY")
-    if resend_key:
-        try:
-            # Use Resend's pre-verified sender — no domain verification needed
-            resp = http_requests.post(
-                "https://api.resend.com/emails",
-                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
-                json={
-                    "from": "DailyCodeEngine <onboarding@resend.dev>",
-                    "to": [to_email],
-                    "subject": f"🔐 Your OTP Code: {otp_code}",
-                    "html": html_body
-                },
-                timeout=15
-            )
-            if resp.status_code in (200, 201):
-                logger.info(f"Resend OTP email sent to {to_email}")
-                return True
-            logger.error(f"Resend error: {resp.status_code} {resp.text}")
-        except Exception as e:
-            logger.error(f"Resend dispatch failed: {e}")
-
-    # --- Option 2: SendGrid API (HTTPS, works on Render free tier) ---
+    # --- Option 1: SendGrid API (HTTPS, Render free tier compatible) ---
     sendgrid_key = os.environ.get("SENDGRID_API_KEY")
     if sendgrid_key:
         try:
-            sender_email = os.environ.get("SENDER_EMAIL", "kuldeepswarnkar4@gmail.com")
             resp = http_requests.post(
                 "https://api.sendgrid.com/v3/mail/send",
                 headers={"Authorization": f"Bearer {sendgrid_key}", "Content-Type": "application/json"},
                 json={
                     "personalizations": [{"to": [{"email": to_email}]}],
                     "from": {"email": sender_email, "name": "DailyCodeEngine"},
-                    "subject": f"🔐 Your OTP Code: {otp_code}",
+                    "subject": f"Your OTP Code: {otp_code}",
                     "content": [{"type": "text/html", "value": html_body}]
                 },
                 timeout=15
@@ -1608,6 +1585,28 @@ def dispatch_real_email_otp(to_email: str, otp_code: str) -> bool:
             logger.error(f"SendGrid error: {resp.status_code} {resp.text}")
         except Exception as e:
             logger.error(f"SendGrid dispatch failed: {e}")
+
+    # --- Option 2: Resend API fallback ---
+    resend_key = os.environ.get("RESEND_API_KEY")
+    if resend_key:
+        try:
+            resp = http_requests.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json={
+                    "from": "DailyCodeEngine <onboarding@resend.dev>",
+                    "to": [to_email],
+                    "subject": f"Your OTP Code: {otp_code}",
+                    "html": html_body
+                },
+                timeout=15
+            )
+            if resp.status_code in (200, 201):
+                logger.info(f"Resend OTP email sent to {to_email}")
+                return True
+            logger.error(f"Resend error: {resp.status_code} {resp.text}")
+        except Exception as e:
+            logger.error(f"Resend dispatch failed: {e}")
 
     logger.info("No email API key configured. Running in Dev OTP mode.")
     return False
