@@ -1580,8 +1580,3 @@ app.mount("/preview", StaticFiles(directory=str(mvp_app_dir), html=True), name="
 # Serve main MVP Dashboard at '/'
 if mvp_app_dir.exists() and mvp_app_dir.is_dir():
     app.mount("/", StaticFiles(directory=str(mvp_app_dir), html=True), name="mvp_root")
-
-# Serve secondary admin dashboard at '/admin'
-admin_dir = ROOT_DIR / "dashboard" / "dist"
-if admin_dir.exists() and admin_dir.is_dir():
-    app.mount("/admin", StaticFiles(directory=str(admin_dir), html=True), name="admin_panel")
