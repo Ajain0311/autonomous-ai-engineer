@@ -1267,6 +1267,72 @@ def init_new_product(payload: InitProductRequest):
     run_git_command(["commit", "-m", f"feat(product): initialized {folder_name} with isolated DB"])
     return {"status": "success", "folder_name": folder_name, "config": config}
 
+@app.get("/api/git/history")
+def get_git_commit_history():
+    try:
+        ok, out = run_git_command(["log", "-n", "10", "--pretty=format:%h|%s|%cr|%an"])
+        commits = []
+        if ok and out:
+            for line in out.splitlines():
+                if "|" in line:
+                    parts = line.split("|")
+                    if len(parts) >= 3:
+                        commits.append({
+                            "hash": parts[0],
+                            "message": parts[1],
+                            "date": parts[2],
+                            "author": parts[3] if len(parts) > 3 else "Developer"
+                        })
+        return {"status": "success", "commits": commits}
+    except Exception as e:
+        return {"status": "error", "commits": []}
+
+@app.get("/api/products/tables/{product_id}")
+def get_product_tables(product_id: str):
+    product_db = ROOT_DIR / "app" / product_id / "db"
+    tables = []
+    if product_db.exists():
+        for f in product_db.glob("*.json"):
+            if not f.name.endswith("_schema.json"):
+                tables.append(f.stem)
+    return {"status": "success", "tables": sorted(tables)}
+
+@app.get("/api/products/data/{product_id}/{table_name}")
+def get_product_table_data(product_id: str, table_name: str):
+    data_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}.json"
+    schema_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}_schema.json"
+    
+    rows = []
+    schema = {"tableName": table_name, "columns": []}
+    
+    if data_file.exists():
+        try:
+            with open(data_file, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+        except Exception:
+            pass
+
+    if schema_file.exists():
+        try:
+            with open(schema_file, "r", encoding="utf-8") as f:
+                schema = json.load(f)
+        except Exception:
+            pass
+
+    return {"status": "success", "rows": rows, "schema": schema}
+
+@app.post("/api/products/data/{product_id}/{table_name}")
+def save_product_table_data(product_id: str, table_name: str, payload: list):
+    data_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}.json"
+    data_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(data_file, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+    run_git_command(["add", "db/", f"app/{product_id}/"])
+    run_git_command(["commit", "-m", f"db(data): updated {table_name} in {product_id}"])
+    return {"status": "success", "rows": payload}
+
 @app.post("/api/db/adblocker_rules")
 def save_adblocker_rules(rules: list):
     db_file = ROOT_DIR / "db" / "adblocker_rules.json"
