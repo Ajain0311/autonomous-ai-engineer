@@ -1166,6 +1166,26 @@ def save_validated_data(table_name: str, rows: list):
     run_git_command(["commit", "-m", f"db(data): validated insert in {table_name}"])
     return {"status": "success", "rows": validated_rows}
 
+@app.get("/api/db/tables")
+def get_db_tables():
+    db_dir = ROOT_DIR / "db"
+    tables = []
+    if db_dir.exists():
+        for f in db_dir.glob("*.json"):
+            if not f.name.endswith("_schema.json"):
+                tables.append(f.stem)
+    return {"tables": sorted(tables)}
+
+@app.get("/api/products/list")
+def get_products_list():
+    products_dir = ROOT_DIR / "products"
+    products = []
+    if products_dir.exists():
+        for d in products_dir.iterdir():
+            if d.is_dir():
+                products.append(d.name)
+    return {"products": sorted(products)}
+
 @app.post("/api/db/adblocker_rules")
 def save_adblocker_rules(rules: list):
     db_file = ROOT_DIR / "db" / "adblocker_rules.json"
