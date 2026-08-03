@@ -1575,6 +1575,11 @@ if not preview_index.exists():
     except Exception as e:
         logger.warning("Could not write default preview index.html: %s", e)
 
+# Serve assets directory with high priority
+mvp_assets_dir = ROOT_DIR / "app" / "dist" / "assets"
+if mvp_assets_dir.exists() and mvp_assets_dir.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(mvp_assets_dir)), name="mvp_assets")
+
 app.mount("/preview", StaticFiles(directory=str(mvp_app_dir), html=True), name="preview")
 
 # Serve main MVP Dashboard at '/'
