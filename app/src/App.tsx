@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Flame, GitCommit, Calendar, Sparkles, Shield, ShieldCheck, Database, Plus, CheckCircle2, 
   RefreshCw, Save, Edit3, Layers, Settings, FileText, Code, Check, 
@@ -153,6 +153,7 @@ export default function App() {
   const [uploadSpeed, setUploadSpeed] = useState<string>('');
   const [uploadElapsedTime, setUploadElapsedTime] = useState<number>(0);
   const [uploadStatusText, setUploadStatusText] = useState<string>('');
+  const uploadXhrRef = useRef<XMLHttpRequest | null>(null);
 
   // Product 01: AdBlocker Extension State
   const [adblockRules, setAdblockRules] = useState<any[]>([
@@ -575,6 +576,17 @@ export default function App() {
     }
   };
 
+  // Cancel Upload Handler
+  const handleCancelUpload = () => {
+    if (uploadXhrRef.current) {
+      uploadXhrRef.current.abort();
+      uploadXhrRef.current = null;
+    }
+    setIsUploading(false);
+    setUploadProgress(0);
+    setSuccessToast('🛑 File upload cancelled by user.');
+  };
+
   // File Uploader Handler with Real-Time Progress, Speed & Time Track
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -594,6 +606,7 @@ export default function App() {
     formData.append('file', file);
 
     const xhr = new XMLHttpRequest();
+    uploadXhrRef.current = xhr;
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
@@ -618,6 +631,7 @@ export default function App() {
     };
 
     xhr.onload = () => {
+      uploadXhrRef.current = null;
       setIsUploading(false);
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
@@ -633,6 +647,7 @@ export default function App() {
     };
 
     xhr.onerror = () => {
+      uploadXhrRef.current = null;
       setIsUploading(false);
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const assetType = ['mp4', 'mkv'].includes(ext) ? 'video' : ['pdf', 'doc'].includes(ext) ? 'doc' : 'image';
@@ -647,6 +662,12 @@ export default function App() {
       };
       setBlobAssets([newAsset, ...blobAssets]);
       setSuccessToast(`✅ File '${file.name}' saved locally!`);
+    };
+
+    xhr.onabort = () => {
+      uploadXhrRef.current = null;
+      setIsUploading(false);
+      setUploadProgress(0);
     };
 
     xhr.open('POST', '/api/blob/upload_file');
@@ -1241,7 +1262,17 @@ export default function App() {
 
                       <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
                         <span>{uploadStatusText}</span>
-                        <span className="text-emerald-400 font-bold animate-pulse">● Upload Stream Active</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-emerald-400 font-bold animate-pulse hidden sm:inline">● Active Stream</span>
+                          <button
+                            onClick={handleCancelUpload}
+                            className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-lg text-[10px] font-bold flex items-center space-x-1 cursor-pointer transition-all shrink-0"
+                            title="Abort current upload"
+                          >
+                            <X className="h-3 w-3" />
+                            <span>Cancel Upload</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
