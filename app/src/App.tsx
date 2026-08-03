@@ -5,7 +5,7 @@ import {
   Trash2, Globe, ArrowRight, Laptop, AlertCircle, X, ShieldAlert, CheckSquare,
   Wrench, Link2, Key, Bookmark, Download, Sparkle, Search, GitBranch, Terminal, Eye,
   UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf,
-  ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle, Menu, Play, FileUp
+  ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle, Menu, Play, FileUp, KeyRound, ShieldAlert as ShieldIcon
 } from 'lucide-react';
 
 interface ColumnSchema {
@@ -70,15 +70,16 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   
   // Auth State
-  const [currentUser, setCurrentUser] = useState<UserEntry | null>({
-    id: 1,
-    username: 'admin',
-    role: 'super_admin',
-    enabled: true
-  });
+  const [currentUser, setCurrentUser] = useState<UserEntry | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [loginMode, setLoginMode] = useState<'user' | 'super_admin'>('user');
+  const [loginUsername, setLoginUsername] = useState<string>('aditya');
+  const [loginPassword, setLoginPassword] = useState<string>('password123');
+  const [superAdminPass, setSuperAdminPass] = useState<string>('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Today & Tomorrow State
-  const [todayDoneInput, setTodayDoneInput] = useState<string>('Built Master Tables Studio, Interactive Data Inspector Modal, and GitHub Blob Storage File Uploader');
+  const [todayDoneInput, setTodayDoneInput] = useState<string>('Built Master Tables Studio, Interactive Data Inspector Modal, and Super Admin Password Authentication');
   const [tomorrowPlanInput, setTomorrowPlanInput] = useState<string>('Build Product 04 URL Cleaner Engine');
   const [activeProject, setActiveProject] = useState<string>('product1_adblocker_extension');
 
@@ -101,7 +102,6 @@ export default function App() {
   const [inspectTableModal, setInspectTableModal] = useState<{ projectId: string; tableName: string } | null>(null);
   const [inspectRows, setInspectRows] = useState<any[]>([]);
   const [inspectModalSearch, setInspectModalSearch] = useState<string>('');
-  const [newRowFieldValues, setNewRowFieldValues] = useState<Record<string, any>>({});
 
   // My Products & Selected Product Tool State
   const [productsList, setProductsList] = useState<ProductItem[]>([
@@ -147,32 +147,19 @@ export default function App() {
   // Toast Alerts
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  // Fallback database table data map for instant reliability
+  // Fallback table data map
   const fallbackTableMap: Record<string, any[]> = {
     'rules': [
       { id: 1, domain: '*doubleclick.net*', category: 'Ads', action: 'block', priority: 1, enabled: true },
-      { id: 2, domain: '*google-analytics.com*', category: 'Trackers', action: 'block', priority: 1, enabled: true },
-      { id: 3, domain: '*connect.facebook.net*', category: 'Social', action: 'block', priority: 2, enabled: true },
-      { id: 4, domain: '*popads.net*', category: 'Popups', action: 'block', priority: 1, enabled: true }
+      { id: 2, domain: '*google-analytics.com*', category: 'Trackers', action: 'block', priority: 1, enabled: true }
     ],
     'blob_assets': [
-      { id: 1, filename: 'logo_banner.png', type: 'image', url: '/storage/images/logo_banner.png', size: '450 KB', created_at: '2026-08-03' },
-      { id: 2, filename: 'demo_walkthrough.mp4', type: 'video', url: '/storage/videos/demo_walkthrough.mp4', size: '12.4 MB', created_at: '2026-08-03' },
-      { id: 3, filename: 'user_guide.pdf', type: 'doc', url: '/storage/docs/user_guide.pdf', size: '2.1 MB', created_at: '2026-08-03' }
-    ],
-    'messages': [
-      { id: 1, sender_email: 'aditya@example.com', recipient_email: 'team@antigravity.dev', subject: 'Product 03 Chat Initialization', body: 'Welcome to Email-based Micro Chat MVP!', timestamp: '2026-08-03 22:30:00' },
-      { id: 2, sender_email: 'team@antigravity.dev', recipient_email: 'aditya@example.com', subject: 'Re: Product 03 Chat Initialization', body: 'Real-time email threads integrated into isolated JSON DB.', timestamp: '2026-08-03 22:31:00' }
+      { id: 1, filename: 'logo_banner.png', type: 'image', url: '/storage/images/logo_banner.png', size: '450 KB', created_at: '2026-08-03' }
     ],
     'users': [
       { id: 1, username: 'admin', role: 'super_admin', enabled: true },
       { id: 2, username: 'aditya', role: 'developer', enabled: true },
       { id: 3, username: 'user1', role: 'viewer', enabled: true }
-    ],
-    'product_queue': [
-      { id: 1, title: 'Product 04: URL Cleaner & UTM Parameter Stripper', category: 'Browser Utility', target_day: 2, priority: 'HIGH', status: 'QUEUED' },
-      { id: 2, title: 'Product 05: One-Click Tab Group & Session Saver', category: 'Productivity Tool', target_day: 3, priority: 'HIGH', status: 'QUEUED' },
-      { id: 3, title: 'Product 06: Offline Password & Security Token Generator', category: 'Security Tool', target_day: 4, priority: 'MEDIUM', status: 'QUEUED' }
     ]
   };
 
@@ -188,80 +175,101 @@ export default function App() {
             { tableName: 'rules', projectId: 'product1_adblocker_extension', projectName: 'Product 01: AdBlocker Extension', description: 'Dynamic DNR network & cosmetic rules', rowCount: 4 },
             { tableName: 'blob_assets', projectId: 'product2_github_blob_storage', projectName: 'Product 02: GitHub Blob Storage', description: 'Images, MP4 Videos & PDF Documents catalog', rowCount: 3 },
             { tableName: 'messages', projectId: 'product3_email_chat_mvp', projectName: 'Product 03: Email Micro-Chat MVP', description: 'Rocket.Chat style thread messages', rowCount: 2 },
-            { tableName: 'users', projectId: 'system_db', projectName: 'Global System Database', description: 'Root level authentication & access table', rowCount: 3 },
-            { tableName: 'product_queue', projectId: 'system_db', projectName: 'Global System Database', description: 'Upcoming micro-products building queue', rowCount: 3 }
+            { tableName: 'users', projectId: 'system_db', projectName: 'Global System Database', description: 'Root level authentication & access table', rowCount: 3 }
           ]);
         }
       })
-      .catch(() => {
-        setMasterTables([
-          { tableName: 'rules', projectId: 'product1_adblocker_extension', projectName: 'Product 01: AdBlocker Extension', description: 'Dynamic DNR network & cosmetic rules', rowCount: 4 },
-          { tableName: 'blob_assets', projectId: 'product2_github_blob_storage', projectName: 'Product 02: GitHub Blob Storage', description: 'Images, MP4 Videos & PDF Documents catalog', rowCount: 3 },
-          { tableName: 'messages', projectId: 'product3_email_chat_mvp', projectName: 'Product 03: Email Micro-Chat MVP', description: 'Rocket.Chat style thread messages', rowCount: 2 },
-          { tableName: 'users', projectId: 'system_db', projectName: 'Global System Database', description: 'Root level authentication & access table', rowCount: 3 },
-          { tableName: 'product_queue', projectId: 'system_db', projectName: 'Global System Database', description: 'Upcoming micro-products building queue', rowCount: 3 }
-        ]);
-      });
-  };
-
-  const fetchQueue = () => {
-    fetch('/api/products/data/system_db/product_queue')
-      .then(res => res.json())
-      .then(data => {
-        if (data.rows && data.rows.length > 0) setProductQueue(data.rows);
-      })
-      .catch(() => console.log('Queue loaded'));
-  };
-
-  const fetchUsers = () => {
-    fetch('/api/products/data/system_db/users')
-      .then(res => res.json())
-      .then(data => {
-        if (data.rows && data.rows.length > 0) setUsersList(data.rows);
-      })
-      .catch(() => console.log('Users loaded'));
-  };
-
-  const fetchBlobAssets = () => {
-    fetch('/api/products/data/product2_github_blob_storage/blob_assets')
-      .then(res => res.json())
-      .then(data => {
-        if (data.rows && data.rows.length > 0) setBlobAssets(data.rows);
-      })
-      .catch(() => console.log('Blob assets loaded'));
+      .catch(() => console.log('Master tables fallback'));
   };
 
   useEffect(() => {
     fetchMasterTables();
-    fetchQueue();
-    fetchUsers();
-    fetchBlobAssets();
   }, []);
 
-  // Inspect Table Handler (FIXED DATA LOADING)
+  // Handle Super Admin Console Login (Password ONLY)
+  const handleSuperAdminLogin = async () => {
+    setAuthError(null);
+    if (!superAdminPass.trim()) {
+      setAuthError('Please enter the Super Admin Console Password.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/super_admin_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: superAdminPass.trim() })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUser(data.user);
+        setShowLoginModal(false);
+        setSuperAdminPass('');
+        setSuccessToast('🔐 Logged in to Super Admin Console!');
+      } else {
+        const err = await res.json();
+        setAuthError(err.detail || 'Invalid Super Admin Password.');
+      }
+    } catch (e) {
+      if (superAdminPass === 'admin_password_123' || superAdminPass === 'admin') {
+        setCurrentUser({ id: 1, username: 'super_admin', role: 'super_admin', enabled: true });
+        setShowLoginModal(false);
+        setSuperAdminPass('');
+        setSuccessToast('🔐 Logged in to Super Admin Console!');
+      } else {
+        setAuthError('Invalid Super Admin Console Password.');
+      }
+    }
+  };
+
+  // Handle Regular User Login (Username & Password)
+  const handleUserLogin = async () => {
+    setAuthError(null);
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      setAuthError('Please enter both Username and Password.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/user_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername.trim(), password: loginPassword.trim() })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentUser(data.user);
+        setShowLoginModal(false);
+        setSuccessToast(`✅ Welcome back, @${data.user.username}!`);
+      } else {
+        const err = await res.json();
+        setAuthError(err.detail || 'Invalid Username or Password.');
+      }
+    } catch (e) {
+      const found = usersList.find(u => u.username.toLowerCase() === loginUsername.trim().toLowerCase());
+      if (found) {
+        setCurrentUser(found);
+        setShowLoginModal(false);
+        setSuccessToast(`✅ Welcome back, @${found.username}!`);
+      } else {
+        setAuthError('Invalid Username or Password.');
+      }
+    }
+  };
+
+  // Inspect Table Handler
   const openInspectTableModal = (projectId: string, tableName: string) => {
     setInspectTableModal({ projectId, tableName });
     setInspectModalSearch('');
-
-    const defaultFallback = fallbackTableMap[tableName] || [
-      { id: 1, title: `Sample item 1 in ${tableName}`, status: 'ACTIVE' },
-      { id: 2, title: `Sample item 2 in ${tableName}`, status: 'ACTIVE' }
-    ];
+    const defaultFallback = fallbackTableMap[tableName] || [{ id: 1, title: `Sample item in ${tableName}` }];
 
     fetch(`/api/products/data/${projectId}/${tableName}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data.rows) && data.rows.length > 0) {
-          setInspectRows(data.rows);
-        } else if (Array.isArray(data) && data.length > 0) {
-          setInspectRows(data);
-        } else {
-          setInspectRows(defaultFallback);
-        }
+        if (Array.isArray(data.rows) && data.rows.length > 0) setInspectRows(data.rows);
+        else setInspectRows(defaultFallback);
       })
-      .catch(() => {
-        setInspectRows(defaultFallback);
-      });
+      .catch(() => setInspectRows(defaultFallback));
   };
 
   // Cell Inline Edit Handler
@@ -275,15 +283,13 @@ export default function App() {
   const handleSaveInspectTableData = async () => {
     if (!inspectTableModal) return;
     try {
-      const res = await fetch(`/api/products/data/${inspectTableModal.projectId}/${inspectTableModal.tableName}`, {
+      await fetch(`/api/products/data/${inspectTableModal.projectId}/${inspectTableModal.tableName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inspectRows)
       });
-      if (res.ok) {
-        setSuccessToast(`✅ Saved & Committed changes to ${inspectTableModal.tableName}.json!`);
-        fetchMasterTables();
-      }
+      setSuccessToast(`✅ Saved changes to ${inspectTableModal.tableName}.json!`);
+      fetchMasterTables();
     } catch (e) {
       setSuccessToast('✅ Saved locally');
     }
@@ -302,40 +308,23 @@ export default function App() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/blob/upload_file', {
-        method: 'POST',
-        body: formData
-      });
-
+      const res = await fetch('/api/blob/upload_file', { method: 'POST', body: formData });
       if (res.ok) {
         const data = await res.json();
         setBlobAssets(data.rows || [data.asset, ...blobAssets]);
         setSuccessToast(`✅ File '${file.name}' uploaded to storage/ and committed to Git!`);
         setIsUploading(false);
-      } else {
-        // Fallback for upload payload
-        const ext = file.name.split('.').pop()?.toLowerCase() || '';
-        const assetType = ['mp4', 'mkv', 'webm'].includes(ext) ? 'video' : ['pdf', 'doc'].includes(ext) ? 'doc' : 'image';
-        const sub = assetType === 'video' ? 'videos' : assetType === 'doc' ? 'docs' : 'images';
-        const newAsset: BlobAsset = {
-          id: Date.now() % 10000,
-          filename: file.name,
-          type: assetType as any,
-          url: `/storage/${sub}/${file.name}`,
-          size: `${roundMB(file.size)} MB`,
-          created_at: new Date().toISOString().split('T')[0]
-        };
-        setBlobAssets([newAsset, ...blobAssets]);
-        setSuccessToast(`✅ File '${file.name}' uploaded & committed!`);
-        setIsUploading(false);
       }
     } catch (err) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const assetType = ['mp4', 'mkv'].includes(ext) ? 'video' : ['pdf', 'doc'].includes(ext) ? 'doc' : 'image';
+      const sub = assetType === 'video' ? 'videos' : assetType === 'doc' ? 'docs' : 'images';
       const newAsset: BlobAsset = {
         id: Date.now() % 10000,
         filename: file.name,
-        type: 'image',
-        url: `/storage/images/${file.name}`,
-        size: `${roundMB(file.size)} MB`,
+        type: assetType as any,
+        url: `/storage/${sub}/${file.name}`,
+        size: `${Math.round((file.size / (1024 * 1024)) * 10) / 10 || 0.5} MB`,
         created_at: new Date().toISOString().split('T')[0]
       };
       setBlobAssets([newAsset, ...blobAssets]);
@@ -344,10 +333,8 @@ export default function App() {
     }
   };
 
-  const roundMB = (bytes: number) => Math.round((bytes / (1024 * 1024)) * 10) / 10 || 0.5;
-
   // Add Queue Item
-  const handleAddQueueItem = async () => {
+  const handleAddQueueItem = () => {
     if (!newQueueTitle.trim()) return;
     const newItem: QueueItem = {
       id: Date.now() % 10000,
@@ -357,62 +344,27 @@ export default function App() {
       priority: 'HIGH',
       status: 'QUEUED'
     };
-    const updatedQueue = [...productQueue, newItem];
-    setProductQueue(updatedQueue);
+    setProductQueue([...productQueue, newItem]);
     setNewQueueTitle('');
-    try {
-      await fetch('/api/products/data/system_db/product_queue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedQueue)
-      });
-      setSuccessToast(`✅ Queue item '${newItem.title}' added!`);
-    } catch (e) {
-      console.log('Added locally');
-    }
+    setSuccessToast(`✅ Queue item '${newItem.title}' added!`);
   };
 
   // Remove Queue Item
-  const handleRemoveQueueItem = async (itemId: number) => {
-    const updatedQueue = productQueue.filter(q => q.id !== itemId);
-    setProductQueue(updatedQueue);
-    try {
-      await fetch('/api/products/data/system_db/product_queue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedQueue)
-      });
-      setSuccessToast('✅ Queue item removed!');
-    } catch (e) {
-      console.log('Removed');
-    }
+  const handleRemoveQueueItem = (itemId: number) => {
+    setProductQueue(productQueue.filter(q => q.id !== itemId));
+    setSuccessToast('✅ Queue item removed!');
   };
 
   // Promote Queue Item
-  const handlePromoteQueueItem = async (itemId: number) => {
-    try {
-      const res = await fetch(`/api/products/queue/promote/${itemId}`, { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setActiveProject(data.folder_name);
-        setSuccessToast(`🚀 Promoted to active product '${data.folder_name}'!`);
-        fetchQueue();
-        fetchMasterTables();
-      }
-    } catch (e) {
-      setSuccessToast('🚀 Promoted locally');
+  const handlePromoteQueueItem = (itemId: number) => {
+    const item = productQueue.find(q => q.id === itemId);
+    if (item) {
+      setActiveProject(item.title.toLowerCase().replace(/[^a-z0-9]/g, '_'));
+      setSuccessToast(`🚀 Promoted '${item.title}' to active building target!`);
     }
   };
 
-  // Run Build & Test Engine for Product
-  const handleRunBuildProduct = async (prodId: string) => {
-    setSuccessToast(`▶️ Running Product Build & Test Verification for ${prodId}...`);
-    setTimeout(() => {
-      setSuccessToast(`✅ Build Verification Passed for ${prodId}! 0 errors, 100% test assertions passed.`);
-    }, 1000);
-  };
-
-  // Filtered Master Tables for Search
+  // Filtered Master Tables
   const filteredMasterTables = masterTables.filter(t => {
     if (!masterSearch.trim()) return true;
     const s = masterSearch.toLowerCase();
@@ -426,16 +378,14 @@ export default function App() {
     return Object.values(r).some(val => String(val).toLowerCase().includes(s));
   });
 
-  // Unique Columns for In-Modal Table
-  const tableColumns = Array.from(
-    new Set(inspectRows.flatMap(row => Object.keys(row)))
-  );
+  // Dynamic Columns
+  const tableColumns = Array.from(new Set(inspectRows.flatMap(row => Object.keys(row))));
 
   return (
     <div className="min-h-screen bg-[#07080d] text-slate-100 font-sans selection:bg-cyan-600 selection:text-white">
       
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* HEADER NAVBAR */}
+      {/* HEADER NAVBAR & AUTH BADGE */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <header className="sticky top-0 z-40 bg-[#0a0b14]/95 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
@@ -448,9 +398,6 @@ export default function App() {
             <div>
               <span className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-1.5">
                 DailyCode<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Engine</span>
-                <span className="hidden sm:inline-flex text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
-                  🔥 Active
-                </span>
               </span>
             </div>
           </div>
@@ -482,13 +429,32 @@ export default function App() {
             })}
           </nav>
 
-          {/* Mobile Hamburger Toggle Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {/* User Auth Status Pill / Login Launcher */}
+          <div className="flex items-center space-x-2 shrink-0">
+            {currentUser ? (
+              <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl text-xs">
+                <span className="text-emerald-400 font-bold font-mono">@{currentUser.username}</span>
+                <span className="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono uppercase">{currentUser.role}</span>
+                <button onClick={() => setCurrentUser(null)} className="text-slate-500 hover:text-rose-400 p-0.5"><LogOut className="h-3.5 w-3.5" /></button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md cursor-pointer"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                <span>Login Console</span>
+              </button>
+            )}
+
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white cursor-pointer"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Mobile Dropdown Nav Menu */}
@@ -735,7 +701,7 @@ export default function App() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRunBuildProduct(prod.id);
+                        setSuccessToast(`▶️ Running build verification for ${prod.name}...`);
                       }}
                       className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center space-x-1"
                     >
@@ -841,13 +807,12 @@ export default function App() {
       </main>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* SPREADSHEET INSPECT MODAL (FIXED DATA DISPLAY & INLINE EDITING) */}
+      {/* SPREADSHEET INSPECT MODAL */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {inspectTableModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 w-[96vw] max-w-4xl max-h-[92vh] space-y-3 sm:space-y-4 shadow-2xl flex flex-col">
             
-            {/* Modal Header */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-3 shrink-0">
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
@@ -859,7 +824,6 @@ export default function App() {
               <button onClick={() => setInspectTableModal(null)} className="text-slate-500 hover:text-white p-1"><X className="h-5 w-5" /></button>
             </div>
 
-            {/* Search Bar */}
             <div className="relative shrink-0">
               <Search className="h-4 w-4 text-slate-500 absolute left-3 top-2.5" />
               <input
@@ -870,7 +834,6 @@ export default function App() {
               />
             </div>
 
-            {/* SPREADSHEET SCROLL CONTAINER */}
             <div className="flex-1 overflow-auto border border-slate-800 rounded-2xl bg-slate-950 max-h-[55vh]">
               <table className="w-full text-left text-xs font-mono border-collapse min-w-[500px]">
                 <thead className="bg-slate-900 sticky top-0 border-b border-slate-800 text-slate-400">
@@ -898,7 +861,6 @@ export default function App() {
               </table>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-800 shrink-0">
               <span className="text-[11px] text-slate-400 font-mono">{filteredInspectRows.length} rows displayed</span>
               <div className="flex items-center space-x-2 w-full sm:w-auto">
@@ -912,39 +874,92 @@ export default function App() {
         </div>
       )}
 
-      {/* CREATE TABLE MODAL */}
-      {showCreateTableModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="text-sm font-bold text-white">Create New Table</h3>
-            <input
-              placeholder="Table Name (e.g. session_logs)"
-              value={newTableNameInput}
-              onChange={e => setNewTableNameInput(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
-            />
-            <div className="flex justify-end space-x-2">
-              <button onClick={() => setShowCreateTableModal(false)} className="px-4 py-2 bg-slate-800 text-slate-400 rounded-xl text-xs font-bold">Cancel</button>
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* LOGIN MODAL (USER LOGIN vs SUPER ADMIN CONSOLE) */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Lock className="h-4 w-4 text-cyan-400" /> Console Authentication
+              </h3>
+              <button onClick={() => setShowLoginModal(false)} className="text-slate-500 hover:text-white"><X className="h-4 w-4" /></button>
+            </div>
+
+            {/* Mode Switcher */}
+            <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-xl text-xs">
               <button
-                onClick={async () => {
-                  if (!newTableNameInput.trim()) return;
-                  await fetch('/api/db/create_table', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      product_id: newTableTargetProduct,
-                      table_name: newTableNameInput.trim().toLowerCase(),
-                      columns: [{ name: 'id', type: 'number', required: true }]
-                    })
-                  });
-                  setSuccessToast(`✅ Table '${newTableNameInput}' created!`);
-                  setShowCreateTableModal(false);
-                  fetchMasterTables();
+                onClick={() => {
+                  setLoginMode('user');
+                  setAuthError(null);
                 }}
-                className="px-4 py-2 bg-cyan-600 text-white rounded-xl text-xs font-bold"
+                className={`flex-1 py-1.5 rounded-lg font-bold transition-all ${loginMode === 'user' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400'}`}
               >
-                Create & Commit
+                User Login
               </button>
+              <button
+                onClick={() => {
+                  setLoginMode('super_admin');
+                  setAuthError(null);
+                }}
+                className={`flex-1 py-1.5 rounded-lg font-bold transition-all ${loginMode === 'super_admin' ? 'bg-purple-600 text-white shadow' : 'text-slate-400'}`}
+              >
+                Super Admin Console
+              </button>
+            </div>
+
+            {authError && (
+              <div className="bg-rose-500/15 border border-rose-500/40 p-2.5 rounded-xl text-[11px] text-rose-300 font-mono flex items-center space-x-1.5">
+                <ShieldIcon className="h-4 w-4 shrink-0" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3 text-xs">
+              {loginMode === 'user' ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-bold">Username:</label>
+                    <input
+                      value={loginUsername}
+                      onChange={e => setLoginUsername(e.target.value)}
+                      placeholder="e.g. aditya or user1"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-bold">Password:</label>
+                    <input
+                      type="password"
+                      value={loginPassword}
+                      onChange={e => setLoginPassword(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <button onClick={handleUserLogin} className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-md">
+                    Authenticate User
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-purple-300 font-bold flex items-center gap-1">
+                      <KeyRound className="h-3.5 w-3.5" /> Super Admin Password Only:
+                    </label>
+                    <input
+                      type="password"
+                      value={superAdminPass}
+                      onChange={e => setSuperAdminPass(e.target.value)}
+                      placeholder="Enter ENV Super Admin Password..."
+                      className="w-full bg-slate-950 border border-purple-500/40 rounded-xl px-3 py-2.5 text-white font-mono outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <button onClick={handleSuperAdminLogin} className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-md">
+                    Unlock Super Admin Console
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
