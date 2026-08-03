@@ -1149,7 +1149,7 @@ def save_validated_data(table_name: str, rows: list):
 
     # Sync with product extension rules if applicable
     if table_name == "adblocker_rules":
-        ext_rules_file = ROOT_DIR / "products" / "01-adblocker-extension" / "rules.json"
+        ext_rules_file = ROOT_DIR / "app" / "product1_adblocker_extension" / "db" / "rules.json"
         if ext_rules_file.parent.exists():
             dnr_rules = []
             for idx, item in enumerate(validated_rows, start=1):
@@ -1166,7 +1166,7 @@ def save_validated_data(table_name: str, rows: list):
             with open(ext_rules_file, "w", encoding="utf-8") as f:
                 json.dump(dnr_rules, f, indent=2, ensure_ascii=False)
 
-    run_git_command(["add", "db/", "products/"])
+    run_git_command(["add", "db/", "app/"])
     run_git_command(["commit", "-m", f"db(data): validated insert in {table_name}"])
     return {"status": "success", "rows": validated_rows}
 
@@ -1182,11 +1182,11 @@ def get_db_tables():
 
 @app.get("/api/products/list")
 def get_products_list():
-    products_dir = ROOT_DIR / "products"
+    app_dir = ROOT_DIR / "app"
     products = []
-    if products_dir.exists():
-        for d in products_dir.iterdir():
-            if d.is_dir():
+    if app_dir.exists():
+        for d in app_dir.iterdir():
+            if d.is_dir() and d.name.startswith("product"):
                 products.append(d.name)
     return {"products": sorted(products)}
 
@@ -1198,7 +1198,7 @@ def save_adblocker_rules(rules: list):
         json.dump(rules, f, indent=2, ensure_ascii=False)
     
     # Sync with product extension rules.json
-    ext_rules_file = ROOT_DIR / "products" / "01-adblocker-extension" / "rules.json"
+    ext_rules_file = ROOT_DIR / "app" / "product1_adblocker_extension" / "db" / "rules.json"
     if ext_rules_file.parent.exists():
         dnr_rules = []
         for idx, item in enumerate(rules, start=1):
@@ -1255,7 +1255,7 @@ def commit_daily_progress(payload: RoadmapUpdateRequest):
         json.dump(roadmap_data, f, indent=2, ensure_ascii=False)
 
     # Perform Git Add & Git Commit
-    run_git_command(["add", "db/", "products/", "app/"])
+    run_git_command(["add", "db/", "app/"])
     ok, hash_output = run_git_command(["commit", "-m", commit_msg])
     commit_hash = "committed"
     if ok and hash_output:
