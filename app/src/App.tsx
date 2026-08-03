@@ -166,6 +166,13 @@ export default function App() {
     { id: 1, sender_email: 'aditya@example.com', recipient_email: 'team@antigravity.dev', subject: 'Product 03 Chat Initialization', body: 'Welcome to Email-based Micro Chat MVP!', timestamp: '2026-08-03 22:30:00' },
     { id: 2, sender_email: 'team@antigravity.dev', recipient_email: 'aditya@example.com', subject: 'Re: Product 03 Chat Initialization', body: 'Real-time email threads integrated into isolated JSON DB.', timestamp: '2026-08-03 22:31:00' }
   ]);
+  const [chatUsersList, setChatUsersList] = useState<any[]>([
+    { id: 1, username: 'team', email: 'team@antigravity.dev', name: 'Antigravity Engineering Team' },
+    { id: 2, username: 'kuldeep', email: 'kuldeepswarnkar4@gmail.com', name: 'Kuldeep Swarnkar' },
+    { id: 3, username: 'aditya', email: 'adityajain8875389629@gmail.com', name: 'Aditya Jain' },
+    { id: 4, username: 'adityadhing9', email: 'adityadhing9@gmail.com', name: 'Aditya Dhing9' },
+    { id: 5, username: 'adityadhing76', email: 'adityadhing76@gmail.com', name: 'Aditya Dhing76' }
+  ]);
   const [chatRecipient, setChatRecipient] = useState<string>('team@antigravity.dev');
   const [chatSubject, setChatSubject] = useState<string>('Product 03 Email Thread');
   const [chatBody, setChatBody] = useState<string>('');
@@ -363,10 +370,20 @@ export default function App() {
       .catch(() => {});
   };
 
+  const fetchChatUsers = () => {
+    fetch('/api/products/data/product3_email_chat_mvp/users')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.rows) && data.rows.length > 0) setChatUsersList(data.rows);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchMasterTables();
     fetchAdblockRules();
     fetchChatMessages();
+    fetchChatUsers();
   }, []);
 
   // Product 01 Action Handlers
@@ -1291,13 +1308,18 @@ export default function App() {
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div>
-                        <label className="text-[11px] text-slate-400 block mb-1">Recipient Email:</label>
-                        <input
+                        <label className="text-[11px] text-slate-400 block mb-1">Select Recipient (<code className="text-purple-300 font-mono">product3/db/users.json</code>):</label>
+                        <select
                           value={chatRecipient}
                           onChange={e => setChatRecipient(e.target.value)}
-                          placeholder="e.g. team@antigravity.dev"
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500"
-                        />
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-purple-500 cursor-pointer"
+                        >
+                          {chatUsersList.map(u => (
+                            <option key={u.id || u.email} value={u.email}>
+                              {u.name ? `${u.name} (${u.email})` : u.email}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="text-[11px] text-slate-400 block mb-1">Subject:</label>
