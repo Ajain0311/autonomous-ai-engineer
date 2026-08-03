@@ -142,12 +142,17 @@ export default function App() {
   ]);
   const [selectedProductView, setSelectedProductView] = useState<string>('product2_github_blob_storage');
 
-  // Blob Storage Assets
+  // Blob Storage Assets & Upload Progress
   const [blobAssets, setBlobAssets] = useState<BlobAsset[]>([
     { id: 1, filename: 'logo_banner.png', type: 'image', url: '/storage/images/logo_banner.png', size: '450 KB', created_at: '2026-08-03' },
     { id: 2, filename: 'demo_walkthrough.mp4', type: 'video', url: '/storage/videos/demo_walkthrough.mp4', size: '12.4 MB', created_at: '2026-08-03' }
   ]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadFileName, setUploadFileName] = useState<string>('');
+  const [uploadSpeed, setUploadSpeed] = useState<string>('');
+  const [uploadElapsedTime, setUploadElapsedTime] = useState<number>(0);
+  const [uploadStatusText, setUploadStatusText] = useState<string>('');
 
   // Product 01: AdBlocker Extension State
   const [adblockRules, setAdblockRules] = useState<any[]>([
@@ -519,27 +524,65 @@ export default function App() {
     }
   };
 
-  // File Uploader Handler
-  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File Uploader Handler with Real-Time Progress, Speed & Time Track
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
     
     setIsUploading(true);
+    setUploadProgress(0);
+    setUploadFileName(file.name);
+    setUploadElapsedTime(0);
+    setUploadSpeed('0 KB/s');
+    setUploadStatusText('Initializing upload stream...');
     setSuccessToast(`Uploading ${file.name}...`);
 
+    const startTime = Date.now();
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      const res = await fetch('/api/blob/upload_file', { method: 'POST', body: formData });
-      if (res.ok) {
-        const data = await res.json();
-        setBlobAssets(data.rows || [data.asset, ...blobAssets]);
-        setSuccessToast(`✅ File '${file.name}' uploaded to storage/ and committed to Git!`);
-        setIsUploading(false);
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percent);
+
+        const elapsedSeconds = (Date.now() - startTime) / 1000;
+        setUploadElapsedTime(Math.round(elapsedSeconds));
+
+        const bytesPerSec = elapsedSeconds > 0 ? event.loaded / elapsedSeconds : 0;
+        const speedFormatted = bytesPerSec > 1024 * 1024
+          ? `${(bytesPerSec / (1024 * 1024)).toFixed(2)} MB/s`
+          : `${Math.round(bytesPerSec / 1024)} KB/s`;
+        setUploadSpeed(speedFormatted);
+
+        if (percent < 100) {
+          setUploadStatusText(`Uploading... ${percent}% (${(event.loaded / (1024 * 1024)).toFixed(2)} MB / ${(event.total / (1024 * 1024)).toFixed(2)} MB)`);
+        } else {
+          setUploadStatusText('Saving asset & committing to Git...');
+        }
       }
-    } catch (err) {
+    };
+
+    xhr.onload = () => {
+      setIsUploading(false);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          setBlobAssets(data.rows || [data.asset, ...blobAssets]);
+          setSuccessToast(`✅ File '${file.name}' uploaded in ${Math.round((Date.now() - startTime) / 1000)}s & committed to Git!`);
+        } catch {
+          setSuccessToast(`✅ File '${file.name}' uploaded successfully!`);
+        }
+      } else {
+        setSuccessToast(`❌ Upload failed with status ${xhr.status}`);
+      }
+    };
+
+    xhr.onerror = () => {
+      setIsUploading(false);
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const assetType = ['mp4', 'mkv'].includes(ext) ? 'video' : ['pdf', 'doc'].includes(ext) ? 'doc' : 'image';
       const sub = assetType === 'video' ? 'videos' : assetType === 'doc' ? 'docs' : 'images';
@@ -552,9 +595,11 @@ export default function App() {
         created_at: new Date().toISOString().split('T')[0]
       };
       setBlobAssets([newAsset, ...blobAssets]);
-      setSuccessToast(`✅ File '${file.name}' uploaded & committed!`);
-      setIsUploading(false);
-    }
+      setSuccessToast(`✅ File '${file.name}' saved locally!`);
+    };
+
+    xhr.open('POST', '/api/blob/upload_file');
+    xhr.send(formData);
   };
 
   // Queue Operations
@@ -1100,7 +1145,7 @@ export default function App() {
 
                     <label className="inline-flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md cursor-pointer">
                       <UploadCloud className="h-4 w-4" />
-                      <span>{isUploading ? 'Uploading & Committing...' : 'Select File to Upload'}</span>
+                      <span>{isUploading ? `Uploading (${uploadProgress}%)...` : 'Select File to Upload'}</span>
                       <input
                         type="file"
                         onChange={handleFileInputChange}
@@ -1109,6 +1154,36 @@ export default function App() {
                       />
                     </label>
                   </div>
+
+                  {/* LIVE UPLOADING PROGRESS & TIME TRACKER CARD */}
+                  {isUploading && (
+                    <div className="bg-slate-900 border border-purple-500/40 rounded-2xl p-4 space-y-3 shadow-xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                        <div className="flex items-center space-x-2 font-bold text-white">
+                          <UploadCloud className="h-4 w-4 text-purple-400 animate-bounce shrink-0" />
+                          <span className="truncate max-w-[200px] sm:max-w-xs">{uploadFileName}</span>
+                        </div>
+                        <div className="flex items-center space-x-3 font-mono text-[11px] self-end sm:self-auto">
+                          <span className="text-purple-300 font-extrabold">{uploadProgress}%</span>
+                          <span className="text-cyan-300">⚡ {uploadSpeed}</span>
+                          <span className="text-emerald-400 font-bold">⏱️ {uploadElapsedTime}s</span>
+                        </div>
+                      </div>
+
+                      {/* Animated Gradient Progress Track */}
+                      <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                        <div
+                          className="bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 h-full rounded-full transition-all duration-300 ease-out shadow-md"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                        <span>{uploadStatusText}</span>
+                        <span className="text-emerald-400 font-bold animate-pulse">● Upload Stream Active</span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Stored Assets Catalog (<code className="text-purple-300 font-mono">app/product2_github_blob_storage/storage/</code>)</span>
