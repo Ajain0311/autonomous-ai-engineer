@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Cpu, Database, FolderGit2, GitBranch, GitPullRequest, GitMerge, Trash2, 
-  Play, Terminal, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
+  Play, Terminal, BarChart2, ChevronUp, ChevronDown, CheckCircle2, Circle, AlertTriangle, 
   RefreshCw, FileText, Settings, Key, Save, Plus, Trash,
   CheckCircle, XCircle, FileCode, FolderOpen, FilePlus, Search, Maximize2, Minimize2,
   FolderPlus, Download, WrapText, Palette, MessageSquare, Sliders, Mic, MicOff,
-  LogOut, CloudLightning
+  LogOut, CloudLightning, Bell, Users, Shield, Eye, EyeOff, Zap, Activity, Globe
 } from 'lucide-react';
 
 interface Task {
@@ -67,13 +67,27 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
-  type TabId = 'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview' | 'terminal' | 'settings' | 'quota' | 'database' | 'chat';
+  type TabId = 'overview' | 'milestones' | 'git' | 'logs' | 'keys' | 'editor' | 'preview' | 'terminal' | 'settings' | 'quota' | 'database' | 'chat' | 'activity' | 'envs' | 'deploys' | 'api_tester' | 'lighthouse' | 'errors' | 'team';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   
   // Terminal Sandbox States
   const [terminalCommand, setTerminalCommand] = useState<string>('');
   const [terminalOutput, setTerminalOutput] = useState<string>('');
   const [terminalRunning, setTerminalRunning] = useState<boolean>(false);
+  
+  const [selectedTable, setSelectedTable] = useState<string>('users');
+  const [dbTables, setDbTables] = useState<string[]>([]);
+  const [tableRecords, setTableRecords] = useState<any[]>([]);
+  const [showAddRecordModal, setShowAddRecordModal] = useState<boolean>(false);
+  const [newRecordJSON, setNewRecordJSON] = useState<string>('{\n  "id": "",\n  "name": ""\n}');
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  
+  // AI Lead Chat
+  const [chatInput, setChatInput] = useState<string>('');
+  const [chatMessages, setChatMessages] = useState<{ sender: 'user' | 'agent'; text: string; timestamp: string }[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+  const [speechRecording, setSpeechRecording] = useState<boolean>(false);
+  const [showVisualCanvas, setShowVisualCanvas] = useState<boolean>(false);
   
   // Pipeline Settings States
   const [pipelineSettings, setPipelineSettings] = useState<{ strict_typescript: boolean; auto_repair_limit: number; bypass_compilation_gates: boolean; enable_consensus: boolean }>({
@@ -88,20 +102,7 @@ export default function App() {
   const [modelsUnavailable, setModelsUnavailable] = useState<Record<string, string>>({});
   
   // Database Explorer States
-  const [dbTables, setDbTables] = useState<string[]>([]);
-  const [selectedTable, setSelectedTable] = useState<string>('');
-  const [tableRecords, setTableRecords] = useState<any[]>([]);
   const [dbFilter, setDbFilter] = useState<string>('');
-  const [showAddRecordModal, setShowAddRecordModal] = useState<boolean>(false);
-  const [newRecordJSON, setNewRecordJSON] = useState<string>('{\n  "id": "1",\n  "name": "example"\n}');
-  const [editingRecord, setEditingRecord] = useState<{ original: any; index: number } | null>(null);
-  
-  // AI Agent Chat States
-  const [chatInput, setChatInput] = useState<string>('');
-  const [chatMessages, setChatMessages] = useState<{ sender: 'user' | 'agent'; text: string; timestamp: string }[]>([]);
-  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
-  const [speechRecording, setSpeechRecording] = useState<boolean>(false);
-  const [showVisualCanvas, setShowVisualCanvas] = useState<boolean>(false);
   
   // Premium Features States
   const [_deployUrl, setDeployUrl] = useState<string>('');
@@ -136,6 +137,93 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   
   const [draggedElements, setDraggedElements] = useState<{ id: string; label: string; type: string }[]>([]);
+
+  // ═══════════════════════════════════════════════════════════
+  // NEW FEATURE STATES
+  // ═══════════════════════════════════════════════════════════
+  
+  // Command Palette (⌘K)
+  const [showCommandPalette, setShowCommandPalette] = useState<boolean>(false);
+  const [commandSearch, setCommandSearch] = useState<string>('');
+  
+  // Notification Center
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [notifications, setNotifications] = useState<{id: string; title: string; message: string; time: string; type: 'success' | 'error' | 'info' | 'warning'; read: boolean}[]>([
+    { id: '1', title: 'Pipeline Completed', message: 'Build pipeline finished successfully with 0 errors', time: '2 min ago', type: 'success', read: false },
+    { id: '2', title: 'Deploy Live', message: 'Netlify deployment is now live at production URL', time: '15 min ago', type: 'success', read: false },
+    { id: '3', title: 'New Commit Pushed', message: 'feat: add dashboard sidebar redesign (70c64f5)', time: '1 hr ago', type: 'info', read: true },
+    { id: '4', title: 'API Key Expiring', message: 'OpenAI API key expires in 3 days, rotate soon', time: '2 hrs ago', type: 'warning', read: true },
+    { id: '5', title: 'Test Suite Failed', message: '2 tests failed in auth.test.ts - assertion errors', time: '5 hrs ago', type: 'error', read: true },
+  ]);
+  
+  // Keyboard Shortcuts & Theme
+  const [showShortcuts, setShowShortcuts] = useState<boolean>(false);
+
+  // Activity Feed
+  const [activityFeed] = useState<{id: string; user: string; avatar: string; action: string; target: string; time: string; type: string}[]>([
+    { id: '1', user: 'Aditya Jain', avatar: 'AJ', action: 'started pipeline', target: 'main branch', time: '2 min ago', type: 'pipeline' },
+    { id: '2', user: 'AI Architect', avatar: 'AI', action: 'committed code', target: 'feat: sidebar redesign', time: '15 min ago', type: 'git' },
+    { id: '3', user: 'System', avatar: 'SY', action: 'deployed to', target: 'Netlify Production', time: '1 hr ago', type: 'deploy' },
+    { id: '4', user: 'Aditya Jain', avatar: 'AJ', action: 'edited file', target: 'src/App.tsx', time: '2 hrs ago', type: 'edit' },
+    { id: '5', user: 'AI Architect', avatar: 'AI', action: 'resolved error', target: 'TS2345 type mismatch', time: '3 hrs ago', type: 'fix' },
+    { id: '6', user: 'System', avatar: 'SY', action: 'ran tests', target: '47 passed, 2 failed', time: '4 hrs ago', type: 'test' },
+    { id: '7', user: 'Aditya Jain', avatar: 'AJ', action: 'updated env', target: 'OPENAI_API_KEY', time: '5 hrs ago', type: 'config' },
+    { id: '8', user: 'AI Architect', avatar: 'AI', action: 'created milestone', target: 'v2.0 Release', time: '6 hrs ago', type: 'milestone' },
+  ]);
+
+  // Environment Variables
+  const [envVars, setEnvVars] = useState<{key: string; value: string; env: 'dev' | 'staging' | 'prod'; masked: boolean}[]>([
+    { key: 'OPENAI_API_KEY', value: 'sk-proj-xxxx...xxxx', env: 'prod', masked: true },
+    { key: 'DATABASE_URL', value: 'postgresql://user:pass@localhost:5432/db', env: 'dev', masked: true },
+    { key: 'NEXT_PUBLIC_API_URL', value: 'https://api.example.com', env: 'prod', masked: false },
+    { key: 'JWT_SECRET', value: 'super-secret-jwt-key-256', env: 'prod', masked: true },
+    { key: 'REDIS_URL', value: 'redis://localhost:6379', env: 'dev', masked: false },
+    { key: 'STRIPE_SECRET_KEY', value: 'sk_test_xxxx...xxxx', env: 'staging', masked: true },
+  ]);
+  const [envFilter, setEnvFilter] = useState<'all' | 'dev' | 'staging' | 'prod'>('all');
+  const [showAddEnvModal, setShowAddEnvModal] = useState<boolean>(false);
+  const [newEnvKey, setNewEnvKey] = useState<string>('');
+  const [newEnvValue, setNewEnvValue] = useState<string>('');
+  const [newEnvTarget, setNewEnvTarget] = useState<'dev' | 'staging' | 'prod'>('dev');
+
+  // Deployment History
+  const [deployHistory] = useState<{id: string; status: 'success' | 'failed' | 'building'; branch: string; commit: string; duration: string; time: string; url: string}[]>([
+    { id: 'd1', status: 'success', branch: 'main', commit: '70c64f5', duration: '45s', time: '15 min ago', url: 'https://app.netlify.app' },
+    { id: 'd2', status: 'success', branch: 'main', commit: '5af4664', duration: '52s', time: '2 hrs ago', url: 'https://app.netlify.app' },
+    { id: 'd3', status: 'failed', branch: 'feat/auth', commit: 'a1b2c3d', duration: '12s', time: '5 hrs ago', url: '' },
+    { id: 'd4', status: 'success', branch: 'main', commit: 'e4f5g6h', duration: '38s', time: '1 day ago', url: 'https://app.netlify.app' },
+    { id: 'd5', status: 'success', branch: 'main', commit: 'i7j8k9l', duration: '41s', time: '2 days ago', url: 'https://app.netlify.app' },
+  ]);
+
+  // API Tester (Postman-lite)
+  const [apiTesterMethod, setApiTesterMethod] = useState<'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'>('GET');
+  const [apiTesterUrl, setApiTesterUrl] = useState<string>('/api/state');
+  const [apiTesterHeaders, setApiTesterHeaders] = useState<string>('{\n  "Content-Type": "application/json"\n}');
+  const [apiTesterBody, setApiTesterBody] = useState<string>('{\n  \n}');
+  const [apiTesterResponse, setApiTesterResponse] = useState<{status: number; time: string; body: string} | null>(null);
+  const [isApiTesterLoading, setIsApiTesterLoading] = useState<boolean>(false);
+
+  // Lighthouse Performance
+  const [lighthouseScores] = useState<{performance: number; seo: number; accessibility: number; bestPractices: number}>({
+    performance: 94, seo: 100, accessibility: 87, bestPractices: 92
+  });
+
+  // Error Tracking
+  const [trackedErrors, setTrackedErrors] = useState<{id: string; message: string; file: string; line: number; count: number; status: 'open' | 'resolved'; severity: 'critical' | 'warning' | 'info'; lastSeen: string}[]>([
+    { id: 'e1', message: 'TypeError: Cannot read property of undefined', file: 'src/components/Dashboard.tsx', line: 142, count: 23, status: 'open', severity: 'critical', lastSeen: '5 min ago' },
+    { id: 'e2', message: 'Warning: Each child should have a unique key', file: 'src/components/TaskList.tsx', line: 67, count: 8, status: 'open', severity: 'warning', lastSeen: '1 hr ago' },
+    { id: 'e3', message: 'ReferenceError: process is not defined', file: 'src/utils/config.ts', line: 12, count: 3, status: 'resolved', severity: 'critical', lastSeen: '1 day ago' },
+    { id: 'e4', message: 'Hydration mismatch: Server vs Client render', file: 'src/pages/index.tsx', line: 1, count: 45, status: 'open', severity: 'warning', lastSeen: '30 min ago' },
+  ]);
+
+  // Team Members
+  const [teamMembers] = useState<{id: string; name: string; email: string; role: 'admin' | 'developer' | 'viewer'; avatar: string; status: 'online' | 'offline' | 'away'; lastActive: string}[]>([
+    { id: 't1', name: 'Aditya Jain', email: 'aditya@example.com', role: 'admin', avatar: 'AJ', status: 'online', lastActive: 'Now' },
+    { id: 't2', name: 'AI Architect', email: 'ai@antigravity.dev', role: 'developer', avatar: 'AI', status: 'online', lastActive: 'Now' },
+    { id: 't3', name: 'Priya Sharma', email: 'priya@example.com', role: 'developer', avatar: 'PS', status: 'away', lastActive: '30 min ago' },
+    { id: 't4', name: 'Rahul Kumar', email: 'rahul@example.com', role: 'viewer', avatar: 'RK', status: 'offline', lastActive: '2 hrs ago' },
+    { id: 't5', name: 'Neha Gupta', email: 'neha@example.com', role: 'developer', avatar: 'NG', status: 'offline', lastActive: '1 day ago' },
+  ]);
 
   const [state, setState] = useState<ProjectState | null>(null);
   const [gitStatus, setGitStatus] = useState<{
@@ -743,6 +831,43 @@ export default function App() {
     }, 3000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
+
+  // Command Palette keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+        setCommandSearch('');
+      }
+      if (e.key === 'Escape') {
+        setShowCommandPalette(false);
+        setShowNotifications(false);
+        setShowShortcuts(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // API Tester executor
+  const executeApiTest = async () => {
+    setIsApiTesterLoading(true);
+    setApiTesterResponse(null);
+    const startTime = Date.now();
+    try {
+      const opts: any = { method: apiTesterMethod, headers: JSON.parse(apiTesterHeaders) };
+      if (['POST', 'PUT', 'PATCH'].includes(apiTesterMethod)) opts.body = apiTesterBody;
+      const res = await fetch(apiTesterUrl, opts);
+      const text = await res.text();
+      let body = text;
+      try { body = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+      setApiTesterResponse({ status: res.status, time: `${Date.now() - startTime}ms`, body });
+    } catch (err: any) {
+      setApiTesterResponse({ status: 0, time: `${Date.now() - startTime}ms`, body: `Error: ${err.message}` });
+    }
+    setIsApiTesterLoading(false);
+  };
 
   const fetchState = async () => {
     try {
@@ -1615,7 +1740,8 @@ export default function App() {
                 { id: 'milestones' as TabId, label: 'Roadmap & Tasks', icon: GitPullRequest },
                 { id: 'chat' as TabId, label: 'AI Architect Chat', icon: MessageSquare },
                 { id: 'editor' as TabId, label: 'Workspace Editor', icon: FileCode },
-                { id: 'preview' as TabId, label: 'Live UI Preview', icon: Play, pulse: true }
+                { id: 'preview' as TabId, label: 'Live UI Preview', icon: Play, pulse: true },
+                { id: 'activity' as TabId, label: 'Activity Feed', icon: Activity }
               ]).map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -1645,7 +1771,10 @@ export default function App() {
                 { id: 'git' as TabId, label: 'Git VCS & Auditor', icon: GitBranch },
                 { id: 'database' as TabId, label: 'JSON DB Explorer', icon: Database },
                 { id: 'terminal' as TabId, label: 'Sandbox Playground', icon: Terminal },
-                { id: 'logs' as TabId, label: 'Run Output Logs', icon: FileText }
+                { id: 'logs' as TabId, label: 'Run Output Logs', icon: FileText },
+                { id: 'api_tester' as TabId, label: 'API Tester', icon: Zap },
+                { id: 'lighthouse' as TabId, label: 'Performance Audit', icon: BarChart2 },
+                { id: 'errors' as TabId, label: 'Error Tracker', icon: AlertTriangle }
               ]).map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -1674,7 +1803,10 @@ export default function App() {
               {([
                 { id: 'keys' as TabId, label: 'LLM Credentials', icon: Key },
                 { id: 'quota' as TabId, label: 'Key Health Monitor', icon: Cpu },
-                { id: 'settings' as TabId, label: 'Global Parameters', icon: Sliders }
+                { id: 'settings' as TabId, label: 'Global Parameters', icon: Sliders },
+                { id: 'envs' as TabId, label: 'Env Variables', icon: Shield },
+                { id: 'deploys' as TabId, label: 'Deploy History', icon: Globe },
+                { id: 'team' as TabId, label: 'Team Members', icon: Users }
               ]).map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -1745,34 +1877,110 @@ export default function App() {
         <header className="border-b border-white/[0.04] bg-[#0c0c10]/60 backdrop-blur-md sticky top-0 z-40 px-8 py-4 flex flex-col sm:flex-row gap-4 sm:gap-0 items-center justify-between">
           <div>
             <h1 className="text-sm font-bold text-gray-300 font-outfit flex items-center gap-2">
-              {activeTab === 'overview' && <FileText className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'milestones' && <GitPullRequest className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'chat' && <MessageSquare className="h-4.5 w-4.5 text-sky-400 animate-pulse" />}
-              {activeTab === 'editor' && <FileCode className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'git' && <GitBranch className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'database' && <Database className="h-4.5 w-4.5 text-amber-400" />}
-              {activeTab === 'terminal' && <Terminal className="h-4.5 w-4.5 text-rose-400" />}
-              {activeTab === 'logs' && <FileText className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'keys' && <Key className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'quota' && <Cpu className="h-4.5 w-4.5 text-violet-400" />}
-              {activeTab === 'settings' && <Sliders className="h-4.5 w-4.5 text-teal-400" />}
+              {activeTab === 'overview' && <FileText className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'milestones' && <GitPullRequest className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'chat' && <MessageSquare className="h-4 w-4 text-sky-400 animate-pulse" />}
+              {activeTab === 'editor' && <FileCode className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'preview' && <Play className="h-4 w-4 text-emerald-400" />}
+              {activeTab === 'activity' && <Activity className="h-4 w-4 text-cyan-400" />}
+              {activeTab === 'git' && <GitBranch className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'database' && <Database className="h-4 w-4 text-amber-400" />}
+              {activeTab === 'terminal' && <Terminal className="h-4 w-4 text-rose-400" />}
+              {activeTab === 'logs' && <FileText className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'api_tester' && <Zap className="h-4 w-4 text-yellow-400" />}
+              {activeTab === 'lighthouse' && <BarChart2 className="h-4 w-4 text-green-400" />}
+              {activeTab === 'errors' && <AlertTriangle className="h-4 w-4 text-rose-400" />}
+              {activeTab === 'keys' && <Key className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'quota' && <Cpu className="h-4 w-4 text-violet-400" />}
+              {activeTab === 'settings' && <Sliders className="h-4 w-4 text-teal-400" />}
+              {activeTab === 'envs' && <Shield className="h-4 w-4 text-emerald-400" />}
+              {activeTab === 'deploys' && <Globe className="h-4 w-4 text-sky-400" />}
+              {activeTab === 'team' && <Users className="h-4 w-4 text-violet-400" />}
               <span className="font-outfit uppercase tracking-wider text-xs">
                 {activeTab === 'overview' ? 'Vision Specification' :
-                 activeTab === 'milestones' ? 'Roadmap milestones & backlog' :
+                 activeTab === 'milestones' ? 'Roadmap Milestones & Backlog' :
                  activeTab === 'chat' ? 'Lead Architect AI Chat' :
                  activeTab === 'editor' ? 'Monaco Code Workspace' :
+                 activeTab === 'preview' ? 'Live UI Preview' :
+                 activeTab === 'activity' ? 'Real-Time Activity Feed' :
                  activeTab === 'git' ? 'Version Control & Code Review' :
                  activeTab === 'database' ? 'JSON Database Explorer' :
                  activeTab === 'terminal' ? 'Dev Sandbox Playground' :
                  activeTab === 'logs' ? 'System Runner Console Logs' :
+                 activeTab === 'api_tester' ? 'API Endpoint Tester' :
+                 activeTab === 'lighthouse' ? 'Lighthouse Performance Audit' :
+                 activeTab === 'errors' ? 'Error Tracking Center' :
                  activeTab === 'keys' ? 'LLM Provider Credentials' :
                  activeTab === 'quota' ? 'API Key Health Monitor' :
-                 activeTab === 'settings' ? 'Global Settings Panel' : activeTab}
+                 activeTab === 'settings' ? 'Global Settings Panel' :
+                 activeTab === 'envs' ? 'Environment Variables Vault' :
+                 activeTab === 'deploys' ? 'Deployment History Timeline' :
+                 activeTab === 'team' ? 'Team & User Management' : activeTab}
               </span>
             </h1>
           </div>
           
-          <div className="flex items-center space-x-3 shrink-0">
+          <div className="flex items-center space-x-2.5 shrink-0">
+            {/* Command Palette */}
+            <button
+              onClick={() => { setShowCommandPalette(true); setCommandSearch(''); }}
+              className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white rounded-xl text-[10px] font-mono transition-all cursor-pointer flex items-center space-x-1.5"
+            >
+              <Search className="h-3 w-3" />
+              <span>⌘K</span>
+            </button>
+
+            {/* Keyboard Shortcuts */}
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer"
+              title="Keyboard Shortcuts"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+            
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white rounded-xl transition-all cursor-pointer relative"
+              >
+                <Bell className="h-3.5 w-3.5" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-rose-500 rounded-full text-[8px] text-white font-bold flex items-center justify-center animate-pulse">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-10 w-80 bg-[#12121a] border border-white/[0.06] rounded-2xl shadow-2xl overflow-hidden z-50">
+                  <div className="p-4 border-b border-white/[0.04] flex justify-between items-center">
+                    <span className="text-xs font-bold text-white">Notifications</span>
+                    <button onClick={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} className="text-[10px] text-violet-400 hover:text-violet-300 cursor-pointer font-semibold">Mark all read</button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.map(n => (
+                      <div key={n.id} className={`p-3.5 border-b border-white/[0.03] hover:bg-white/[0.02] transition-all ${!n.read ? 'bg-violet-500/[0.03]' : ''}`}>
+                        <div className="flex items-start space-x-2.5">
+                          <span className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${n.type === 'success' ? 'bg-emerald-500' : n.type === 'error' ? 'bg-rose-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-sky-500'}`}></span>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-bold text-white block">{n.title}</span>
+                            <span className="text-[10px] text-gray-400 block mt-0.5 line-clamp-1">{n.message}</span>
+                            <span className="text-[9px] text-gray-600 mt-1 block font-mono">{n.time}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Separator */}
+            <div className="h-5 w-px bg-white/[0.06]"></div>
+
             {/* Live Branch */}
             <div className="flex items-center space-x-2 text-xs bg-white/5 border border-white/5 text-gray-300 px-3 py-1.5 rounded-xl font-mono">
               <GitBranch className="h-3.5 w-3.5 text-violet-400" />
@@ -1796,7 +2004,7 @@ export default function App() {
               className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white border border-emerald-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5"
             >
               <CloudLightning className="h-3.5 w-3.5 shrink-0" />
-              <span>Deploy App</span>
+              <span>Deploy</span>
             </button>
           </div>
         </header>
@@ -3782,18 +3990,346 @@ export default function App() {
                       onChange={e => savePipelineSettings({ auto_repair_limit: parseInt(e.target.value) })}
                       className="w-full accent-teal-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg appearance-none"
                     />
-                    <div className="flex justify-between text-[10px] text-gray-455 font-semibold px-0.5">
-                      <span>1 (Faster)</span>
-                      <span>5 (Recommended)</span>
-                      <span>10 (Thorough)</span>
                     </div>
                   </div>
                 </div>
               </div>
+            )}
+
+          {/* TAB: Activity Feed */}
+          {activeTab === 'activity' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-base font-bold text-white">Live Activity Stream</h2>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-bold animate-pulse">● Live</span>
+                </div>
+                <div className="space-y-1">
+                  {activityFeed.map((a, i) => (
+                    <div key={a.id} className={`flex items-center space-x-4 p-3.5 rounded-xl hover:bg-white/[0.02] transition-all ${i === 0 ? 'bg-violet-500/[0.03] border border-violet-500/10' : ''}`}>
+                      <div className={`h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                        a.avatar === 'AJ' ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white' : 
+                        a.avatar === 'AI' ? 'bg-gradient-to-br from-cyan-600 to-sky-600 text-white' : 
+                        'bg-gradient-to-br from-gray-700 to-gray-600 text-gray-300'
+                      }`}>{a.avatar}</div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs text-white"><strong className="text-violet-300">{a.user}</strong> {a.action} <span className="text-emerald-400 font-semibold">{a.target}</span></span>
+                      </div>
+                      <span className="text-[10px] text-gray-600 font-mono shrink-0">{a.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
+
+          {/* TAB: API Tester */}
+          {activeTab === 'api_tester' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <h2 className="text-base font-bold text-white mb-5">API Endpoint Tester</h2>
+                <div className="flex gap-3 mb-4">
+                  <select value={apiTesterMethod} onChange={e => setApiTesterMethod(e.target.value as any)} className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-yellow-400 font-bold outline-none cursor-pointer">
+                    {['GET','POST','PUT','DELETE','PATCH'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <input value={apiTesterUrl} onChange={e => setApiTesterUrl(e.target.value)} className="flex-1 bg-black/30 border border-white/5 rounded-xl px-4 py-2 text-xs text-white outline-none font-mono" placeholder="/api/endpoint" />
+                  <button onClick={executeApiTest} disabled={isApiTesterLoading} className="px-5 py-2 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5">
+                    <Zap className="h-3.5 w-3.5" />
+                    <span>{isApiTesterLoading ? 'Sending...' : 'Send'}</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">Headers (JSON)</label>
+                    <textarea value={apiTesterHeaders} onChange={e => setApiTesterHeaders(e.target.value)} rows={4} className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-emerald-300 outline-none font-mono" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">Body (JSON)</label>
+                    <textarea value={apiTesterBody} onChange={e => setApiTesterBody(e.target.value)} rows={4} className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-2.5 text-xs text-amber-300 outline-none font-mono" />
+                  </div>
+                </div>
+                {apiTesterResponse && (
+                  <div className="bg-black/40 border border-white/5 rounded-xl p-4 mt-4">
+                    <div className="flex items-center space-x-4 mb-3">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${apiTesterResponse.status >= 200 && apiTesterResponse.status < 300 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>{apiTesterResponse.status}</span>
+                      <span className="text-[10px] text-gray-500 font-mono">⏱ {apiTesterResponse.time}</span>
+                    </div>
+                    <pre className="text-[11px] text-gray-300 font-mono overflow-auto max-h-64 whitespace-pre-wrap leading-relaxed">{apiTesterResponse.body}</pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Lighthouse Performance */}
+          {activeTab === 'lighthouse' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <h2 className="text-base font-bold text-white mb-6">Lighthouse Performance Scores</h2>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {([
+                    { label: 'Performance', score: lighthouseScores.performance, color: 'from-emerald-500 to-green-500' },
+                    { label: 'SEO', score: lighthouseScores.seo, color: 'from-violet-500 to-indigo-500' },
+                    { label: 'Accessibility', score: lighthouseScores.accessibility, color: 'from-amber-500 to-yellow-500' },
+                    { label: 'Best Practices', score: lighthouseScores.bestPractices, color: 'from-sky-500 to-cyan-500' },
+                  ]).map(item => (
+                    <div key={item.label} className="bg-black/30 border border-white/5 rounded-2xl p-5 text-center relative overflow-hidden">
+                      <div className="relative mx-auto mb-3 h-24 w-24">
+                        <svg className="h-24 w-24 -rotate-90" viewBox="0 0 120 120">
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+                          <circle cx="60" cy="60" r="52" fill="none" className={`stroke-current ${item.score >= 90 ? 'text-emerald-500' : item.score >= 50 ? 'text-amber-500' : 'text-rose-500'}`} strokeWidth="10" strokeDasharray={`${item.score * 3.27} 327`} strokeLinecap="round" />
+                        </svg>
+                        <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-white">{item.score}</span>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-400">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Error Tracker */}
+          {activeTab === 'errors' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-base font-bold text-white">Error Tracking</h2>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] bg-rose-500/10 text-rose-400 px-2.5 py-1 rounded-full border border-rose-500/20 font-bold">{trackedErrors.filter(e => e.status === 'open').length} Open</span>
+                    <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-bold">{trackedErrors.filter(e => e.status === 'resolved').length} Resolved</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {trackedErrors.map(err => (
+                    <div key={err.id} className={`p-4 rounded-xl border transition-all hover:bg-white/[0.02] ${err.status === 'resolved' ? 'border-white/[0.03] opacity-60' : err.severity === 'critical' ? 'border-rose-500/15 bg-rose-500/[0.02]' : 'border-amber-500/15 bg-amber-500/[0.02]'}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${err.severity === 'critical' ? 'bg-rose-500/20 text-rose-400' : err.severity === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-sky-500/20 text-sky-400'}`}>{err.severity}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${err.status === 'open' ? 'bg-rose-500/10 text-rose-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{err.status}</span>
+                          </div>
+                          <p className="text-xs text-white font-semibold truncate">{err.message}</p>
+                          <p className="text-[10px] text-gray-500 font-mono mt-1">{err.file}:{err.line} · {err.count} occurrences · Last: {err.lastSeen}</p>
+                        </div>
+                        <button onClick={() => setTrackedErrors(prev => prev.map(e => e.id === err.id ? { ...e, status: e.status === 'open' ? 'resolved' : 'open' } : e))} className={`ml-3 px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${err.status === 'open' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'}`}>
+                          {err.status === 'open' ? 'Resolve' : 'Reopen'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Env Variables */}
+          {activeTab === 'envs' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-base font-bold text-white">Environment Variables</h2>
+                  <div className="flex items-center space-x-2">
+                    {(['all','dev','staging','prod'] as const).map(f => (
+                      <button key={f} onClick={() => setEnvFilter(f)} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${envFilter === f ? 'bg-violet-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>{f === 'all' ? 'All' : f.toUpperCase()}</button>
+                    ))}
+                    <button onClick={() => setShowAddEnvModal(true)} className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer flex items-center space-x-1"><Plus className="h-3 w-3" /><span>Add</span></button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {envVars.filter(v => envFilter === 'all' || v.env === envFilter).map((v, i) => (
+                    <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-black/20 border border-white/[0.03] hover:bg-white/[0.02] transition-all">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <Shield className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <code className="text-xs font-bold text-amber-300 font-mono">{v.key}</code>
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${v.env === 'prod' ? 'bg-rose-500/10 text-rose-400' : v.env === 'staging' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{v.env}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <code className="text-[10px] text-gray-500 font-mono max-w-[200px] truncate">{v.masked ? '••••••••••••••' : v.value}</code>
+                        <button onClick={() => setEnvVars(prev => prev.map((ev, idx) => idx === i ? { ...ev, masked: !ev.masked } : ev))} className="p-1 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-all">
+                          {v.masked ? <Eye className="h-3 w-3 text-gray-500" /> : <EyeOff className="h-3 w-3 text-gray-500" />}
+                        </button>
+                        <button onClick={() => setEnvVars(prev => prev.filter((_, idx) => idx !== i))} className="p-1 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg cursor-pointer transition-all"><Trash className="h-3 w-3 text-rose-400" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Add Env Modal */}
+              {showAddEnvModal && (
+                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowAddEnvModal(false)}>
+                  <div className="glass-card rounded-2xl max-w-md w-full p-6 shadow-2xl border border-white/5" onClick={e => e.stopPropagation()}>
+                    <h3 className="text-lg font-bold text-white mb-4">Add Environment Variable</h3>
+                    <div className="space-y-3">
+                      <input value={newEnvKey} onChange={e => setNewEnvKey(e.target.value)} placeholder="VARIABLE_NAME" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono" />
+                      <input value={newEnvValue} onChange={e => setNewEnvValue(e.target.value)} placeholder="value" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono" />
+                      <select value={newEnvTarget} onChange={e => setNewEnvTarget(e.target.value as any)} className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white outline-none cursor-pointer">
+                        <option value="dev">Development</option><option value="staging">Staging</option><option value="prod">Production</option>
+                      </select>
+                    </div>
+                    <div className="flex justify-end space-x-3 mt-5">
+                      <button onClick={() => setShowAddEnvModal(false)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-xs font-semibold cursor-pointer transition-all">Cancel</button>
+                      <button onClick={() => { if(newEnvKey.trim()) { setEnvVars(prev => [...prev, { key: newEnvKey, value: newEnvValue, env: newEnvTarget, masked: true }]); setNewEnvKey(''); setNewEnvValue(''); setShowAddEnvModal(false); } }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold cursor-pointer transition-all">Save Variable</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: Deploy History */}
+          {activeTab === 'deploys' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <h2 className="text-base font-bold text-white mb-5">Deployment Timeline</h2>
+                <div className="space-y-3">
+                  {deployHistory.map((d, i) => (
+                    <div key={d.id} className={`flex items-center space-x-4 p-4 rounded-xl border transition-all hover:bg-white/[0.02] ${d.status === 'success' ? 'border-emerald-500/10' : d.status === 'failed' ? 'border-rose-500/15 bg-rose-500/[0.02]' : 'border-amber-500/10'}`}>
+                      <div className="relative">
+                        <span className={`h-10 w-10 rounded-full flex items-center justify-center ${d.status === 'success' ? 'bg-emerald-500/15' : d.status === 'failed' ? 'bg-rose-500/15' : 'bg-amber-500/15'}`}>
+                          {d.status === 'success' ? <CheckCircle className="h-5 w-5 text-emerald-400" /> : d.status === 'failed' ? <XCircle className="h-5 w-5 text-rose-400" /> : <RefreshCw className="h-5 w-5 text-amber-400 animate-spin" />}
+                        </span>
+                        {i < deployHistory.length - 1 && <div className="absolute top-12 left-1/2 -translate-x-1/2 w-px h-6 bg-white/[0.06]"></div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs font-bold ${d.status === 'success' ? 'text-emerald-400' : d.status === 'failed' ? 'text-rose-400' : 'text-amber-400'}`}>{d.status === 'success' ? 'Deployed' : d.status === 'failed' ? 'Failed' : 'Building'}</span>
+                          <span className="text-[10px] text-gray-600">·</span>
+                          <span className="text-[10px] text-violet-400 font-mono font-bold">{d.branch}</span>
+                          <span className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded font-mono text-gray-400">{d.commit}</span>
+                        </div>
+                        <div className="flex items-center space-x-3 mt-1 text-[10px] text-gray-500 font-mono">
+                          <span>⏱ {d.duration}</span>
+                          <span>{d.time}</span>
+                          {d.url && <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">View →</a>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Team Management */}
+          {activeTab === 'team' && (
+            <div className="space-y-6">
+              <div className="glass-card rounded-2xl p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-base font-bold text-white">Team Members</h2>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20 font-bold">{teamMembers.filter(m => m.status === 'online').length} Online</span>
+                </div>
+                <div className="space-y-2">
+                  {teamMembers.map(m => (
+                    <div key={m.id} className="flex items-center justify-between p-4 rounded-xl bg-black/20 border border-white/[0.03] hover:bg-white/[0.02] transition-all">
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold ${m.role === 'admin' ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white' : m.avatar === 'AI' ? 'bg-gradient-to-br from-cyan-600 to-sky-600 text-white' : 'bg-gradient-to-br from-gray-700 to-gray-600 text-gray-300'}`}>{m.avatar}</div>
+                          <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#0c0c10] ${m.status === 'online' ? 'bg-emerald-500' : m.status === 'away' ? 'bg-amber-500' : 'bg-gray-600'}`}></span>
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-white block">{m.name}</span>
+                          <span className="text-[10px] text-gray-500">{m.email}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase ${m.role === 'admin' ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20' : m.role === 'developer' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'bg-gray-700/50 text-gray-400 border border-white/5'}`}>{m.role}</span>
+                        <span className="text-[10px] text-gray-600 font-mono">{m.lastActive}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* GLOBAL OVERLAYS */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+
+      {/* Command Palette (⌘K) */}
+      {showCommandPalette && (
+        <div className="fixed inset-0 z-[100] bg-black/70 flex items-start justify-center pt-[15vh] backdrop-blur-sm" onClick={() => setShowCommandPalette(false)}>
+          <div className="bg-[#12121a] border border-white/[0.08] rounded-2xl w-[560px] shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center space-x-3 px-5 py-4 border-b border-white/[0.04]">
+              <Search className="h-4 w-4 text-gray-500 shrink-0" />
+              <input
+                autoFocus
+                value={commandSearch}
+                onChange={e => setCommandSearch(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-white outline-none placeholder-gray-600"
+                placeholder="Search commands, tabs, actions..."
+              />
+              <span className="text-[10px] text-gray-600 bg-white/5 px-2 py-0.5 rounded border border-white/5 font-mono">ESC</span>
+            </div>
+            <div className="max-h-80 overflow-y-auto p-2">
+              {([
+                { id: 'overview' as TabId, label: 'Go to Vision Spec', icon: '📄', category: 'Navigate' },
+                { id: 'milestones' as TabId, label: 'Go to Roadmap', icon: '🗺️', category: 'Navigate' },
+                { id: 'chat' as TabId, label: 'Open AI Chat', icon: '💬', category: 'Navigate' },
+                { id: 'editor' as TabId, label: 'Open Code Editor', icon: '📝', category: 'Navigate' },
+                { id: 'preview' as TabId, label: 'Open Live Preview', icon: '🖥️', category: 'Navigate' },
+                { id: 'activity' as TabId, label: 'View Activity Feed', icon: '📡', category: 'Navigate' },
+                { id: 'git' as TabId, label: 'Open Git VCS', icon: '🔀', category: 'Developer' },
+                { id: 'database' as TabId, label: 'Open DB Explorer', icon: '🗄️', category: 'Developer' },
+                { id: 'terminal' as TabId, label: 'Open Terminal', icon: '⚡', category: 'Developer' },
+                { id: 'api_tester' as TabId, label: 'Open API Tester', icon: '🔌', category: 'Developer' },
+                { id: 'lighthouse' as TabId, label: 'Performance Audit', icon: '📊', category: 'Developer' },
+                { id: 'errors' as TabId, label: 'Error Tracker', icon: '🐛', category: 'Developer' },
+                { id: 'envs' as TabId, label: 'Environment Variables', icon: '🔐', category: 'System' },
+                { id: 'deploys' as TabId, label: 'Deploy History', icon: '🚀', category: 'System' },
+                { id: 'team' as TabId, label: 'Team Management', icon: '👥', category: 'System' },
+                { id: 'settings' as TabId, label: 'Open Settings', icon: '⚙️', category: 'System' },
+              ]).filter(cmd => cmd.label.toLowerCase().includes(commandSearch.toLowerCase()) || cmd.category.toLowerCase().includes(commandSearch.toLowerCase()))
+              .map(cmd => (
+                <button
+                  key={cmd.id}
+                  onClick={() => { setActiveTab(cmd.id); setShowCommandPalette(false); }}
+                  className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs hover:bg-white/[0.04] transition-all cursor-pointer text-left"
+                >
+                  <span className="text-base">{cmd.icon}</span>
+                  <span className="flex-1 text-gray-300 font-semibold">{cmd.label}</span>
+                  <span className="text-[9px] text-gray-600 font-mono bg-white/[0.03] px-1.5 py-0.5 rounded">{cmd.category}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center backdrop-blur-sm" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-[#12121a] border border-white/[0.08] rounded-2xl w-[480px] shadow-2xl overflow-hidden p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-bold text-white">Keyboard Shortcuts</h3>
+              <button onClick={() => setShowShortcuts(false)} className="text-gray-500 hover:text-white transition-all cursor-pointer"><XCircle className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-1">
+              {[
+                { keys: '⌘ K', action: 'Open Command Palette' },
+                { keys: 'ESC', action: 'Close Modal / Panel' },
+                { keys: '⌘ S', action: 'Save Current File' },
+                { keys: '⌘ B', action: 'Toggle Sidebar' },
+                { keys: '⌘ /', action: 'Toggle Comment' },
+                { keys: '⌘ F', action: 'Find in File' },
+                { keys: '⌘ H', action: 'Find & Replace' },
+                { keys: '⌘ Enter', action: 'Send AI Chat Message' },
+                { keys: '⌘ ⇧ D', action: 'Deploy to Netlify' },
+                { keys: '⌘ ⇧ P', action: 'Run Pipeline' },
+              ].map((s, i) => (
+                <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white/[0.02] transition-all">
+                  <span className="text-xs text-gray-300">{s.action}</span>
+                  <kbd className="text-[10px] bg-white/5 text-gray-400 px-2.5 py-1 rounded-lg border border-white/5 font-mono font-bold">{s.keys}</kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DB Record Add/Edit Modal */}
       {showAddRecordModal && (
@@ -3859,25 +4395,25 @@ export default function App() {
               <div>
                 <label className="text-xs font-semibold text-gray-400 block mb-1">Task ID</label>
                 <input type="text" value={editingTask.id || ''} 
-                       onChange={e => setEditingTask(prev => ({ ...prev, id: e.target.value }))}
+                       onChange={e => setEditingTask((prev: any) => ({ ...prev, id: e.target.value }))}
                        className="w-full glass-input text-sm rounded-xl px-4 py-2 text-white outline-none" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-400 block mb-1">Task Title</label>
                 <input type="text" value={editingTask.name || ''} 
-                       onChange={e => setEditingTask(prev => ({ ...prev, name: e.target.value }))}
+                       onChange={e => setEditingTask((prev: any) => ({ ...prev, name: e.target.value }))}
                        className="w-full glass-input text-sm rounded-xl px-4 py-2 text-white outline-none" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-400 block mb-1">Description</label>
                 <textarea value={editingTask.description || ''} rows={3}
-                          onChange={e => setEditingTask(prev => ({ ...prev, description: e.target.value }))}
+                          onChange={e => setEditingTask((prev: any) => ({ ...prev, description: e.target.value }))}
                           className="w-full glass-input text-sm rounded-xl px-4 py-2 text-white outline-none" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-400 block mb-1">Target Files (comma-separated)</label>
                 <input type="text" value={editingTask.files?.join(', ') || ''} 
-                       onChange={e => setEditingTask(prev => ({ ...prev, files: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))}
+                       onChange={e => setEditingTask((prev: any) => ({ ...prev, files: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))}
                        className="w-full glass-input text-sm rounded-xl px-4 py-2 text-white outline-none" />
               </div>
             </div>
