@@ -1,5 +1,2 @@
 [
-  { "id": 1, "filename": "logo_banner.png", "type": "image", "url": "/storage/images/logo_banner.png", "size": "450 KB", "created_at": "2026-08-03" },
-  { "id": 2, "filename": "demo_walkthrough.mp4", "type": "video", "url": "/storage/videos/demo_walkthrough.mp4", "size": "12.4 MB", "created_at": "2026-08-03" },
-  { "id": 3, "filename": "user_guide.pdf", "type": "doc", "url": "/storage/docs/user_guide.pdf", "size": "2.1 MB", "created_at": "2026-08-03" }
 ]
