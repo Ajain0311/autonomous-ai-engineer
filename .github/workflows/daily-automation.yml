@@ -82,7 +82,11 @@ jobs:
           git add automation/project_state.yaml automation/logs/ || true
           git diff --staged --quiet || \
             git commit -m "chore(state): sync state $(date -u +'%Y-%m-%d %H:%M UTC')"
-          # Rebase onto the branch this run checked out (not hardcoded main —
-          # dispatch runs from other branches would hit rebase conflicts).
-          git pull --rebase origin "${GITHUB_REF_NAME}" || git rebase --abort
+          # Stash any leftover unstaged changes so rebase doesn't choke,
+          # then fetch + rebase instead of `pull --rebase` to avoid the
+          # "cannot pull with rebase: You have unstaged changes" error.
+          git stash --include-untracked || true
+          git fetch origin "${GITHUB_REF_NAME}"
+          git rebase "origin/${GITHUB_REF_NAME}" || git rebase --abort
+          git stash pop || true
           git push origin "HEAD:${GITHUB_REF_NAME}"
