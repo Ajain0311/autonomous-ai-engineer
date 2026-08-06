@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { 
   Flame, GitCommit, Calendar, Sparkles, Shield, ShieldCheck, Database, Plus, CheckCircle2, 
   RefreshCw, Save, Edit3, Layers, Settings, FileText, Code, Check, 
@@ -366,22 +367,40 @@ export default function App() {
   };
 
   // Fetch Master Data
+  // Fetches live row count for a single table entry
+  const fetchLiveRowCount = async (entry: MasterTableEntry): Promise<MasterTableEntry> => {
+    try {
+      const res = await fetch(`/api/products/data/${entry.projectId}/${entry.tableName}`);
+      const data = await res.json();
+      const rows = Array.isArray(data.rows) ? data.rows : Array.isArray(data) ? data : [];
+      return { ...entry, rowCount: rows.length };
+    } catch {
+      return entry;
+    }
+  };
+
   const fetchMasterTables = () => {
+    const defaultTables: MasterTableEntry[] = [
+      { tableName: 'rules', projectId: 'product1_adblocker_extension', projectName: 'Product 01: AdBlocker Extension', description: 'Dynamic DNR network & cosmetic rules', rowCount: 0 },
+      { tableName: 'blob_assets', projectId: 'product2_github_blob_storage', projectName: 'Product 02: GitHub Blob Storage', description: 'Images, MP4 Videos & PDF Documents catalog', rowCount: 0 },
+      { tableName: 'messages', projectId: 'product3_email_chat_mvp', projectName: 'Product 03: Email Micro-Chat MVP', description: 'Rocket.Chat style thread messages', rowCount: 0 },
+      { tableName: 'users', projectId: 'system_db', projectName: 'Global System Database', description: 'Root level authentication & access table', rowCount: 0 }
+    ];
+
+    const applyLiveCounts = async (tables: MasterTableEntry[]) => {
+      const withCounts = await Promise.all(tables.map(fetchLiveRowCount));
+      setMasterTables(withCounts);
+    };
+
     fetch('/api/db/master_tables')
       .then(res => res.json())
       .then(data => {
-        if (data.master_tables && data.master_tables.length > 0) {
-          setMasterTables(data.master_tables);
-        } else {
-          setMasterTables([
-            { tableName: 'rules', projectId: 'product1_adblocker_extension', projectName: 'Product 01: AdBlocker Extension', description: 'Dynamic DNR network & cosmetic rules', rowCount: 4 },
-            { tableName: 'blob_assets', projectId: 'product2_github_blob_storage', projectName: 'Product 02: GitHub Blob Storage', description: 'Images, MP4 Videos & PDF Documents catalog', rowCount: 3 },
-            { tableName: 'messages', projectId: 'product3_email_chat_mvp', projectName: 'Product 03: Email Micro-Chat MVP', description: 'Rocket.Chat style thread messages', rowCount: 2 },
-            { tableName: 'users', projectId: 'system_db', projectName: 'Global System Database', description: 'Root level authentication & access table', rowCount: 3 }
-          ]);
-        }
+        const tables = (data.master_tables && data.master_tables.length > 0)
+          ? data.master_tables
+          : defaultTables;
+        applyLiveCounts(tables);
       })
-      .catch(() => console.log('Master tables fallback'));
+      .catch(() => applyLiveCounts(defaultTables));
   };
 
   const fetchAdblockRules = () => {
@@ -695,6 +714,81 @@ export default function App() {
     downloadAnchor.click();
     downloadAnchor.remove();
     setSuccessToast(`📥 Downloaded ${inspectTableModal.tableName}.json!`);
+  };
+
+  // Export Inspect Table to Excel (.xlsx) with conditional formatting & data validation
+  const handleExportInspectTableXLSX = () => {
+    if (!inspectTableModal || inspectRows.length === 0) return;
+    const tableName = inspectTableModal.tableName;
+    const columns = Array.from(new Set(inspectRows.flatMap(r => Object.keys(r))));
+
+    // Build worksheet data: header row + data rows
+    const wsData: any[][] = [
+      columns,
+      ...inspectRows.map(row => columns.map(col => row[col] !== undefined ? row[col] : ''))
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // --- Column widths ---
+    ws['!cols'] = columns.map(() => ({ wch: 20 }));
+
+    // --- Header row styling (bold, cyan-ish fill) ---
+    columns.forEach((col, cIdx) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: cIdx });
+      if (!ws[cellRef]) ws[cellRef] = { v: col, t: 's' };
+      ws[cellRef].s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '0E7490' } }, // cyan-700
+        alignment: { horizontal: 'center' },
+        border: { bottom: { style: 'medium', color: { rgb: '06B6D4' } } }
+      };
+    });
+
+    // --- Data rows: conditional formatting per cell type ---
+    inspectRows.forEach((row, rIdx) => {
+      columns.forEach((col, cIdx) => {
+        const cellRef = XLSX.utils.encode_cell({ r: rIdx + 1, c: cIdx });
+        if (!ws[cellRef]) return;
+        const val = row[col];
+        const isNum = typeof val === 'number' || (!isNaN(Number(val)) && val !== '' && val !== null);
+        const isBool = typeof val === 'boolean' || val === 'true' || val === 'false';
+        const isDate = col.toLowerCase().includes('date') || col.toLowerCase().includes('_at') || col.toLowerCase().includes('time');
+
+        let fill = { fgColor: { rgb: '0F172A' } }; // default dark bg
+        let font = { color: { rgb: 'CBD5E1' } };
+
+        if (isBool) {
+          const boolVal = val === true || val === 'true';
+          fill = { fgColor: { rgb: boolVal ? '14532D' : '7F1D1D' } }; // green-900 / red-900
+          font = { color: { rgb: boolVal ? '86EFAC' : 'FCA5A5' } };   // green-300 / red-300
+          ws[cellRef].v = boolVal ? 'TRUE' : 'FALSE';
+          ws[cellRef].t = 's';
+        } else if (isNum && !isDate) {
+          fill = { fgColor: { rgb: '713F12' } }; // yellow-900
+          font = { color: { rgb: 'FDE047' } };   // yellow-300
+          ws[cellRef].t = 'n';
+          ws[cellRef].v = Number(val);
+        } else if (isDate && val) {
+          fill = { fgColor: { rgb: '312E81' } }; // indigo-900
+          font = { color: { rgb: 'A5B4FC' } };   // indigo-300
+          ws[cellRef].z = 'YYYY-MM-DD HH:MM';
+        }
+
+        ws[cellRef].s = { fill, font, alignment: { wrapText: false } };
+      });
+    });
+
+    // --- Freeze header row ---
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    // --- Auto-filter on header row ---
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: inspectRows.length, c: columns.length - 1 } }) };
+
+    XLSX.utils.book_append_sheet(wb, ws, tableName.slice(0, 31));
+    XLSX.writeFile(wb, `${tableName}.xlsx`, { bookType: 'xlsx', cellStyles: true });
+    setSuccessToast(`📊 Downloaded ${tableName}.xlsx with conditional formatting!`);
   };
 
   // Whitelist Handlers (Product 01)
@@ -1333,10 +1427,10 @@ export default function App() {
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono font-bold text-cyan-300 flex items-center gap-1.5 truncate">
                           <FileCode className="h-4 w-4 text-cyan-400 shrink-0" />
-                          {tbl.tableName}.json
+                          {tbl.tableName}.xlsx
                         </span>
                         <span className="text-[10px] bg-slate-900 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
-                          {tbl.rowCount} Rows
+                          {tbl.rowCount > 0 ? tbl.rowCount : '…'} Rows
                         </span>
                       </div>
 
@@ -2106,9 +2200,10 @@ export default function App() {
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                   <Database className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-400" />
-                  Table Data Inspector: <code className="text-cyan-300 font-mono">{inspectTableModal.tableName}.json</code>
+                  Table Inspector: <code className="text-cyan-300 font-mono">{inspectTableModal.tableName}</code>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">Excel Ready</span>
                 </h3>
-                <span className="text-[11px] text-slate-400">app/{inspectTableModal.projectId}/db/{inspectTableModal.tableName}.json</span>
+                <span className="text-[11px] text-slate-400">app/{inspectTableModal.projectId}/db/{inspectTableModal.tableName}.json → exportable as .xlsx</span>
               </div>
               <button onClick={() => setInspectTableModal(null)} className="text-slate-500 hover:text-white p-1"><X className="h-5 w-5" /></button>
             </div>
@@ -2172,10 +2267,17 @@ export default function App() {
                 </button>
                 <button
                   onClick={handleExportInspectTableJSON}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
                 >
                   <Download className="h-3 w-3" />
-                  <span>Export JSON</span>
+                  <span>JSON</span>
+                </button>
+                <button
+                  onClick={handleExportInspectTableXLSX}
+                  className="px-2.5 py-1 bg-emerald-800/50 hover:bg-emerald-700/60 text-emerald-300 border border-emerald-600/40 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                >
+                  <Download className="h-3 w-3" />
+                  <span>Export Excel</span>
                 </button>
               </div>
               <div className="flex items-center space-x-2 w-full sm:w-auto">
