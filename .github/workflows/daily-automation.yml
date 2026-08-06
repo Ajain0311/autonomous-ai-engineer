@@ -80,7 +80,10 @@ jobs:
           git config user.name  "Daily Code Bot"
           git config user.email "bot@users.noreply.github.com"
           git add automation/project_state.yaml automation/logs/ || true
-          git diff --staged --quiet || \
+          # Commit if there are staged changes; use --allow-empty as last-resort
+          # safety net so a completely empty run still leaves a streak-saving commit.
+          git diff --staged --quiet && \
+            git commit --allow-empty -m "chore(state): heartbeat $(date -u +'%Y-%m-%d %H:%M UTC')" || \
             git commit -m "chore(state): sync state $(date -u +'%Y-%m-%d %H:%M UTC')"
           # Stash any leftover unstaged changes so rebase doesn't choke,
           # then fetch + rebase instead of `pull --rebase` to avoid the

@@ -186,6 +186,20 @@ def run_pipeline() -> None:
     state = state_manager.load_state()
     update_project_context(state)
     start_time = time.time()
+
+    # --- HEARTBEAT COMMIT ---
+    # Persist a timestamped state immediately so that even if all LLM providers
+    # are exhausted today, we still produce at least one commit (keeping streak alive).
+    state_manager.save_state(state)
+    run_git_command(["add", "automation/project_state.yaml", "automation/project_context.md"])
+    _stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ok, out = run_git_command(["commit", "-m", f"chore(heartbeat): daily run started {_stamp}"])
+    if ok:
+        logger.info("Heartbeat commit created: %s", out)
+        run_git_command(["push"])
+    else:
+        logger.info("Heartbeat commit skipped (nothing to commit or push failed): %s", out)
+    # --- END HEARTBEAT ---
     
     # 2. Check if project is empty/idle
     if state["project"]["status"] == "idle":
