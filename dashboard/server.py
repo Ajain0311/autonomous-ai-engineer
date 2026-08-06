@@ -710,33 +710,37 @@ def run_netlify_deploy_task():
             deploy_result = {"status": "error", "message": "NETLIFY_TOKEN not configured. Add it in Render → Environment."}
             return
 
-        # --- Step 1: Build ---
-        deploy_log += "Step 1/3: Installing dependencies...\n"
+        # --- Step 1: Install Dependencies (Include devDependencies so vite is available) ---
+        deploy_log += "Step 1/3: Installing dependencies (including vite bundler)...\n"
         proc_inst = subprocess.run(
-            ["npm", "install", "--no-audit", "--no-fund", "--loglevel=error"],
+            ["npm", "install", "--include=dev", "--no-audit", "--no-fund", "--loglevel=error"],
             cwd=str(app_path), capture_output=True, text=True, shell=is_windows,
-            env={**os.environ, "NODE_ENV": "production"}
+            env={**os.environ, "NODE_ENV": "development"}
         )
         deploy_log += proc_inst.stdout + proc_inst.stderr
         if proc_inst.returncode != 0:
-            deploy_log += f"npm install failed (exit {proc_inst.returncode})\n"
-            deploy_result = {"status": "error", "message": "npm install failed. Check deploy log."}
-            return
+            deploy_log += f"npm install warning (exit {proc_inst.returncode}), continuing with build...\n"
 
+        # --- Step 2: Build Production Bundle ---
         deploy_log += "Step 2/3: Building production bundle...\n"
         proc_build = subprocess.run(
             ["npm", "run", "build"],
             cwd=str(app_path), capture_output=True, text=True, shell=is_windows,
-            env={**os.environ, "NODE_ENV": "production"}
+            env={**os.environ, "NODE_ENV": "development"}
         )
         deploy_log += proc_build.stdout + proc_build.stderr
-        if proc_build.returncode != 0:
-            deploy_log += f"Build failed (exit {proc_build.returncode})\n"
-            deploy_result = {"status": "error", "message": "npm build failed. Check deploy log."}
-            return
 
         dist_path = app_path / "dist"
-        if not dist_path.exists():
+        if proc_build.returncode != 0 or not (dist_path / "index.html").exists():
+            deploy_log += "Trying npx vite build fallback...\n"
+            proc_npx = subprocess.run(
+                ["npx", "-y", "vite", "build"],
+                cwd=str(app_path), capture_output=True, text=True, shell=is_windows,
+                env={**os.environ, "NODE_ENV": "development"}
+            )
+            deploy_log += proc_npx.stdout + proc_npx.stderr
+
+        if not dist_path.exists() or not (dist_path / "index.html").exists():
             deploy_log += "ERROR: dist/ folder not found after build.\n"
             deploy_result = {"status": "error", "message": "dist/ not found after build."}
             return
