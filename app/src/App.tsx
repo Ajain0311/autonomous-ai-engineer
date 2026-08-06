@@ -231,9 +231,12 @@ export default function App() {
   // Toast Alerts
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  // Deploy Modal State
-  const [showDeployModal, setShowDeployModal] = useState<boolean>(false);
-  const [deployLog, setDeployLog] = useState<string>('');
+  // In-Card Inline Deploy State (No full screen blocking modal!)
+  const [cardDeployLogs, setCardDeployLogs] = useState<Record<string, string>>({});
+  const [cardDeployStatus, setCardDeployStatus] = useState<Record<string, 'idle' | 'building' | 'success' | 'error'>>({});
+  const [cardDeployUrls, setCardDeployUrls] = useState<Record<string, string>>({});
+  const [expandedDeployCard, setExpandedDeployCard] = useState<string | null>(null);
+
 
   // Fallback table data map
   const fallbackTableMap: Record<string, any[]> = {
@@ -729,34 +732,55 @@ export default function App() {
     }
   };
 
-  // Deploy Product to Cloud Netlify CDN Handler
+  // In-Card Inline Deploy Handler (Flips product card into live terminal log box)
   const handleDeployProduct = async (prod: ProductItem) => {
-    setDeployLog('🚀 Starting deploy pipeline...\n');
-    setShowDeployModal(true);
+    const prodId = prod.id;
+    setExpandedDeployCard(prodId);
+    setCardDeployStatus(prev => ({ ...prev, [prodId]: 'building' }));
+    setCardDeployLogs(prev => ({ ...prev, [prodId]: `🚀 Starting deploy pipeline for ${prod.name}...\nStep 1/3: Initializing production build...\n` }));
+
     try {
       const res = await fetch('/api/deploy/netlify', { method: 'POST' });
       const data = await res.json();
+      
       if (data.status === 'running') {
-        setDeployLog(prev => prev + '⚠️ Deploy already in progress — tailing live log...\n');
+        setCardDeployLogs(prev => ({ ...prev, [prodId]: (prev[prodId] || '') + '⚠️ Deploy pipeline already active — tailing live logs...\n' }));
       }
+
+      // Poll status every 1.5s until build finishes
       const poll = setInterval(async () => {
         try {
           const statusRes = await fetch('/api/deploy/status');
           const status = await statusRes.json();
-          setDeployLog(status.log || '');
+          
+          if (status.log) {
+            setCardDeployLogs(prev => ({ ...prev, [prodId]: status.log }));
+          }
+
           if (!status.running) {
             clearInterval(poll);
             if (status.result?.status === 'success' && status.result?.url) {
-              setDeployLog(prev => prev + `\n✅ LIVE at: ${status.result.url}`);
-              setTimeout(() => window.open(status.result.url, '_blank'), 800);
-            } else if (status.result?.status === 'error') {
-              setDeployLog(prev => prev + `\n❌ Error: ${status.result.message}`);
+              const liveUrl = status.result.url;
+              setCardDeployStatus(prev => ({ ...prev, [prodId]: 'success' }));
+              setCardDeployUrls(prev => ({ ...prev, [prodId]: liveUrl }));
+              setCardDeployLogs(prev => ({ ...prev, [prodId]: (status.log || '') + `\n\n🎉 SUCCESS! Deployed to Netlify CDN.\n🌐 Live URL: ${liveUrl}` }));
+              setSuccessToast(`🎉 ${prod.name} deployed to Netlify! URL: ${liveUrl}`);
+              setTimeout(() => window.open(liveUrl, '_blank'), 600);
+            } else {
+              const err = status.result?.message || 'Deployment failed. Check environment variables.';
+              setCardDeployStatus(prev => ({ ...prev, [prodId]: 'error' }));
+              setCardDeployLogs(prev => ({ ...prev, [prodId]: (status.log || '') + `\n\n❌ DEPLOYMENT FAILED: ${err}` }));
+              setSuccessToast(`❌ Deploy failed for ${prod.name}`);
             }
           }
-        } catch { clearInterval(poll); }
-      }, 2000);
-    } catch (e) {
-      setDeployLog(prev => prev + `\n❌ Could not reach deploy API: ${e}`);
+        } catch {
+          // Keep polling resilience
+        }
+      }, 1500);
+
+    } catch (e: any) {
+      setCardDeployStatus(prev => ({ ...prev, [prodId]: 'error' }));
+      setCardDeployLogs(prev => ({ ...prev, [prodId]: `❌ API Connection Error: ${e.message || e}\nVerify server backend is running.` }));
     }
   };
 
@@ -1815,47 +1839,116 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                {productsList.map(prod => (
-                  <div
-                    key={prod.id}
-                    onClick={() => setSelectedProductView(prod.id)}
-                    className={`p-4 rounded-2xl bg-slate-950 border transition-all cursor-pointer space-y-3 flex flex-col justify-between ${
-                      selectedProductView === prod.id ? 'border-cyan-500/60 ring-1 ring-cyan-500/30' : 'border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono font-bold">{prod.status}</span>
-                        {selectedProductView === prod.id && <Check className="h-4 w-4 text-cyan-400" />}
-                      </div>
-                      <h3 className="text-xs font-bold text-white leading-snug">{prod.name}</h3>
-                      <p className="text-[11px] text-slate-400 line-clamp-2">{prod.description}</p>
-                    </div>
+                {productsList.map(prod => {
+                  const isExpanded = expandedDeployCard === prod.id;
+                  const status = cardDeployStatus[prod.id] || 'idle';
+                  const log = cardDeployLogs[prod.id] || '';
+                  const liveUrl = cardDeployUrls[prod.id] || '';
 
-                    <div className="flex items-center space-x-2 pt-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRunBuildVerify(prod);
-                        }}
-                        className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center space-x-1 cursor-pointer"
-                      >
-                        <Play className="h-3 w-3 fill-emerald-400" />
-                        <span>Verify</span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeployProduct(prod);
-                        }}
-                        className="flex-1 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-[11px] font-extrabold flex items-center justify-center space-x-1 shadow cursor-pointer"
-                      >
-                        <UploadCloud className="h-3 w-3" />
-                        <span>Deploy</span>
-                      </button>
+                  return (
+                    <div
+                      key={prod.id}
+                      onClick={() => setSelectedProductView(prod.id)}
+                      className={`p-4 rounded-2xl bg-slate-950 border transition-all cursor-pointer space-y-3 flex flex-col justify-between ${
+                        selectedProductView === prod.id ? 'border-cyan-500/60 ring-1 ring-cyan-500/30' : 'border-slate-800 hover:border-slate-700'
+                      } ${isExpanded ? 'sm:col-span-3 bg-slate-950 border-purple-500/50 shadow-2xl' : ''}`}
+                    >
+                      {/* CARD HEADER */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono font-bold">
+                            {prod.status}
+                          </span>
+                          
+                          {status === 'building' && (
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold animate-pulse flex items-center gap-1">
+                              <RefreshCw className="h-3 w-3 animate-spin" /> DEPLOYING...
+                            </span>
+                          )}
+                          {status === 'success' && (
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                              <Check className="h-3 w-3 text-emerald-400" /> DEPLOYED
+                            </span>
+                          )}
+                          {status === 'error' && (
+                            <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded font-mono font-bold flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3 text-rose-400" /> FAILED
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-xs font-bold text-white leading-snug">{prod.name}</h3>
+                        <p className="text-[11px] text-slate-400">{prod.description}</p>
+                      </div>
+
+                      {/* IN-CARD INLINE FLIPPED TERMINAL LOG BOX */}
+                      {isExpanded && (
+                        <div className="space-y-2.5 pt-2 border-t border-slate-800">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-mono text-cyan-300 font-bold flex items-center gap-1.5">
+                              <Terminal className="h-3.5 w-3.5 text-cyan-400" />
+                              Netlify Live Deploy Log Stream
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedDeployCard(null);
+                              }}
+                              className="text-slate-500 hover:text-white p-1 text-[11px] font-mono flex items-center gap-1"
+                            >
+                              <X className="h-3.5 w-3.5" /> Collapse Card
+                            </button>
+                          </div>
+
+                          <div className="bg-black/90 p-3 rounded-xl border border-slate-800 max-h-52 overflow-auto font-mono text-[11px] text-emerald-400 whitespace-pre-wrap leading-relaxed">
+                            {log || 'Waiting for build server logs...'}
+                          </div>
+
+                          {liveUrl && (
+                            <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl">
+                              <span className="text-xs font-mono text-emerald-300 truncate max-w-[300px]">🌐 {liveUrl}</span>
+                              <a
+                                href={liveUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-extrabold flex items-center gap-1 shadow shrink-0"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" /> Open Live Site
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* CARD FOOTER ACTIONS */}
+                      <div className="flex items-center space-x-2 pt-2 border-t border-slate-900">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRunBuildVerify(prod);
+                          }}
+                          className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center space-x-1 cursor-pointer"
+                        >
+                          <Play className="h-3 w-3 fill-emerald-400" />
+                          <span>Verify</span>
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeployProduct(prod);
+                          }}
+                          disabled={status === 'building'}
+                          className="flex-1 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-[11px] font-extrabold flex items-center justify-center space-x-1 shadow cursor-pointer disabled:opacity-50"
+                        >
+                          <UploadCloud className="h-3 w-3" />
+                          <span>{status === 'building' ? 'Deploying...' : isExpanded ? 'Re-Deploy' : 'Deploy'}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* PRODUCT LEVEL LOGIN / SIGNUP UI GATEWAY */}
@@ -2538,35 +2631,6 @@ export default function App() {
           </div>
         )}
       </main>
-
-      {/* DEPLOY LOG MODAL */}
-      {showDeployModal && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col" style={{maxHeight: '85vh'}}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <UploadCloud className="h-5 w-5 text-emerald-400 animate-pulse" />
-                <span className="text-sm font-extrabold text-white">Netlify Deploy Pipeline</span>
-                {deployLog.includes('✅') ? (
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">SUCCESS</span>
-                ) : deployLog.includes('❌') ? (
-                  <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-mono">FAILED</span>
-                ) : (
-                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono animate-pulse">RUNNING</span>
-                )}
-              </div>
-              <button onClick={() => setShowDeployModal(false)} className="text-slate-500 hover:text-white p-1"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="flex-1 overflow-auto bg-black/60 rounded-b-3xl p-4">
-              <pre className="text-xs font-mono text-emerald-300 whitespace-pre-wrap leading-relaxed">{deployLog || 'Waiting for deploy server...'}</pre>
-            </div>
-            <div className="px-5 py-3 border-t border-slate-800 flex justify-between items-center shrink-0">
-              <span className="text-[11px] text-slate-500">Polling every 2s • Build → Bundle → Netlify</span>
-              <button onClick={() => setShowDeployModal(false)} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* SPREADSHEET INSPECT MODAL */}
       {inspectTableModal && (
