@@ -16,10 +16,17 @@ import yaml
 
 from automation import state_manager
 from automation.client import LLMClient, APIError, PROVIDER_MODELS
+from db import sqlite_engine
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("dashboard_server")
+
+# Initialize SQLite database engine
+try:
+    sqlite_engine.init_sqlite_db()
+except Exception as _e:
+    logger.warning("SQLite initialization warning: %s", _e)
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 STATE_FILE = ROOT_DIR / "automation" / "project_state.yaml"
@@ -100,6 +107,9 @@ class SettingsRequest(BaseModel):
     auto_repair_limit: int
     bypass_compilation_gates: bool
     enable_consensus: Optional[bool] = False
+
+class SqlQueryRequest(BaseModel):
+    query: str
 
 class DBRecordUpdateRequest(BaseModel):
     match_key: str
@@ -983,6 +993,51 @@ def get_quota_status():
         "models_unavailable": quota_tracker._model_unavailable
     }
 
+# =====================================================================
+# EMBEDDED SQLITE DATABASE ROUTES & QUERY CONSOLE ENGINE
+# =====================================================================
+
+@app.get("/api/db/stats")
+def get_sqlite_stats():
+    """Returns live SQLite metrics: DB file size, total tables, total rows, and table breakdown."""
+    try:
+        return sqlite_engine.get_db_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/db/query")
+def execute_sqlite_query(payload: SqlQueryRequest):
+    """Executes a custom SQL query directly from the interactive SQL terminal console."""
+    if not payload.query or not payload.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    try:
+        results = sqlite_engine.execute_query(payload.query)
+        return {
+            "status": "success",
+            "query": payload.query,
+            "result_count": len(results),
+            "rows": results
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "query": payload.query,
+            "message": str(e)
+        }
+
+@app.get("/api/db/download")
+def download_sqlite_db_file():
+    """Downloads the raw SQLite app_data.db file directly."""
+    from fastapi.responses import FileResponse
+    db_file = ROOT_DIR / "db" / "app_data.db"
+    if not db_file.exists():
+        sqlite_engine.init_sqlite_db()
+    return FileResponse(
+        path=str(db_file),
+        filename="app_data.db",
+        media_type="application/octet-stream"
+    )
+
 @app.get("/api/database/tables")
 def get_db_tables():
     db_dir = ROOT_DIR / "app" / "db"
@@ -1448,19 +1503,25 @@ def get_product_tables(product_id: str):
 
 @app.get("/api/products/data/{product_id}/{table_name}")
 def get_product_table_data(product_id: str, table_name: str):
-    data_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}.json"
-    schema_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}_schema.json"
-    
     rows = []
     schema = {"tableName": table_name, "columns": []}
-    
-    if data_file.exists():
-        try:
-            with open(data_file, "r", encoding="utf-8") as f:
-                rows = json.load(f)
-        except Exception:
-            pass
 
+    # Try SQLite query first
+    try:
+        rows = sqlite_engine.execute_query(f"SELECT * FROM {table_name};")
+    except Exception:
+        # Fallback to JSON file if SQLite table query fails
+        data_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}.json"
+        if product_id == "system_db":
+            data_file = ROOT_DIR / "db" / f"{table_name}.json"
+        if data_file.exists():
+            try:
+                with open(data_file, "r", encoding="utf-8") as f:
+                    rows = json.load(f)
+            except Exception:
+                pass
+
+    schema_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}_schema.json"
     if schema_file.exists():
         try:
             with open(schema_file, "r", encoding="utf-8") as f:
@@ -1472,14 +1533,39 @@ def get_product_table_data(product_id: str, table_name: str):
 
 @app.post("/api/products/data/{product_id}/{table_name}")
 def save_product_table_data(product_id: str, table_name: str, payload: list):
+    # 1. Update JSON backup file
     data_file = ROOT_DIR / "app" / product_id / "db" / f"{table_name}.json"
     if product_id == "system_db":
         data_file = ROOT_DIR / "db" / f"{table_name}.json"
         
     data_file.parent.mkdir(parents=True, exist_ok=True)
-    
     with open(data_file, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
+
+    # 2. Sync to SQLite table if columns match
+    if isinstance(payload, list) and len(payload) > 0:
+        try:
+            conn = sqlite_engine.get_connection()
+            cursor = conn.cursor()
+            first_row = payload[0]
+            cols = list(first_row.keys())
+
+            # Create table if not exists dynamically
+            col_defs = ", ".join([f"{c} TEXT" for c in cols if c != "id"])
+            cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT, {col_defs});")
+            cursor.execute(f"DELETE FROM {table_name};")
+
+            for row in payload:
+                keys = [k for k in row.keys() if k != "id"]
+                vals = [str(row[k]) if row[k] is not None else "" for k in keys]
+                placeholders = ", ".join(["?"] * len(keys))
+                keys_str = ", ".join(keys)
+                if keys:
+                    cursor.execute(f"INSERT INTO {table_name} ({keys_str}) VALUES ({placeholders});", vals)
+            conn.commit()
+            conn.close()
+        except Exception as _sqlite_err:
+            logger.warning("SQLite sync notice for %s: %s", table_name, _sqlite_err)
 
     run_git_command(["add", "db/", "app/"])
     run_git_command(["commit", "-m", f"db(data): updated {table_name} in {product_id}"])

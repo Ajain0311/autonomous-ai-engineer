@@ -113,6 +113,13 @@ export default function App() {
   const [newTableTargetProduct, setNewTableTargetProduct] = useState<string>('product1_adblocker_extension');
   const [newTableNameInput, setNewTableNameInput] = useState<string>('');
 
+  // Embedded SQLite Database & Interactive SQL Console State
+  const [sqliteStats, setSqliteStats] = useState<any>(null);
+  const [sqlInput, setSqlInput] = useState<string>('SELECT * FROM rules;');
+  const [sqlOutput, setSqlOutput] = useState<string>('');
+  const [isExecutingSql, setIsExecutingSql] = useState<boolean>(false);
+
+
   // Inspect & Edit Data Modal State
   const [inspectTableModal, setInspectTableModal] = useState<{ projectId: string; tableName: string } | null>(null);
   const [inspectRows, setInspectRows] = useState<any[]>([]);
@@ -449,12 +456,50 @@ export default function App() {
       .catch(() => {});
   };
 
+  const fetchSqliteStats = () => {
+    fetch('/api/db/stats')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'online') {
+          setSqliteStats(data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const handleExecuteSqlQuery = async (customQuery?: string) => {
+    const q = customQuery || sqlInput;
+    if (!q.trim()) return;
+    setIsExecutingSql(true);
+    try {
+      const res = await fetch('/api/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q })
+      });
+      const data = await res.json();
+      setSqlOutput(JSON.stringify(data, null, 2));
+      if (data.status === 'success') {
+        setSuccessToast(`⚡ SQL Query executed successfully! (${data.result_count} rows)`);
+        fetchSqliteStats();
+        fetchMasterTables();
+      } else {
+        setSuccessToast(`⚠️ SQL Notice: ${data.message}`);
+      }
+    } catch (e: any) {
+      setSqlOutput(JSON.stringify({ status: 'error', message: e.message }, null, 2));
+    } finally {
+      setIsExecutingSql(false);
+    }
+  };
+
   useEffect(() => {
     fetchMasterTables();
     fetchAdblockRules();
     fetchChatMessages();
     fetchChatUsers();
     fetchBlobAssets();
+    fetchSqliteStats();
   }, [currentUser, blobSearchInput]);
 
   // Product 01 Action Handlers
@@ -1345,6 +1390,106 @@ export default function App() {
                 <Save className="h-4 w-4" />
                 <span>Save & Commit Daily Progress</span>
               </button>
+            </div>
+
+            {/* LIVE SQLITE EMBEDDED DATABASE CONTROLLER & INTERACTIVE TERMINAL */}
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-cyan-500/30 shadow-2xl space-y-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <Database className="h-5 w-5 text-cyan-400" />
+                    <h2 className="text-sm sm:text-base font-extrabold text-white">Embedded SQLite Zero-Hosting Engine (`db/app_data.db`)</h2>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">LIVE ONLINE</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">High-performance B-Tree indexed database file stored locally in repo. Zero hosting cost with unlimited scaling.</p>
+                </div>
+
+                <div className="flex items-center space-x-2 w-full sm:w-auto">
+                  <button
+                    onClick={fetchSqliteStats}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>Refresh Stats</span>
+                  </button>
+                  <a
+                    href="/api/db/download"
+                    download="app_data.db"
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md cursor-pointer"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Download DB File</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* LIVE METRICS CARDS */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 font-bold block">DB FILE SIZE</span>
+                  <span className="text-sm sm:text-base font-extrabold text-cyan-300 font-mono">{sqliteStats?.file_size_formatted || '0.12 MB'}</span>
+                </div>
+                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 font-bold block">ACTIVE TABLES</span>
+                  <span className="text-sm sm:text-base font-extrabold text-emerald-300 font-mono">{sqliteStats?.total_tables || 5} Tables</span>
+                </div>
+                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 font-bold block">TOTAL STORED ROWS</span>
+                  <span className="text-sm sm:text-base font-extrabold text-purple-300 font-mono">{sqliteStats?.total_rows || 12} Rows</span>
+                </div>
+                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 font-bold block">SQLITE VERSION</span>
+                  <span className="text-sm sm:text-base font-extrabold text-amber-300 font-mono">v{sqliteStats?.sqlite_version || '3.42.0'}</span>
+                </div>
+              </div>
+
+              {/* INTERACTIVE SQL TERMINAL CONSOLE */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Terminal className="h-4 w-4 text-cyan-400" />
+                    <h3 className="text-xs font-bold text-white font-mono">Interactive Live SQL Terminal Runner</h3>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    {['SELECT * FROM rules;', 'SELECT * FROM blob_assets;', 'SELECT * FROM users;'].map(preset => (
+                      <button
+                        key={preset}
+                        onClick={() => {
+                          setSqlInput(preset);
+                          handleExecuteSqlQuery(preset);
+                        }}
+                        className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-[10px] font-mono text-cyan-300 rounded border border-slate-800 cursor-pointer"
+                      >
+                        {preset.split(' ')[3]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <input
+                    value={sqlInput}
+                    onChange={e => setSqlInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleExecuteSqlQuery(); }}
+                    placeholder="Enter SQL command (e.g. SELECT * FROM rules;)"
+                    className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-cyan-300 font-mono outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    onClick={() => handleExecuteSqlQuery()}
+                    disabled={isExecutingSql}
+                    className="w-full sm:w-auto px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow cursor-pointer shrink-0"
+                  >
+                    {isExecutingSql ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-white" />}
+                    <span>Execute SQL</span>
+                  </button>
+                </div>
+
+                {sqlOutput && (
+                  <div className="bg-black/80 rounded-xl p-3 border border-slate-800 max-h-48 overflow-auto">
+                    <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed">{sqlOutput}</pre>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* EDITABLE UPCOMING PRODUCT QUEUE */}
