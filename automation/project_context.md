@@ -76,25 +76,6 @@ projects:
 ```
 
 ## Workspace Source Code Files
-### File: `app/netlify.toml`
-```toml
-[build]
-  command = "npm run build"
-  publish = "build"
-[functions]
-  directory = "functions"
-```
-
-### File: `app/postcss.config.js`
-```js
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-```
-
 ### File: `app/index.html`
 ```html
 <!DOCTYPE html>
@@ -111,14 +92,28 @@ module.exports = {
 </html>
 ```
 
+### File: `app/postcss.config.js`
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+### File: `app/netlify.toml`
+```toml
+[build]
+  command = "npm run build"
+  publish = "build"
+[functions]
+  directory = "functions"
+```
+
 ### File: `app/package.json`
 ```json
 {"name":"tech-hub","version":"1.0.0","scripts":{"start":"vite","build":"vite build"},"dependencies":{"@types/better-sqlite3":"^9.6.0","autoprefixer":"^10.5.4","better-sqlite3":"^13.0.3","express":"^4.17.1","lucide-react":"^1.28.0","react":"^18.2.0","react-dom":"^18.2.0","react-router-dom":"^6.3.0","tailwindcss":"^3.1.8","xlsx":"^0.18.5","zustand":"^4.1.5"},"devDependencies":{"@types/express":"^4.17.13","@types/react":"^18.0.17","@types/react-dom":"^18.0.6","@types/react-router-dom":"^5.3.3","@vitejs/plugin-react":"^2.1.0","typescript":"^4.8.3","vite":"^3.1.0"}}
-```
-
-### File: `app/tsconfig.json`
-```json
-{"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
 ```
 
 ### File: `app/vite.config.ts`
@@ -130,6 +125,11 @@ export default defineConfig({
   base: '/',
   plugins: [react()]
 });
+```
+
+### File: `app/tsconfig.json`
+```json
+{"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
 ```
 
 ### File: `app/tailwind.config.js`
@@ -239,30 +239,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/product1_adblocker_extension/content.js`
-```js
-// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
-(function() {
-  const adSelectors = [
-    '.ad-container', '.sponsored-post', '#google_ads_frame',
-    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
-  ];
-  
-  function removeAds() {
-    adSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => el.remove());
-    });
-  }
-
-  removeAds();
-  const observer = new MutationObserver(removeAds);
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-})();
-
-```
-
 ### File: `app/product1_adblocker_extension/manifest.json`
 ```json
 {
@@ -295,6 +271,30 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
+### File: `app/product1_adblocker_extension/content.js`
+```js
+// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
+(function() {
+  const adSelectors = [
+    '.ad-container', '.sponsored-post', '#google_ads_frame',
+    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
+  ];
+  
+  function removeAds() {
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => el.remove());
+    });
+  }
+
+  removeAds();
+  const observer = new MutationObserver(removeAds);
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+
+```
+
 ### File: `app/product1_adblocker_extension/db/rules.json`
 ```json
 [
@@ -322,19 +322,145 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/src/main.tsx`
-```tsx
-import React from 'react';
-import ReactDOM from 'react-dom';
-import App from './App';
-import './index.css';
+### File: `app/product3_email_chat_mvp/db/users.json`
+```json
+[
+  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
+  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
+  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
+  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
+  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
+]
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+```
+
+### File: `app/product3_email_chat_mvp/db/messages_schema.json`
+```json
+{
+  "tableName": "messages",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "sender_email", "type": "string", "required": true },
+    { "name": "recipient_email", "type": "string", "required": true },
+    { "name": "subject", "type": "string", "required": true },
+    { "name": "body", "type": "string", "required": true },
+    { "name": "timestamp", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users_schema.json`
+```json
+{
+  "tableName": "users",
+  "columns": [
+    { "name": "id", "type": "number", "required": true },
+    { "name": "username", "type": "string", "required": true },
+    { "name": "email", "type": "string", "required": true },
+    { "name": "name", "type": "string", "required": false },
+    { "name": "role", "type": "string", "required": false }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages.json`
+```json
+[
+  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
+  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
+]
+
+```
+
+### File: `app/src/index.css`
+```css
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #07080c;
+  color: #f1f5f9;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+}
+
+/* Sweet & Simple Glassmorphism Tokens */
+.glass-card {
+  background: rgba(15, 17, 26, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-hover:hover {
+  background: rgba(22, 25, 38, 0.85);
+  border-color: rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.15);
+}
+
+.glass-nav {
+  background: rgba(8, 9, 14, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #9333ea 0%, #6366f1 50%, #0284c7 100%);
+}
+
+.glow-purple {
+  box-shadow: 0 0 30px -5px rgba(147, 51, 234, 0.35);
+}
+
+.glow-soft {
+  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.4);
+}
+
 ```
 
 ### File: `app/src/App.tsx`
@@ -1581,93 +1707,19 @@ export default function App() {
 ... [Content Truncated due to size limit] ...
 ```
 
-### File: `app/src/index.css`
-```css
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+### File: `app/src/main.tsx`
+```tsx
+import React from 'react';
+import ReactDOM from 'react-dom';
+import App from './App';
+import './index.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  margin: 0;
-  font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #07080c;
-  color: #f1f5f9;
-  overflow-x: hidden;
-  letter-spacing: -0.01em;
-}
-
-/* Sweet & Simple Glassmorphism Tokens */
-.glass-card {
-  background: rgba(15, 17, 26, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-}
-
-.glass-card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-card-hover:hover {
-  background: rgba(22, 25, 38, 0.85);
-  border-color: rgba(168, 85, 247, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.15);
-}
-
-.glass-nav {
-  background: rgba(8, 9, 14, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-bg {
-  background: linear-gradient(135deg, #9333ea 0%, #6366f1 50%, #0284c7 100%);
-}
-
-.glow-purple {
-  box-shadow: 0 0 30px -5px rgba(147, 51, 234, 0.35);
-}
-
-.glow-soft {
-  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.4);
-}
-
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
 ```
 
 ### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
@@ -1689,58 +1741,6 @@ body {
 ### File: `app/product2_github_blob_storage/db/blob_assets.json`
 ```json
 [
-]
-
-```
-
-### File: `app/product3_email_chat_mvp/db/messages.json`
-```json
-[
-  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
-  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
-]
-
-```
-
-### File: `app/product3_email_chat_mvp/db/users_schema.json`
-```json
-{
-  "tableName": "users",
-  "columns": [
-    { "name": "id", "type": "number", "required": true },
-    { "name": "username", "type": "string", "required": true },
-    { "name": "email", "type": "string", "required": true },
-    { "name": "name", "type": "string", "required": false },
-    { "name": "role", "type": "string", "required": false }
-  ]
-}
-
-```
-
-### File: `app/product3_email_chat_mvp/db/messages_schema.json`
-```json
-{
-  "tableName": "messages",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "sender_email", "type": "string", "required": true },
-    { "name": "recipient_email", "type": "string", "required": true },
-    { "name": "subject", "type": "string", "required": true },
-    { "name": "body", "type": "string", "required": true },
-    { "name": "timestamp", "type": "string", "required": true }
-  ]
-}
-
-```
-
-### File: `app/product3_email_chat_mvp/db/users.json`
-```json
-[
-  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
-  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
-  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
-  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
-  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
 ]
 
 ```
