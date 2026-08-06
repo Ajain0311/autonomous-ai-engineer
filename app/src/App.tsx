@@ -117,7 +117,11 @@ export default function App() {
   const [sqliteStats, setSqliteStats] = useState<any>(null);
   const [sqlInput, setSqlInput] = useState<string>('SELECT * FROM rules;');
   const [sqlOutput, setSqlOutput] = useState<string>('');
+  const [sqlRows, setSqlRows] = useState<any[]>([]);
+  const [sqlResultSearch, setSqlResultSearch] = useState<string>('');
+  const [sqlResultViewMode, setSqlResultViewMode] = useState<'table' | 'json'>('table');
   const [isExecutingSql, setIsExecutingSql] = useState<boolean>(false);
+
 
 
   // Inspect & Edit Data Modal State
@@ -479,18 +483,97 @@ export default function App() {
       });
       const data = await res.json();
       setSqlOutput(JSON.stringify(data, null, 2));
-      if (data.status === 'success') {
+      if (data.status === 'success' && Array.isArray(data.rows)) {
+        setSqlRows(data.rows);
         setSuccessToast(`⚡ SQL Query executed successfully! (${data.result_count} rows)`);
         fetchSqliteStats();
         fetchMasterTables();
       } else {
-        setSuccessToast(`⚠️ SQL Notice: ${data.message}`);
+        setSqlRows([]);
+        if (data.status === 'error') {
+          setSuccessToast(`⚠️ SQL Error: ${data.message}`);
+        } else {
+          setSuccessToast(`⚡ SQL Statement executed! (${data.message || 'Complete'})`);
+        }
       }
     } catch (e: any) {
       setSqlOutput(JSON.stringify({ status: 'error', message: e.message }, null, 2));
+      setSqlRows([]);
     } finally {
       setIsExecutingSql(false);
     }
+  };
+
+  const handleSqlCellEdit = (rowIndex: number, colKey: string, newValue: any) => {
+    const updated = [...sqlRows];
+    updated[rowIndex] = { ...updated[rowIndex], [colKey]: newValue };
+    setSqlRows(updated);
+  };
+
+  const handleDeleteSqlRow = (rowIndex: number) => {
+    setSqlRows(sqlRows.filter((_, idx) => idx !== rowIndex));
+    setSuccessToast('🗑️ Row removed from query dataset preview.');
+  };
+
+  const handleAddRowToSqlResult = () => {
+    const columns = Array.from(new Set(sqlRows.flatMap(r => Object.keys(r))));
+    const newRow: Record<string, any> = { id: sqlRows.length + 1 };
+    columns.forEach(c => { if (c !== 'id') newRow[c] = ''; });
+    setSqlRows([...sqlRows, newRow]);
+    setSuccessToast('➕ New row added to query dataset.');
+  };
+
+  const handleExportSqlResultXLSX = () => {
+    if (sqlRows.length === 0) return;
+    const columns = Array.from(new Set(sqlRows.flatMap(r => Object.keys(r))));
+    const wsData: any[][] = [
+      columns,
+      ...sqlRows.map(row => columns.map(col => row[col] !== undefined ? row[col] : ''))
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    ws['!cols'] = columns.map(() => ({ wch: 22 }));
+
+    columns.forEach((col, cIdx) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: cIdx });
+      if (!ws[cellRef]) ws[cellRef] = { v: col, t: 's' };
+      ws[cellRef].s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '0E7490' } },
+        alignment: { horizontal: 'center' }
+      };
+    });
+
+    sqlRows.forEach((row, rIdx) => {
+      columns.forEach((col, cIdx) => {
+        const cellRef = XLSX.utils.encode_cell({ r: rIdx + 1, c: cIdx });
+        if (!ws[cellRef]) return;
+        const val = row[col];
+        const isNum = typeof val === 'number' || (!isNaN(Number(val)) && val !== '' && val !== null);
+        const isBool = typeof val === 'boolean' || val === 'true' || val === 'false';
+
+        let fill = { fgColor: { rgb: '0F172A' } };
+        let font = { color: { rgb: 'CBD5E1' } };
+
+        if (isBool) {
+          const boolVal = val === true || val === 'true';
+          fill = { fgColor: { rgb: boolVal ? '14532D' : '7F1D1D' } };
+          font = { color: { rgb: boolVal ? '86EFAC' : 'FCA5A5' } };
+        } else if (isNum) {
+          fill = { fgColor: { rgb: '713F12' } };
+          font = { color: { rgb: 'FDE047' } };
+          ws[cellRef].t = 'n';
+          ws[cellRef].v = Number(val);
+        }
+        ws[cellRef].s = { fill, font };
+      });
+    });
+
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+    XLSX.utils.book_append_sheet(wb, ws, 'SQL_QueryResult');
+    XLSX.writeFile(wb, 'SQL_QueryResult.xlsx', { bookType: 'xlsx', cellStyles: true });
+    setSuccessToast('📊 Query dataset exported to SQL_QueryResult.xlsx!');
   };
 
   useEffect(() => {
@@ -1484,7 +1567,111 @@ export default function App() {
                   </button>
                 </div>
 
-                {sqlOutput && (
+                {/* QUERY RESULT VIEW MODE & SEARCH CONTROLS */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-800">
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <div className="flex items-center bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px] font-mono font-bold">
+                      <button
+                        onClick={() => setSqlResultViewMode('table')}
+                        className={`px-2.5 py-1 rounded-md transition-all ${sqlResultViewMode === 'table' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        📊 Tabular Grid ({sqlRows.length})
+                      </button>
+                      <button
+                        onClick={() => setSqlResultViewMode('json')}
+                        className={`px-2.5 py-1 rounded-md transition-all ${sqlResultViewMode === 'json' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        {'{ }'} Raw JSON
+                      </button>
+                    </div>
+
+                    {sqlRows.length > 0 && (
+                      <button
+                        onClick={handleExportSqlResultXLSX}
+                        className="px-2.5 py-1 bg-emerald-800/50 hover:bg-emerald-700/60 text-emerald-300 border border-emerald-600/40 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>Export Excel (.xlsx)</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {sqlRows.length > 0 && sqlResultViewMode === 'table' && (
+                    <div className="relative w-full sm:w-64">
+                      <Search className="h-3.5 w-3.5 text-slate-500 absolute left-2.5 top-2" />
+                      <input
+                        value={sqlResultSearch}
+                        onChange={e => setSqlResultSearch(e.target.value)}
+                        placeholder="Search rows in result grid..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-2.5 py-1 text-[11px] text-white outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* TABULAR INTERACTIVE GRID VIEW */}
+                {sqlResultViewMode === 'table' && sqlRows.length > 0 && (
+                  <div className="border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
+                    <div className="max-h-64 overflow-auto">
+                      <table className="w-full text-left text-xs font-mono border-collapse min-w-[500px]">
+                        <thead className="bg-slate-950 sticky top-0 border-b border-slate-800 text-slate-400">
+                          <tr>
+                            {Array.from(new Set(sqlRows.flatMap(r => Object.keys(r)))).map(col => (
+                              <th key={col} className="p-2 border-r border-slate-800 font-bold text-cyan-300 uppercase min-w-[100px]">{col}</th>
+                            ))}
+                            <th className="p-2 font-bold text-rose-400 uppercase w-12 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {sqlRows
+                            .filter(r => {
+                              if (!sqlResultSearch.trim()) return true;
+                              const s = sqlResultSearch.toLowerCase();
+                              return Object.values(r).some(val => String(val).toLowerCase().includes(s));
+                            })
+                            .map((row, rIdx) => {
+                              const columns = Array.from(new Set(sqlRows.flatMap(r => Object.keys(r))));
+                              return (
+                                <tr key={rIdx} className="hover:bg-slate-800/40">
+                                  {columns.map(col => (
+                                    <td key={col} className="p-1.5 border-r border-slate-800 min-w-[110px]">
+                                      <input
+                                        value={row[col] !== undefined ? String(row[col]) : ''}
+                                        onChange={e => handleSqlCellEdit(rIdx, col, e.target.value)}
+                                        className="w-full bg-transparent text-slate-200 outline-none focus:bg-slate-950 focus:text-white focus:ring-1 focus:ring-cyan-500 px-1 py-0.5 rounded text-[11px]"
+                                      />
+                                    </td>
+                                  ))}
+                                  <td className="p-1.5 text-center">
+                                    <button
+                                      onClick={() => handleDeleteSqlRow(rIdx)}
+                                      className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer"
+                                      title="Delete row from dataset"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="bg-slate-950 px-3 py-1.5 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                      <span>Showing interactive grid rows • Edit cells directly above</span>
+                      <button
+                        onClick={handleAddRowToSqlResult}
+                        className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded font-bold flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Add Row</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* RAW JSON VIEW BACKWARD COMPATIBILITY */}
+                {(sqlResultViewMode === 'json' || sqlRows.length === 0) && sqlOutput && (
                   <div className="bg-black/80 rounded-xl p-3 border border-slate-800 max-h-48 overflow-auto">
                     <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed">{sqlOutput}</pre>
                   </div>
