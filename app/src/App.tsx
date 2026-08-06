@@ -1475,33 +1475,99 @@ export default function App() {
               </button>
             </div>
 
-            {/* LIVE SQLITE EMBEDDED DATABASE CONTROLLER & INTERACTIVE TERMINAL */}
+            {/* EDITABLE UPCOMING PRODUCT QUEUE */}
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-purple-500/20 shadow-2xl space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <ListOrdered className="h-4 w-4 text-purple-400" />
+                    Current Upcoming Product Building Queue
+                  </h2>
+                  <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">Queue items for upcoming streak products with 1-click single-click add, remove & promote.</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 sm:p-3.5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-2.5">
+                <input
+                  placeholder="Enter product idea title..."
+                  value={newQueueTitle}
+                  onChange={e => setNewQueueTitle(e.target.value)}
+                  className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
+                />
+                <button
+                  onClick={handleAddQueueItem}
+                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shrink-0 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Single-Click Add</span>
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {productQueue.map(item => (
+                  <div key={item.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center space-x-2.5">
+                      <span className="font-mono bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold shrink-0">Day {item.target_day}</span>
+                      <span className="font-bold text-white leading-tight">{item.title}</span>
+                    </div>
+
+                    <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+                      <button
+                        onClick={() => handlePromoteQueueItem(item.id)}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center space-x-1 text-xs"
+                      >
+                        <Zap className="h-3.5 w-3.5 fill-white" />
+                        <span>Promote</span>
+                      </button>
+                      <button onClick={() => handleRemoveQueueItem(item.id)} className="text-slate-500 hover:text-rose-400 p-1">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PAGE 2: MASTER TABLES STUDIO */}
+        {activeTab === 'master_tables' && (
+          <div className="space-y-6">
+
+            {/* EMBEDDED SQLITE DATABASE COMMAND CENTER & LIVE METRICS */}
             <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-cyan-500/30 shadow-2xl space-y-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                 <div>
                   <div className="flex items-center space-x-2">
                     <Database className="h-5 w-5 text-cyan-400" />
-                    <h2 className="text-sm sm:text-base font-extrabold text-white">Embedded SQLite Zero-Hosting Engine (`db/app_data.db`)</h2>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">LIVE ONLINE</span>
+                    <h1 className="text-lg sm:text-xl font-extrabold text-white">Master Tables Studio & SQLite Command Center</h1>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">EMBEDDED DB ACTIVE</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">High-performance B-Tree indexed database file stored locally in repo. Zero hosting cost with unlimited scaling.</p>
+                  <p className="text-xs text-slate-400 mt-1">High-performance zero-hosting SQLite B-Tree indexed database (`db/app_data.db`). Direct table management, live SQL console, and 1-click Excel export.</p>
                 </div>
 
                 <div className="flex items-center space-x-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => setShowCreateTableModal(true)}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md cursor-pointer shrink-0"
+                  >
+                    <FolderPlus className="h-3.5 w-3.5" />
+                    <span>Create Table</span>
+                  </button>
                   <button
                     onClick={fetchSqliteStats}
                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-xl text-xs font-bold flex items-center space-x-1 cursor-pointer"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Refresh Stats</span>
+                    <span>Refresh</span>
                   </button>
                   <a
                     href="/api/db/download"
                     download="app_data.db"
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-md cursor-pointer"
+                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow cursor-pointer shrink-0"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    <span>Download DB File</span>
+                    <span>.db File</span>
                   </a>
                 </div>
               </div>
@@ -1521,8 +1587,8 @@ export default function App() {
                   <span className="text-sm sm:text-base font-extrabold text-purple-300 font-mono">{sqliteStats?.total_rows || 12} Rows</span>
                 </div>
                 <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-1">
-                  <span className="text-[10px] font-mono text-slate-400 font-bold block">SQLITE VERSION</span>
-                  <span className="text-sm sm:text-base font-extrabold text-amber-300 font-mono">v{sqliteStats?.sqlite_version || '3.42.0'}</span>
+                  <span className="text-[10px] font-mono text-slate-400 font-bold block">ENGINE VERSION</span>
+                  <span className="text-sm sm:text-base font-extrabold text-amber-300 font-mono">SQLite v{sqliteStats?.sqlite_version || '3.42.0'}</span>
                 </div>
               </div>
 
@@ -1531,10 +1597,10 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Terminal className="h-4 w-4 text-cyan-400" />
-                    <h3 className="text-xs font-bold text-white font-mono">Interactive Live SQL Terminal Runner</h3>
+                    <h3 className="text-xs font-bold text-white font-mono">Interactive Live SQL Terminal & Table Runner</h3>
                   </div>
                   <div className="flex items-center space-x-1">
-                    {['SELECT * FROM rules;', 'SELECT * FROM blob_assets;', 'SELECT * FROM users;'].map(preset => (
+                    {['SELECT * FROM rules;', 'SELECT * FROM blob_assets;', 'SELECT * FROM users;', 'SELECT * FROM messages;'].map(preset => (
                       <button
                         key={preset}
                         onClick={() => {
@@ -1679,81 +1745,16 @@ export default function App() {
               </div>
             </div>
 
-            {/* EDITABLE UPCOMING PRODUCT QUEUE */}
-            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-purple-500/20 shadow-2xl space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                <div>
-                  <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <ListOrdered className="h-4 w-4 text-purple-400" />
-                    Current Upcoming Product Building Queue
-                  </h2>
-                  <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">Queue items for upcoming streak products with 1-click single-click add, remove & promote.</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-950 p-3 sm:p-3.5 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-2.5">
-                <input
-                  placeholder="Enter product idea title..."
-                  value={newQueueTitle}
-                  onChange={e => setNewQueueTitle(e.target.value)}
-                  className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500"
-                />
-                <button
-                  onClick={handleAddQueueItem}
-                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shrink-0 cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Single-Click Add</span>
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {productQueue.map(item => (
-                  <div key={item.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center space-x-2.5">
-                      <span className="font-mono bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-[10px] font-bold shrink-0">Day {item.target_day}</span>
-                      <span className="font-bold text-white leading-tight">{item.title}</span>
-                    </div>
-
-                    <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
-                      <button
-                        onClick={() => handlePromoteQueueItem(item.id)}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center space-x-1 text-xs"
-                      >
-                        <Zap className="h-3.5 w-3.5 fill-white" />
-                        <span>Promote</span>
-                      </button>
-                      <button onClick={() => handleRemoveQueueItem(item.id)} className="text-slate-500 hover:text-rose-400 p-1">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PAGE 2: MASTER TABLES STUDIO */}
-        {activeTab === 'master_tables' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-cyan-500/20 shadow-2xl space-y-5">
+            {/* MASTER TABLES DIRECTORY CATALOG */}
+            <div className="bg-slate-900/60 p-4 sm:p-6 rounded-3xl border border-slate-800 shadow-2xl space-y-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
                 <div>
-                  <h1 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
-                    <Database className="h-5 w-5 text-cyan-400" />
-                    Master Tables Directory Studio
-                  </h1>
-                  <p className="text-xs text-slate-400 mt-0.5">Lists all tables with descriptions and record counts. Click Inspect to edit data in a spreadsheet modal.</p>
+                  <h2 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-cyan-400" />
+                    Master Tables Directory Studio Catalog
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Lists all micro-product database tables with live row counts. Click Inspect & Edit to modify data in spreadsheet modal.</p>
                 </div>
-
-                <button
-                  onClick={() => setShowCreateTableModal(true)}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-md cursor-pointer shrink-0"
-                >
-                  <FolderPlus className="h-4 w-4" />
-                  <span>Create New Table</span>
-                </button>
               </div>
 
               <div className="relative w-full">
