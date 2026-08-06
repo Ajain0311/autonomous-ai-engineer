@@ -2534,6 +2534,29 @@ if not preview_index.exists():
     except Exception as e:
         logger.warning("Could not write default preview index.html: %s", e)
 
+# Smart Dynamic Asset Handler (prevents 404s when hashing changes across builds or browser cache)
+@app.get("/assets/{asset_file}")
+def serve_dynamic_dist_asset(asset_file: str):
+    from fastapi.responses import FileResponse
+    dist_assets_dir = ROOT_DIR / "app" / "dist" / "assets"
+    target_path = dist_assets_dir / asset_file
+
+    # 1. If exact file exists, serve it
+    if target_path.exists() and target_path.is_file():
+        media_type = "text/css" if asset_file.endswith(".css") else "application/javascript" if asset_file.endswith(".js") else None
+        return FileResponse(str(target_path), media_type=media_type)
+
+    # 2. Fallback: find latest matching .css or .js asset if hashed filename changed
+    ext = asset_file.split(".")[-1] if "." in asset_file else ""
+    if ext in ["css", "js"]:
+        matching_files = sorted(dist_assets_dir.glob(f"*.{ext}"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if matching_files:
+            latest_file = matching_files[0]
+            media_type = "text/css" if ext == "css" else "application/javascript"
+            return FileResponse(str(latest_file), media_type=media_type)
+
+    raise HTTPException(status_code=404, detail="Asset not found")
+
 # Serve storage directory for Product 02 blob storage
 storage_dir_path = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage"
 storage_dir_path.mkdir(parents=True, exist_ok=True)
