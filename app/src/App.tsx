@@ -122,6 +122,11 @@ export default function App() {
   const [sqlResultViewMode, setSqlResultViewMode] = useState<'table' | 'json'>('table');
   const [isExecutingSql, setIsExecutingSql] = useState<boolean>(false);
 
+  // SQL IntelliSense Autocomplete State
+  const [showSqlSuggestions, setShowSqlSuggestions] = useState<boolean>(false);
+  const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState<number>(0);
+
+
 
 
   // Inspect & Edit Data Modal State
@@ -578,6 +583,47 @@ export default function App() {
     XLSX.writeFile(wb, 'SQL_QueryResult.xlsx', { bookType: 'xlsx', cellStyles: true });
     setSuccessToast('📊 Query dataset exported to SQL_QueryResult.xlsx!');
   };
+
+  // SQL IntelliSense Suggestion Engine
+  const sqlDictionary = useMemo(() => {
+    const keywords = ['SELECT', 'FROM', 'WHERE', 'INSERT INTO', 'UPDATE', 'DELETE FROM', 'CREATE TABLE', 'DROP TABLE', 'ORDER BY', 'GROUP BY', 'LIMIT', 'SET', 'VALUES', 'AND', 'OR', 'LIKE', 'JOIN', 'ON', 'AS', 'COUNT(*)'];
+    const tables = ['rules', 'blob_assets', 'messages', 'users', 'product_queue', 'audit_logs', ...(masterTables.map(t => t.tableName))];
+    const columns = ['id', 'domain', 'category', 'action', 'priority', 'enabled', 'filename', 'type', 'url', 'size', 'owner', 'sender', 'recipient', 'content', 'timestamp', 'username', 'email', 'role', 'title', 'status', 'target_day', 'created_at'];
+
+    const items: { text: string; type: 'keyword' | 'table' | 'column' }[] = [];
+    keywords.forEach(k => items.push({ text: k, type: 'keyword' }));
+    Array.from(new Set(tables)).forEach(t => items.push({ text: t, type: 'table' }));
+    Array.from(new Set(columns)).forEach(c => items.push({ text: c, type: 'column' }));
+    return items;
+  }, [masterTables]);
+
+  const activeSqlSuggestions = useMemo(() => {
+    if (!sqlInput.trim()) return [];
+    const parts = sqlInput.split(/[\s,;]+/);
+    const lastWord = parts[parts.length - 1].trim();
+    if (!lastWord || lastWord.length < 1) return [];
+
+    return sqlDictionary.filter(item => {
+      const itemLower = item.text.toLowerCase();
+      const lastLower = lastWord.toLowerCase();
+      return itemLower.startsWith(lastLower) && itemLower !== lastLower;
+    }).slice(0, 7);
+  }, [sqlInput, sqlDictionary]);
+
+  const applySqlSuggestion = (suggestionText: string) => {
+    const parts = sqlInput.split(/([\s,;]+)/);
+    // Replace last non-delimiter token
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (parts[i].trim() && !['', ',', ';'].includes(parts[i].trim())) {
+        parts[i] = suggestionText;
+        break;
+      }
+    }
+    const newQuery = parts.join('') + ' ';
+    setSqlInput(newQuery);
+    setShowSqlSuggestions(false);
+  };
+
 
   useEffect(() => {
     fetchMasterTables();
@@ -1639,22 +1685,93 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <input
-                    value={sqlInput}
-                    onChange={e => setSqlInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleExecuteSqlQuery(); }}
-                    placeholder="Enter SQL command (e.g. SELECT * FROM rules;)"
-                    className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-cyan-300 font-mono outline-none focus:border-cyan-500"
-                  />
-                  <button
-                    onClick={() => handleExecuteSqlQuery()}
-                    disabled={isExecutingSql}
-                    className="w-full sm:w-auto px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow cursor-pointer shrink-0"
-                  >
-                    {isExecutingSql ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-white" />}
-                    <span>Execute SQL</span>
-                  </button>
+                <div className="relative">
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <input
+                      value={sqlInput}
+                      onChange={e => {
+                        setSqlInput(e.target.value);
+                        setShowSqlSuggestions(true);
+                        setSelectedSuggestionIdx(0);
+                      }}
+                      onFocus={() => setShowSqlSuggestions(true)}
+                      onKeyDown={e => {
+                        if (showSqlSuggestions && activeSqlSuggestions.length > 0) {
+                          if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            setSelectedSuggestionIdx(prev => (prev + 1) % activeSqlSuggestions.length);
+                            return;
+                          }
+                          if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            setSelectedSuggestionIdx(prev => (prev - 1 + activeSqlSuggestions.length) % activeSqlSuggestions.length);
+                            return;
+                          }
+                          if (e.key === 'Tab' || e.key === 'Enter') {
+                            if (activeSqlSuggestions[selectedSuggestionIdx]) {
+                              e.preventDefault();
+                              applySqlSuggestion(activeSqlSuggestions[selectedSuggestionIdx].text);
+                              return;
+                            }
+                          }
+                          if (e.key === 'Escape') {
+                            setShowSqlSuggestions(false);
+                            return;
+                          }
+                        }
+                        if (e.key === 'Enter') {
+                          handleExecuteSqlQuery();
+                        }
+                      }}
+                      placeholder="Enter SQL command (e.g. SELECT * FROM rules;)"
+                      className="w-full sm:flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-cyan-300 font-mono outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      onClick={() => handleExecuteSqlQuery()}
+                      disabled={isExecutingSql}
+                      className="w-full sm:w-auto px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow cursor-pointer shrink-0"
+                    >
+                      {isExecutingSql ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-white" />}
+                      <span>Execute SQL</span>
+                    </button>
+                  </div>
+
+                  {/* SQL INTELLISENSE AUTOCOMPLETE FLOATING POPUP */}
+                  {showSqlSuggestions && activeSqlSuggestions.length > 0 && (
+                    <div className="absolute left-0 top-full mt-1 z-30 bg-slate-950 border border-cyan-500/40 rounded-xl shadow-2xl overflow-hidden min-w-[280px]">
+                      <div className="px-3 py-1 bg-slate-900 border-b border-slate-800 text-[10px] font-mono text-slate-400 flex justify-between items-center">
+                        <span>💡 SQL IntelliSense Suggestions</span>
+                        <span>[Tab / Enter] to insert</span>
+                      </div>
+                      <div className="py-1 max-h-48 overflow-auto divide-y divide-slate-900/50">
+                        {activeSqlSuggestions.map((item, idx) => (
+                          <div
+                            key={`${item.type}-${item.text}`}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              applySqlSuggestion(item.text);
+                            }}
+                            onMouseEnter={() => setSelectedSuggestionIdx(idx)}
+                            className={`px-3 py-1.5 flex items-center justify-between text-xs font-mono cursor-pointer transition-all ${
+                              idx === selectedSuggestionIdx ? 'bg-cyan-600/30 text-white font-bold' : 'text-slate-300 hover:bg-slate-900'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Sparkles className="h-3 w-3 text-cyan-400" />
+                              {item.text}
+                            </span>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                              item.type === 'keyword' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                              item.type === 'table' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                              'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            }`}>
+                              {item.type}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* QUERY RESULT VIEW MODE & SEARCH CONTROLS */}
