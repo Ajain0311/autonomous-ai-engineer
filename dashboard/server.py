@@ -678,6 +678,154 @@ def get_preview_status():
     }
 
 # =====================================================================
+# NETLIFY DEPLOY ENGINE
+# =====================================================================
+
+deploy_running = False
+deploy_log = ""
+deploy_result: dict = {}
+
+def run_netlify_deploy_task():
+    global deploy_running, deploy_log, deploy_result
+    deploy_running = True
+    deploy_log = ""
+    deploy_result = {}
+    is_windows = sys.platform == "win32"
+    app_path = ROOT_DIR / "app"
+
+    try:
+        netlify_token = os.environ.get("NETLIFY_TOKEN", "").strip()
+        if not netlify_token:
+            deploy_log += "ERROR: NETLIFY_TOKEN is not set in environment.\n"
+            deploy_result = {"status": "error", "message": "NETLIFY_TOKEN not configured. Add it in Render → Environment."}
+            return
+
+        # --- Step 1: Build ---
+        deploy_log += "Step 1/3: Installing dependencies...\n"
+        proc_inst = subprocess.run(
+            ["npm", "install", "--no-audit", "--no-fund", "--loglevel=error"],
+            cwd=str(app_path), capture_output=True, text=True, shell=is_windows,
+            env={**os.environ, "NODE_ENV": "production"}
+        )
+        deploy_log += proc_inst.stdout + proc_inst.stderr
+        if proc_inst.returncode != 0:
+            deploy_log += f"npm install failed (exit {proc_inst.returncode})\n"
+            deploy_result = {"status": "error", "message": "npm install failed. Check deploy log."}
+            return
+
+        deploy_log += "Step 2/3: Building production bundle...\n"
+        proc_build = subprocess.run(
+            ["npm", "run", "build"],
+            cwd=str(app_path), capture_output=True, text=True, shell=is_windows,
+            env={**os.environ, "NODE_ENV": "production"}
+        )
+        deploy_log += proc_build.stdout + proc_build.stderr
+        if proc_build.returncode != 0:
+            deploy_log += f"Build failed (exit {proc_build.returncode})\n"
+            deploy_result = {"status": "error", "message": "npm build failed. Check deploy log."}
+            return
+
+        dist_path = app_path / "dist"
+        if not dist_path.exists():
+            deploy_log += "ERROR: dist/ folder not found after build.\n"
+            deploy_result = {"status": "error", "message": "dist/ not found after build."}
+            return
+
+        # --- Step 3: Deploy via Netlify CLI ---
+        deploy_log += "Step 3/3: Deploying to Netlify...\n"
+
+        # Try netlify CLI first (available on Render if installed via npm)
+        netlify_cmd = subprocess.run(
+            ["netlify", "deploy", "--dir", str(dist_path), "--prod", "--json"],
+            cwd=str(ROOT_DIR), capture_output=True, text=True, shell=is_windows,
+            env={**os.environ, "NETLIFY_AUTH_TOKEN": netlify_token}
+        )
+        deploy_log += netlify_cmd.stdout + netlify_cmd.stderr
+
+        if netlify_cmd.returncode == 0:
+            try:
+                import json as _json
+                cli_data = _json.loads(netlify_cmd.stdout)
+                url = cli_data.get("deploy_url") or cli_data.get("url") or cli_data.get("ssl_url", "")
+                if url:
+                    deploy_log += f"\nDeployed! Live URL: {url}\n"
+                    deploy_result = {"status": "success", "url": url, "message": f"Live at {url}"}
+                    return
+            except Exception:
+                pass
+
+        # Fallback: Netlify REST API zip-upload
+        deploy_log += "CLI deploy failed or not found, trying Netlify API upload...\n"
+        import zipfile, io, urllib.request, urllib.error
+
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in dist_path.rglob("*"):
+                if f.is_file():
+                    zf.write(f, f.relative_to(dist_path))
+        zip_bytes = zip_buf.getvalue()
+        deploy_log += f"Zip created: {len(zip_bytes)//1024} KB\n"
+
+        api_url = "https://api.netlify.com/api/v1/sites"
+        # Check if a site-id is saved in state
+        state = state_manager.load_state()
+        site_id = state.get("netlify_site_id", "")
+
+        if site_id:
+            upload_url = f"https://api.netlify.com/api/v1/sites/{site_id}/deploys"
+        else:
+            upload_url = "https://api.netlify.com/api/v1/sites"
+
+        req = urllib.request.Request(
+            upload_url,
+            data=zip_bytes,
+            headers={
+                "Authorization": f"Bearer {netlify_token}",
+                "Content-Type": "application/zip",
+            },
+            method="POST"
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                import json as _json
+                resp_data = _json.loads(resp.read())
+                new_site_id = resp_data.get("site_id") or resp_data.get("id") or site_id
+                url = resp_data.get("deploy_ssl_url") or resp_data.get("ssl_url") or resp_data.get("url", "")
+                if new_site_id and new_site_id != site_id:
+                    state["netlify_site_id"] = new_site_id
+                    state_manager.save_state(state)
+                    deploy_log += f"New Netlify site created: {new_site_id}\n"
+                deploy_log += f"Deploy complete! URL: {url}\n"
+                deploy_result = {"status": "success", "url": url, "message": f"Live at {url}"}
+        except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            deploy_log += f"Netlify API error {e.code}: {body}\n"
+            deploy_result = {"status": "error", "message": f"Netlify API returned {e.code}. Check token/site permissions."}
+
+    except Exception as e:
+        deploy_log += f"Unexpected error: {e}\n"
+        deploy_result = {"status": "error", "message": str(e)}
+    finally:
+        deploy_running = False
+
+@app.post("/api/deploy/netlify")
+def deploy_to_netlify(background_tasks: BackgroundTasks):
+    global deploy_running
+    if deploy_running:
+        return {"status": "running", "message": "Deploy already in progress. Check /api/deploy/status for logs."}
+    background_tasks.add_task(run_netlify_deploy_task)
+    return {"status": "started", "message": "Deploy started! Poll /api/deploy/status for live logs and result."}
+
+@app.get("/api/deploy/status")
+def get_deploy_status():
+    global deploy_running, deploy_log, deploy_result
+    return {
+        "running": deploy_running,
+        "log": deploy_log,
+        "result": deploy_result
+    }
+
+# =====================================================================
 # NEW USER CONTROLS: TERMINAL, SETTINGS, DB EXPLORER, CHATBOT & MONITOR
 # =====================================================================
 

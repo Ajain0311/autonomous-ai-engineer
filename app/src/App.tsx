@@ -220,6 +220,10 @@ export default function App() {
   // Toast Alerts
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  // Deploy Modal State
+  const [showDeployModal, setShowDeployModal] = useState<boolean>(false);
+  const [deployLog, setDeployLog] = useState<string>('');
+
   // Fallback table data map
   const fallbackTableMap: Record<string, any[]> = {
     'rules': [
@@ -599,22 +603,32 @@ export default function App() {
 
   // Deploy Product to Cloud Netlify CDN Handler
   const handleDeployProduct = async (prod: ProductItem) => {
-    setSuccessToast(`🚀 Deploying ${prod.name} bundle to Netlify CDN...`);
+    setDeployLog('🚀 Starting deploy pipeline...\n');
+    setShowDeployModal(true);
     try {
       const res = await fetch('/api/deploy/netlify', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.status === 'success') {
-          setSuccessToast(`🎉 ${prod.name} successfully deployed to Netlify! URL: ${data.url}`);
-          window.open(data.url, '_blank');
-        } else {
-          setSuccessToast(`⚠️ Deployment Notice: ${data.message}`);
-        }
-      } else {
-        setSuccessToast(`🚀 Build & deployment pipeline executed for ${prod.name}!`);
+      const data = await res.json();
+      if (data.status === 'running') {
+        setDeployLog(prev => prev + '⚠️ Deploy already in progress — tailing live log...\n');
       }
-    } catch {
-      setSuccessToast(`🚀 ${prod.name} deployed to local server!`);
+      const poll = setInterval(async () => {
+        try {
+          const statusRes = await fetch('/api/deploy/status');
+          const status = await statusRes.json();
+          setDeployLog(status.log || '');
+          if (!status.running) {
+            clearInterval(poll);
+            if (status.result?.status === 'success' && status.result?.url) {
+              setDeployLog(prev => prev + `\n✅ LIVE at: ${status.result.url}`);
+              setTimeout(() => window.open(status.result.url, '_blank'), 800);
+            } else if (status.result?.status === 'error') {
+              setDeployLog(prev => prev + `\n❌ Error: ${status.result.message}`);
+            }
+          }
+        } catch { clearInterval(poll); }
+      }, 2000);
+    } catch (e) {
+      setDeployLog(prev => prev + `\n❌ Could not reach deploy API: ${e}`);
     }
   };
 
@@ -2191,6 +2205,35 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* DEPLOY LOG MODAL */}
+      {showDeployModal && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col" style={{maxHeight: '85vh'}}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <UploadCloud className="h-5 w-5 text-emerald-400 animate-pulse" />
+                <span className="text-sm font-extrabold text-white">Netlify Deploy Pipeline</span>
+                {deployLog.includes('✅') ? (
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">SUCCESS</span>
+                ) : deployLog.includes('❌') ? (
+                  <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-mono">FAILED</span>
+                ) : (
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono animate-pulse">RUNNING</span>
+                )}
+              </div>
+              <button onClick={() => setShowDeployModal(false)} className="text-slate-500 hover:text-white p-1"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="flex-1 overflow-auto bg-black/60 rounded-b-3xl p-4">
+              <pre className="text-xs font-mono text-emerald-300 whitespace-pre-wrap leading-relaxed">{deployLog || 'Waiting for deploy server...'}</pre>
+            </div>
+            <div className="px-5 py-3 border-t border-slate-800 flex justify-between items-center shrink-0">
+              <span className="text-[11px] text-slate-500">Polling every 2s • Build → Bundle → Netlify</span>
+              <button onClick={() => setShowDeployModal(false)} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SPREADSHEET INSPECT MODAL */}
       {inspectTableModal && (
