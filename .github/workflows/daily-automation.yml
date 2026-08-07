@@ -3,8 +3,8 @@ name: Daily Code Generation
 on:
   schedule:
     #  1 run/day — commits 1 task or plans a new project.
-    #  Run 1: 04:17 UTC = 09:47 IST
-    - cron: '17 4 * * *'
+    #  Run 1: 00:01 UTC = 05:31 AM IST
+    - cron: '1 0 * * *'
 
   workflow_dispatch:
     inputs:
