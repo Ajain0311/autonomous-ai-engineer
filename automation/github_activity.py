@@ -76,7 +76,7 @@ def merge_pull_request(owner: str, repo: str, pr_number: int, commit_title: str 
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/merge"
     payload = json.dumps({
         "commit_title": commit_title,
-        "merge_method": "squash"
+        "merge_method": "rebase"
     }).encode("utf-8")
     req = urllib.request.Request(url, data=payload, headers=_get_api_headers(), method="PUT")
     try:
