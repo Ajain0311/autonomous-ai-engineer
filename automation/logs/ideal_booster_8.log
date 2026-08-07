@@ -1,0 +1,3 @@
+Task: JWT Token Security & Role Claims Parser
+Desc: Implement middleware validation for enterprise RBAC and sub-claim extraction.
+Timestamp: Fri Aug  7 11:06:12 2026
