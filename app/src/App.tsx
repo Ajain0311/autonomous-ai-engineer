@@ -891,7 +891,7 @@ export default function App() {
     setCardDeployLogs(prev => ({ ...prev, [prodId]: `🚀 Starting deploy pipeline for ${prod.name}...\nStep 1/3: Initializing production build...\n` }));
 
     try {
-      const res = await fetch('/api/deploy/netlify', { method: 'POST' });
+      const res = await fetch(`/api/deploy/netlify?product_id=${encodeURIComponent(prod.id)}`, { method: 'POST' });
       const data = await res.json();
       
       if (data.status === 'running') {
