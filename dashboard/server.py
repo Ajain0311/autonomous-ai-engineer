@@ -2673,6 +2673,33 @@ if mvp_assets_dir.exists() and mvp_assets_dir.is_dir():
 
 app.mount("/preview", StaticFiles(directory=str(mvp_app_dir), html=True), name="preview")
 
-# Serve main MVP Dashboard at '/'
+# Dynamic root handler: rewrites index.html with latest hashed asset filenames at request time
+# This prevents blank screens when Vite bundle hash changes across deploys without server restart
+@app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
+def serve_spa_root():
+    from fastapi.responses import HTMLResponse
+    import re as _re
+    index_path = mvp_app_dir / "index.html"
+    if not index_path.exists():
+        return HTMLResponse("<html><body style='background:#0f0f13;color:#a78bfa;padding:40px;text-align:center'><h2>Dashboard is starting...</h2></body></html>")
+    
+    html = index_path.read_text(encoding="utf-8")
+    assets_dir = mvp_app_dir / "assets"
+    
+    # Find latest JS and CSS files by modification time
+    if assets_dir.exists():
+        js_files = sorted(assets_dir.glob("*.js"), key=lambda f: f.stat().st_mtime, reverse=True)
+        css_files = sorted(assets_dir.glob("*.css"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if js_files:
+            latest_js = js_files[0].name
+            html = _re.sub(r'/assets/index[^"]+\.js', f'/assets/{latest_js}', html)
+        if css_files:
+            latest_css = css_files[0].name
+            html = _re.sub(r'/assets/index[^"]+\.css', f'/assets/{latest_css}', html)
+    
+    return HTMLResponse(html)
+
+# Serve remaining static files at '/' (images, favicon etc.)
 if mvp_app_dir.exists() and mvp_app_dir.is_dir():
     app.mount("/", StaticFiles(directory=str(mvp_app_dir), html=True), name="mvp_root")
