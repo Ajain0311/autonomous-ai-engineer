@@ -4,11 +4,11 @@ project:
     on trending technologies and projects.
   vision: To become the go-to platform for tech professionals to stay updated, network,
     and grow in their careers.
-  status: completed
+  status: idle
   repository_url: ''
   deployment_url: ''
   created_at: '2026-08-01T10:29:58.288594+00:00'
-  updated_at: '2026-08-07T10:42:23.993088'
+  updated_at: '2026-08-07T10:42:53.039163'
   title: Tech Hub
 architecture:
   notes: The application will use a modular architecture with a React Vite frontend,
