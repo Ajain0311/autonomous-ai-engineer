@@ -8,7 +8,7 @@ import {
   UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf,
   ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle, Menu, Play, FileUp, KeyRound, ShieldAlert as ShieldIcon,
   Mail, Send, CheckSquare as CheckSquareIcon, ShieldCheck as ShieldCheckIcon, Copy, Filter, Maximize2, ExternalLink,
-  MessageSquare, Hash, PieChart, BarChart3, Sliders
+  MessageSquare, Hash, PieChart, BarChart3, Sliders, Cpu, Clock
 } from 'lucide-react';
 
 interface ColumnSchema {
@@ -70,7 +70,7 @@ interface ProductItem {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'master_tables' | 'my_products' | 'user_auth'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'master_tables' | 'my_products' | 'user_auth' | 'ai_timeline'>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   
   // Hard Security Auth State
@@ -125,6 +125,62 @@ export default function App() {
   // SQL IntelliSense Autocomplete State
   const [showSqlSuggestions, setShowSqlSuggestions] = useState<boolean>(false);
   const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState<number>(0);
+
+  // AI Project State & Live Build Timeline Engine
+  const [aiProjectState, setAiProjectState] = useState<any>(null);
+  const [isLoadingAiState, setIsLoadingAiState] = useState<boolean>(false);
+  const [pipelineRunLog, setPipelineRunLog] = useState<string>('');
+  const [isPipelineRunning, setIsPipelineRunning] = useState<boolean>(false);
+
+  const fetchAiProjectState = async () => {
+    setIsLoadingAiState(true);
+    try {
+      const res = await fetch('/api/state');
+      if (res.ok) {
+        const data = await res.json();
+        setAiProjectState(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch AI project state', e);
+    } finally {
+      setIsLoadingAiState(false);
+    }
+  };
+
+  const handleTriggerNextFeature = async () => {
+    setIsPipelineRunning(true);
+    setPipelineRunLog('🚀 Triggering Autonomous AI Engine build pipeline...\n');
+    try {
+      const res = await fetch('/api/run', { method: 'POST' });
+      if (res.ok) {
+        setSuccessToast('⚡ Autonomous AI Feature Build Triggered!');
+        const interval = setInterval(async () => {
+          try {
+            const statusRes = await fetch('/api/run/status');
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              setPipelineRunLog(statusData.log);
+              if (!statusData.running) {
+                clearInterval(interval);
+                setIsPipelineRunning(false);
+                fetchAiProjectState();
+              }
+            }
+          } catch {
+            clearInterval(interval);
+            setIsPipelineRunning(false);
+          }
+        }, 2000);
+      }
+    } catch (e) {
+      setIsPipelineRunning(false);
+      setPipelineRunLog(prev => prev + '\n❌ Error starting build.');
+    }
+  };
+
+  useEffect(() => {
+    fetchAiProjectState();
+  }, []);
 
 
 
@@ -1397,6 +1453,7 @@ export default function App() {
           <nav className="hidden md:flex items-center space-x-1 bg-white/5 p-1 rounded-xl border border-white/5">
             {[
               { id: 'home', label: 'Dashboard Home', icon: LayoutDashboard },
+              { id: 'ai_timeline', label: 'AI Build Timeline', icon: Cpu },
               { id: 'master_tables', label: 'Master Tables Studio', icon: Database },
               { id: 'my_products', label: 'My Products', icon: Box },
               { id: 'user_auth', label: 'User Auth Table', icon: Users },
@@ -1451,6 +1508,7 @@ export default function App() {
           <div className="md:hidden bg-slate-950 border-b border-slate-800 px-4 py-3 space-y-1.5">
             {[
               { id: 'home', label: 'Dashboard Home', icon: LayoutDashboard },
+              { id: 'ai_timeline', label: 'AI Build Timeline', icon: Cpu },
               { id: 'master_tables', label: 'Master Tables Studio', icon: Database },
               { id: 'my_products', label: 'My Products Portfolio', icon: Box },
               { id: 'user_auth', label: 'User Auth Table', icon: Users },
@@ -1595,6 +1653,161 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PAGE: AI BUILD TIMELINE & BUILT FEATURES LIST */}
+        {activeTab === 'ai_timeline' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* PROJECT SPEC HEADER CARD */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+              <div className="absolute -right-10 -top-10 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2.5">
+                    <Cpu className="h-6 w-6 text-cyan-400 animate-pulse" />
+                    <h2 className="text-xl font-extrabold text-white tracking-tight">
+                      {aiProjectState?.project?.title || aiProjectState?.project?.name || 'Autonomous SaaS Product Engine'}
+                    </h2>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                      aiProjectState?.project?.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                    }`}>
+                      {aiProjectState?.project?.status || 'Active Spec'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                    {aiProjectState?.project?.description || 'AI software engineering pipeline automatically designing, building, and deploying micro-saas features.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={fetchAiProjectState}
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isLoadingAiState ? 'animate-spin' : ''}`} />
+                    <span>Refresh State</span>
+                  </button>
+                  
+                  <button
+                    onClick={handleTriggerNextFeature}
+                    disabled={isPipelineRunning}
+                    className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-cyan-600/30 flex items-center space-x-2 cursor-pointer"
+                  >
+                    {isPipelineRunning ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-white" />}
+                    <span>{isPipelineRunning ? 'Building Feature...' : 'Build Next Feature Now'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* PIPELINE LIVE LOG EXPANDER */}
+              {isPipelineRunning && (
+                <div className="mt-4 bg-slate-950 border border-cyan-500/40 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-cyan-300 font-mono font-bold">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping"></span>
+                      Live Autonomous Build Stream Log
+                    </span>
+                  </div>
+                  <pre className="text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto whitespace-pre-wrap bg-black/40 p-3 rounded-xl border border-slate-900">
+                    {pipelineRunLog || 'Initializing AI pipeline...'}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* BUILT FEATURES TIMELINE LIST */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-white flex items-center space-x-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span>Built Features & Implementation Logs</span>
+                </h3>
+                <span className="text-xs font-mono text-slate-400">
+                  Total Features Built: <strong className="text-cyan-400 font-bold">
+                    {aiProjectState?.milestones?.flatMap((m: any) => m.tasks || []).filter((t: any) => t.status === 'completed').length || 0}
+                  </strong>
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {aiProjectState?.milestones?.flatMap((m: any) => 
+                  (m.tasks || []).map((t: any) => ({ ...t, milestone_title: m.title }))
+                ).filter((t: any) => t.status === 'completed').length > 0 ? (
+                  aiProjectState?.milestones?.flatMap((m: any) => 
+                    (m.tasks || []).map((t: any) => ({ ...t, milestone_title: m.title }))
+                  ).filter((t: any) => t.status === 'completed').map((task: any, i: number) => (
+                    <div key={task.id || i} className="bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/40 p-4 rounded-2xl transition-all space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-2.5">
+                          <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 font-mono text-[10px] font-bold rounded-lg border border-cyan-500/20">
+                            Task #{task.id}
+                          </span>
+                          <h4 className="text-xs font-bold text-white tracking-wide">{task.name}</h4>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {task.commit_sha && (
+                            <span className="font-mono text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30">
+                              #{task.commit_sha.substring(0, 7)}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold rounded-full border border-emerald-500/30 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> BUILT & VERIFIED
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-400 leading-relaxed">{task.description}</p>
+
+                      {/* FILES CREATED / TOUCHED */}
+                      {task.files_touched && task.files_touched.length > 0 && (
+                        <div className="pt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-mono">
+                          <span className="text-slate-500 text-[10px] font-sans font-bold">Files Built:</span>
+                          {task.files_touched.map((f: string, fi: number) => (
+                            <span key={fi} className="bg-slate-950 text-cyan-300 px-2 py-0.5 rounded border border-slate-800 text-[10px]">
+                              📄 {f}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-2xl text-center space-y-2">
+                    <Cpu className="h-8 w-8 text-slate-500 mx-auto animate-pulse" />
+                    <p className="text-xs text-slate-400 font-mono">No features built yet for this spec. Click "Build Next Feature Now" to trigger AI execution!</p>
+                  </div>
+                )}
+              </div>
+
+              {/* PLANNED & UPCOMING FEATURES PIPELINE */}
+              <div className="pt-4 space-y-3">
+                <h3 className="text-sm font-extrabold text-white flex items-center space-x-2">
+                  <Clock className="h-4 w-4 text-amber-400" />
+                  <span>Upcoming Planned Features Pipeline</span>
+                </h3>
+
+                <div className="space-y-2">
+                  {aiProjectState?.milestones?.flatMap((m: any) => 
+                    (m.tasks || []).map((t: any) => ({ ...t, milestone_title: m.title }))
+                  ).filter((t: any) => t.status !== 'completed').map((task: any, i: number) => (
+                    <div key={task.id || i} className="bg-slate-900/40 border border-slate-800/50 p-3.5 rounded-xl flex items-center justify-between text-xs">
+                      <div className="flex items-center space-x-2.5">
+                        <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold rounded border border-amber-500/20">
+                          #{task.id}
+                        </span>
+                        <span className="text-slate-300 font-bold">{task.name}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        ⏳ QUEUED IN PIPELINE
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
