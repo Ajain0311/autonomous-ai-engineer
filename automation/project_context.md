@@ -76,25 +76,6 @@ projects:
 ```
 
 ## Workspace Source Code Files
-### File: `app/netlify.toml`
-```toml
-[build]
-  command = "npm run build"
-  publish = "build"
-[functions]
-  directory = "functions"
-```
-
-### File: `app/postcss.config.js`
-```js
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-```
-
 ### File: `app/index.html`
 ```html
 <!DOCTYPE html>
@@ -111,9 +92,41 @@ module.exports = {
 </html>
 ```
 
+### File: `app/netlify.toml`
+```toml
+[build]
+  command = "npm run build"
+  publish = "build"
+[functions]
+  directory = "functions"
+```
+
 ### File: `app/package.json`
 ```json
 {"name":"tech-hub","version":"1.0.0","scripts":{"start":"vite","build":"vite build"},"dependencies":{"@types/better-sqlite3":"^9.6.0","autoprefixer":"^10.5.4","better-sqlite3":"^13.0.3","express":"^4.17.1","lucide-react":"^1.28.0","react":"^18.2.0","react-dom":"^18.2.0","react-router-dom":"^6.3.0","tailwindcss":"^3.1.8","xlsx":"^0.18.5","zustand":"^4.1.5"},"devDependencies":{"@types/express":"^4.17.13","@types/react":"^18.0.17","@types/react-dom":"^18.0.6","@types/react-router-dom":"^5.3.3","@vitejs/plugin-react":"^2.1.0","typescript":"^4.8.3","vite":"^3.1.0"}}
+```
+
+### File: `app/postcss.config.js`
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+### File: `app/tailwind.config.js`
+```js
+module.exports = {
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
 ```
 
 ### File: `app/tsconfig.json`
@@ -130,63 +143,6 @@ export default defineConfig({
   base: '/',
   plugins: [react()]
 });
-```
-
-### File: `app/tailwind.config.js`
-```js
-module.exports = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
-```
-
-### File: `app/product1_adblocker_extension/popup.html`
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      width: 280px;
-      padding: 16px;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #07080d;
-      color: #fff;
-      margin: 0;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #1e293b;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-    }
-    .title { font-weight: 800; font-size: 14px; color: #38bdf8; }
-    .status { font-size: 11px; color: #4ade80; font-weight: 700; }
-    .card { background: #1e293b; p: 10px; border-radius: 8px; margin-bottom: 8px; padding: 10px; }
-    .val { font-size: 18px; font-weight: 800; color: #38bdf8; }
-    .lbl { font-size: 10px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="title">Product 1: ShieldBlock AI</div>
-    <div class="status">● Active</div>
-  </div>
-  <div class="card">
-    <div class="val">14,892</div>
-    <div class="lbl">Ads & Trackers Blocked Today</div>
-  </div>
-</body>
-</html>
-
 ```
 
 ### File: `app/product1_adblocker_extension/background.js`
@@ -295,6 +251,50 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
+### File: `app/product1_adblocker_extension/popup.html`
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 280px;
+      padding: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #07080d;
+      color: #fff;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title { font-weight: 800; font-size: 14px; color: #38bdf8; }
+    .status { font-size: 11px; color: #4ade80; font-weight: 700; }
+    .card { background: #1e293b; p: 10px; border-radius: 8px; margin-bottom: 8px; padding: 10px; }
+    .val { font-size: 18px; font-weight: 800; color: #38bdf8; }
+    .lbl { font-size: 10px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Product 1: ShieldBlock AI</div>
+    <div class="status">● Active</div>
+  </div>
+  <div class="card">
+    <div class="val">14,892</div>
+    <div class="lbl">Ads & Trackers Blocked Today</div>
+  </div>
+</body>
+</html>
+
+```
+
 ### File: `app/product1_adblocker_extension/db/rules.json`
 ```json
 [
@@ -322,19 +322,79 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/src/main.tsx`
-```tsx
-import React from 'react';
-import ReactDOM from 'react-dom';
-import App from './App';
-import './index.css';
+### File: `app/product2_github_blob_storage/db/blob_assets.json`
+```json
+[
+]
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+```
+
+### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
+```json
+{
+  "tableName": "blob_assets",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "filename", "type": "string", "required": true },
+    { "name": "type", "type": "string", "required": true, "default": "image" },
+    { "name": "url", "type": "string", "required": true },
+    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
+    { "name": "created_at", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages.json`
+```json
+[
+  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
+  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages_schema.json`
+```json
+{
+  "tableName": "messages",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "sender_email", "type": "string", "required": true },
+    { "name": "recipient_email", "type": "string", "required": true },
+    { "name": "subject", "type": "string", "required": true },
+    { "name": "body", "type": "string", "required": true },
+    { "name": "timestamp", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users.json`
+```json
+[
+  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
+  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
+  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
+  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
+  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users_schema.json`
+```json
+{
+  "tableName": "users",
+  "columns": [
+    { "name": "id", "type": "number", "required": true },
+    { "name": "username", "type": "string", "required": true },
+    { "name": "email", "type": "string", "required": true },
+    { "name": "name", "type": "string", "required": false },
+    { "name": "role", "type": "string", "required": false }
+  ]
+}
+
 ```
 
 ### File: `app/src/App.tsx`
@@ -1670,77 +1730,17 @@ body {
 
 ```
 
-### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
-```json
-{
-  "tableName": "blob_assets",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "filename", "type": "string", "required": true },
-    { "name": "type", "type": "string", "required": true, "default": "image" },
-    { "name": "url", "type": "string", "required": true },
-    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
-    { "name": "created_at", "type": "string", "required": true }
-  ]
-}
+### File: `app/src/main.tsx`
+```tsx
+import React from 'react';
+import ReactDOM from 'react-dom';
+import App from './App';
+import './index.css';
 
-```
-
-### File: `app/product2_github_blob_storage/db/blob_assets.json`
-```json
-[
-]
-
-```
-
-### File: `app/product3_email_chat_mvp/db/messages.json`
-```json
-[
-  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
-  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
-]
-
-```
-
-### File: `app/product3_email_chat_mvp/db/users_schema.json`
-```json
-{
-  "tableName": "users",
-  "columns": [
-    { "name": "id", "type": "number", "required": true },
-    { "name": "username", "type": "string", "required": true },
-    { "name": "email", "type": "string", "required": true },
-    { "name": "name", "type": "string", "required": false },
-    { "name": "role", "type": "string", "required": false }
-  ]
-}
-
-```
-
-### File: `app/product3_email_chat_mvp/db/messages_schema.json`
-```json
-{
-  "tableName": "messages",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "sender_email", "type": "string", "required": true },
-    { "name": "recipient_email", "type": "string", "required": true },
-    { "name": "subject", "type": "string", "required": true },
-    { "name": "body", "type": "string", "required": true },
-    { "name": "timestamp", "type": "string", "required": true }
-  ]
-}
-
-```
-
-### File: `app/product3_email_chat_mvp/db/users.json`
-```json
-[
-  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
-  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
-  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
-  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
-  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
-]
-
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById('root')
+);
 ```
