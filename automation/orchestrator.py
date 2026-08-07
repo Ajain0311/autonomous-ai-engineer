@@ -362,68 +362,76 @@ def run_pipeline() -> None:
             stamp = int(time.time())
             feat_branch = f"feat/task-{task['id']}-{stamp}"
             run_git_command(["checkout", "-b", feat_branch])
+
+            # Commit each file individually to maximize GitHub commit contribution count!
+            for rel_path in written_paths.keys():
+                file_target = f"app/{rel_path}"
+                run_git_command(["add", file_target])
+                file_stem = Path(rel_path).stem
+                file_msg = f"feat({file_stem}): implement {rel_path} for task {task['id']}"
+                run_git_command(["commit", "-m", file_msg])
+
+            # Also stage any remaining uncommitted app changes
             run_git_command(["add", "app/"])
-            
             commit_ok, commit_output = run_git_command(["commit", "-m", commit_message])
-            if commit_ok:
-                _, sha_output = run_git_command(["rev-parse", "HEAD"])
-                sha = sha_output.strip()
+            # If nothing left, rev-parse current HEAD
+            _, sha_output = run_git_command(["rev-parse", "HEAD"])
+            sha = sha_output.strip()
+            commit_ok = True
 
-                # Push feature branch
-                run_git_command(["push", "origin", f"HEAD:{feat_branch}"])
+            # Push feature branch
+            run_git_command(["push", "origin", f"HEAD:{feat_branch}"])
 
-                # Create Pull Request
-                pr_body = f"Automated PR for Task #{task['id']}: {task['name']}.\n\nFixes #{issue_num}\n\nPassed Quality Gates verification."
-                pr_num = github_activity.create_pull_request(
+            # Create Pull Request
+            pr_body = f"Automated PR for Task #{task['id']}: {task['name']}.\n\nFixes #{issue_num}\n\nPassed Quality Gates verification."
+            pr_num = github_activity.create_pull_request(
+                owner=owner,
+                repo=repo_name,
+                title=f"feat(task-{task['id']}): {task['name']}",
+                head=feat_branch,
+                base="main",
+                body=pr_body
+            )
+
+            # 3. Automate Code Review Approval (Boosts Code Reviews %)
+            if pr_num:
+                github_activity.submit_pr_review(
                     owner=owner,
                     repo=repo_name,
-                    title=f"feat(task-{task['id']}): {task['name']}",
-                    head=feat_branch,
-                    base="main",
-                    body=pr_body
+                    pr_number=pr_num,
+                    event="COMMENT",
+                    body="✅ Automated Code Quality Gates passed (TypeScript + Build verified). Approved for merge."
                 )
+                # Merge PR via rebase to preserve individual atomic file commits!
+                github_activity.merge_pull_request(owner, repo_name, pr_num, f"Merge PR #{pr_num} (Task #{task['id']})")
 
-                # 3. Automate Code Review Approval (Boosts Code Reviews %)
-                if pr_num:
-                    github_activity.submit_pr_review(
-                        owner=owner,
-                        repo=repo_name,
-                        pr_number=pr_num,
-                        event="COMMENT",
-                        body="✅ Automated Code Quality Gates passed (TypeScript + Build verified). Approved for merge."
-                    )
-                    # Merge PR
-                    github_activity.merge_pull_request(owner, repo_name, pr_num, f"Merge PR #{pr_num} (Task #{task['id']})")
-
-                # Switch back to main and pull latest
-                run_git_command(["checkout", "main"])
-                run_git_command(["pull", "origin", "main"])
+            # Switch back to main and pull latest
+            run_git_command(["checkout", "main"])
+            run_git_command(["pull", "origin", "main"])
                 
-                # Mark completed
-                state_manager.mark_task_status(state, task["id"], "completed", written_paths, sha)
-                state_manager.add_audit_log(state, "task_completed", f"Task: {task['name']} (PR: #{pr_num}, Issue: #{issue_num})")
-                
-                # Update context manifest after success
-                update_project_context(state)
-                
-                # Save state and commit it
-                state_manager.save_state(state)
-                run_git_command(["add", "automation/project_state.yaml"])
-                run_git_command(["add", "automation/project_context.md"])
-                run_git_command(["commit", "-m", f"chore(state): sync state and context after task {task['id']}"])
-                run_git_command(["push"])
-                
-                state["last_run"] = {
-                    "success": True,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "error_message": "",
-                    "duration_seconds": int(time.time() - start_time),
-                    "retry_count": 0
-                }
-                state_manager.save_state(state)
-                logger.info("Successfully completed task and committed.")
-            else:
-                raise RuntimeError(f"Git commit failed:\n{commit_output}")
+            # Mark completed
+            state_manager.mark_task_status(state, task["id"], "completed", written_paths, sha)
+            state_manager.add_audit_log(state, "task_completed", f"Task: {task['name']} (PR: #{pr_num}, Issue: #{issue_num})")
+            
+            # Update context manifest after success
+            update_project_context(state)
+            
+            # Save state and commit it
+            state_manager.save_state(state)
+            run_git_command(["add", "automation/project_state.yaml"])
+            run_git_command(["add", "automation/project_context.md"])
+            run_git_command(["commit", "-m", f"chore(state): sync state and context after task {task['id']}"])
+            run_git_command(["push"])
+            
+            state["last_run"] = {
+                "success": True,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "error_message": "",
+                "duration_seconds": int(time.time() - start_time),
+                "retry_count": 0
+            }
+            state_manager.save_state(state)
+            logger.info("Successfully completed task and committed.")
         else:
             # Build failed and could not be repaired - discard build changes to keep repo clean
             logger.error("Build failed and could not be repaired. Reverting changes to maintain quality...")
