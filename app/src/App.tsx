@@ -189,7 +189,7 @@ export default function App() {
   const [inspectRows, setInspectRows] = useState<any[]>([]);
   const [inspectModalSearch, setInspectModalSearch] = useState<string>('');
 
-  // Products Portfolio
+  // Products Portfolio - Full Built Catalog
   const [productsList, setProductsList] = useState<ProductItem[]>([
     {
       id: 'product1_adblocker_extension',
@@ -210,6 +210,41 @@ export default function App() {
       name: 'Product 03: Email-Based Micro-Chat MVP (Rocket.Chat Style)',
       description: 'Lightweight thread engine supporting real-time chat conversations over email protocols.',
       db_folder: 'app/product3_email_chat_mvp/db',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product4_techhub_platform',
+      name: 'Product 04: Tech Hub Full-Stack Developer Platform',
+      description: 'Developer SaaS platform for project discovery, JWT authentication, trending tech insights, and CRUD APIs.',
+      db_folder: 'automation/project_state.yaml',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product5_url_cleaner',
+      name: 'Product 05: URL Cleaner & UTM Parameter Stripper Engine',
+      description: 'Privacy tool to strip tracking parameters, affiliate tokens, and redirect wrappers from URLs.',
+      db_folder: 'app/product5_url_cleaner/db',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product6_tab_session_saver',
+      name: 'Product 06: One-Click Tab Group & Session Saver',
+      description: 'Productivity suite to backup, categorize, and restore browser window sessions with 1-click JSON export.',
+      db_folder: 'app/product6_tab_session_saver/db',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product7_profile_booster_engine',
+      name: 'Product 07: Ideal GitHub Profile & Activity Graph Booster Engine',
+      description: 'Automated contribution pipeline generating per-file atomic commits, Pull Requests, Issues, and Code Reviews.',
+      db_folder: 'automation/github_activity.py',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product8_sqlite_master_tables',
+      name: 'Product 08: SQLite B-Tree Master Tables & SQL Console Studio',
+      description: 'Embedded database engine with live SQL IntelliSense console, schema validator, and 1-click Excel exporter.',
+      db_folder: 'db/app_data.db',
       status: 'OPERATIONAL'
     }
   ]);
