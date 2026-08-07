@@ -177,8 +177,23 @@ export default function App() {
     }
   };
 
+  const fetchProductsCatalog = async () => {
+    try {
+      const res = await fetch('/api/products/catalog');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.products && data.products.length > 0) {
+          setProductsList(data.products);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch dynamic products catalog', e);
+    }
+  };
+
   useEffect(() => {
     fetchAiProjectState();
+    fetchProductsCatalog();
   }, []);
 
 

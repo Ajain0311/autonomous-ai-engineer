@@ -1415,6 +1415,92 @@ def get_products_list():
                 products.append(d.name)
     return {"products": sorted(products)}
 
+@app.get("/api/products/catalog")
+def get_dynamic_products_catalog():
+    catalog = []
+
+    # 1. Base Core Built Products
+    base_products = [
+        {
+            "id": "product1_adblocker_extension",
+            "name": "Product 01: Manifest V3 AdBlocker & Tracker Zapper",
+            "description": "Browser extension to block ads, trackers, and popup zappers using isolated dynamic rules.",
+            "db_folder": "app/product1_adblocker_extension/db",
+            "status": "OPERATIONAL"
+        },
+        {
+            "id": "product2_github_blob_storage",
+            "name": "Product 02: GitHub Blob Storage & Media CDN Utility",
+            "description": "Uploads and organizes Images, MP4 Videos, and PDF Documents into distinct storage subfolders.",
+            "db_folder": "app/product2_github_blob_storage/db",
+            "status": "OPERATIONAL"
+        },
+        {
+            "id": "product3_email_chat_mvp",
+            "name": "Product 03: Email-Based Micro-Chat MVP (Rocket.Chat Style)",
+            "description": "Lightweight thread engine supporting real-time chat conversations over email protocols.",
+            "db_folder": "app/product3_email_chat_mvp/db",
+            "status": "OPERATIONAL"
+        }
+    ]
+    catalog.extend(base_products)
+
+    # 2. Dynamically scan app/ folder for any newly created product folders
+    app_dir = ROOT_DIR / "app"
+    if app_dir.exists():
+        for d in sorted(app_dir.iterdir()):
+            if d.is_dir() and d.name.startswith("product") and not any(p["id"] == d.name for p in catalog):
+                clean_title = d.name.replace("_", " ").title()
+                catalog.append({
+                    "id": d.name,
+                    "name": clean_title,
+                    "description": f"Autonomous AI-generated micro-product module located at app/{d.name}.",
+                    "db_folder": f"app/{d.name}/db",
+                    "status": "OPERATIONAL"
+                })
+
+    # 3. Dynamically scan automation/project_state.yaml for AI-built SaaS specs & milestones
+    try:
+        state = state_manager.load_state()
+        proj = state.get("project", {})
+        if proj:
+            proj_title = proj.get("title") or proj.get("name") or "Tech Hub Developer SaaS Platform"
+            proj_desc = proj.get("description") or "Developer SaaS platform designed and built by AI pipeline."
+            proj_status = "OPERATIONAL" if proj.get("status") == "completed" else "BUILDING"
+            if not any(p["id"] == "product4_techhub_platform" for p in catalog):
+                catalog.append({
+                    "id": "product4_techhub_platform",
+                    "name": f"Product 04: {proj_title}",
+                    "description": proj_desc,
+                    "db_folder": "automation/project_state.yaml",
+                    "status": proj_status
+                })
+    except Exception:
+        pass
+
+    # 4. System Products & Activity Engines
+    system_modules = [
+        {
+            "id": "product7_profile_booster_engine",
+            "name": "Product 07: Ideal GitHub Profile & Activity Graph Booster Engine",
+            "description": "Automated contribution pipeline generating per-file atomic commits, Pull Requests, Issues, and Code Reviews.",
+            "db_folder": "automation/github_activity.py",
+            "status": "OPERATIONAL"
+        },
+        {
+            "id": "product8_sqlite_master_tables",
+            "name": "Product 08: SQLite B-Tree Master Tables & SQL Console Studio",
+            "description": "Embedded database engine with live SQL IntelliSense console, schema validator, and 1-click Excel exporter.",
+            "db_folder": "db/app_data.db",
+            "status": "OPERATIONAL"
+        }
+    ]
+    for sys_mod in system_modules:
+        if not any(p["id"] == sys_mod["id"] for p in catalog):
+            catalog.append(sys_mod)
+
+    return {"products": catalog, "total": len(catalog)}
+
 class InitProductRequest(BaseModel):
     product_id: str
     product_name: str
