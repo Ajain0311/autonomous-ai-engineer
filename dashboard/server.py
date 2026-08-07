@@ -8,7 +8,7 @@ from datetime import datetime
 import threading
 from pathlib import Path
 from typing import Optional, Dict, List
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -39,6 +39,96 @@ CONFIG_VAR_NAMES = [
     "MISTRAL_API_KEYS", "COHERE_API_KEYS", "HUGGINGFACE_API_KEYS", "GITHUB_MODELS_KEYS",
     "SAMBANOVA_API_KEYS", "KILO_API_KEYS", "SKIP_COMPILATION_GATES"
 ]
+import hashlib
+import secrets
+import time
+
+# ─── SSO Auth Module ──────────────────────────────────────────────────────────
+USERS_DB_FILE = ROOT_DIR / "db" / "sso_users.json"
+SESSIONS_DB_FILE = ROOT_DIR / "db" / "sso_sessions.json"
+SESSION_TTL_HOURS = 72  # sessions valid for 3 days
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def _load_users() -> list:
+    if USERS_DB_FILE.exists():
+        try:
+            return json.loads(USERS_DB_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    # Seed with default admin from existing users.json
+    legacy = ROOT_DIR / "db" / "users.json"
+    if legacy.exists():
+        try:
+            raw = json.loads(legacy.read_text(encoding="utf-8"))
+            users = []
+            for u in raw:
+                role = u.get("role", "user")
+                if role in ("super_admin", "admin"): sso_role = "superadmin"
+                elif role == "developer": sso_role = "admin"
+                else: sso_role = "user"
+                users.append({
+                    "id": u["id"], "username": u["username"],
+                    "email": u.get("email", ""), "password_hash": _hash_password(u.get("password", "password123")),
+                    "role": sso_role, "enabled": u.get("enabled", True), "otp": None, "otp_ts": 0
+                })
+            _save_users(users)
+            return users
+        except Exception:
+            pass
+    default = [{"id": 1, "username": "admin", "email": "admin@example.com",
+                "password_hash": _hash_password("admin123"), "role": "superadmin",
+                "enabled": True, "otp": None, "otp_ts": 0}]
+    _save_users(default)
+    return default
+
+def _save_users(users: list):
+    USERS_DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    USERS_DB_FILE.write_text(json.dumps(users, indent=2), encoding="utf-8")
+
+def _load_sessions() -> dict:
+    if SESSIONS_DB_FILE.exists():
+        try:
+            return json.loads(SESSIONS_DB_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+def _save_sessions(sessions: dict):
+    SESSIONS_DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SESSIONS_DB_FILE.write_text(json.dumps(sessions, indent=2), encoding="utf-8")
+
+def _create_session(user_id: int, role: str, username: str) -> str:
+    token = secrets.token_urlsafe(32)
+    sessions = _load_sessions()
+    sessions[token] = {"user_id": user_id, "role": role, "username": username,
+                       "created_at": time.time(), "ttl_hours": SESSION_TTL_HOURS}
+    _save_sessions(sessions)
+    return token
+
+def _validate_session(token: str) -> dict | None:
+    if not token:
+        return None
+    sessions = _load_sessions()
+    sess = sessions.get(token)
+    if not sess:
+        return None
+    age_hours = (time.time() - sess.get("created_at", 0)) / 3600
+    if age_hours > sess.get("ttl_hours", SESSION_TTL_HOURS):
+        sessions.pop(token, None)
+        _save_sessions(sessions)
+        return None
+    return sess
+
+def _get_session_from_request(request: Request) -> dict | None:
+    token = request.headers.get("X-Session-Token") or request.cookies.get("sso_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    return _validate_session(token)
+# ─────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Autonomous AI Software Engineer Dashboard")
 
@@ -171,6 +261,98 @@ def run_pipeline_task():
         pipeline_log += f"\nError: {e}"
     finally:
         pipeline_running = False
+
+# ─── SSO Auth API Endpoints ───────────────────────────────────────────────────
+class SignupRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str = ""
+    otp: str = ""
+
+class OTPRequest(BaseModel):
+    email: str
+
+@app.post("/auth/signup")
+def sso_signup(payload: SignupRequest):
+    users = _load_users()
+    email_lower = payload.email.lower().strip()
+    if any(u["email"].lower() == email_lower for u in users):
+        raise HTTPException(status_code=409, detail="Email already registered.")
+    if any(u["username"].lower() == payload.username.lower() for u in users):
+        raise HTTPException(status_code=409, detail="Username already taken.")
+    new_id = max((u["id"] for u in users), default=0) + 1
+    new_user = {"id": new_id, "username": payload.username, "email": email_lower,
+                "password_hash": _hash_password(payload.password), "role": "user",
+                "enabled": True, "otp": None, "otp_ts": 0}
+    users.append(new_user)
+    _save_users(users)
+    token = _create_session(new_id, "user", payload.username)
+    return {"token": token, "role": "user", "username": payload.username, "message": "Account created!"}
+
+@app.post("/auth/otp/generate")
+def sso_generate_otp(payload: OTPRequest):
+    users = _load_users()
+    email_lower = payload.email.lower().strip()
+    user = next((u for u in users if u["email"].lower() == email_lower), None)
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this email.")
+    otp = str(secrets.randbelow(900000) + 100000)  # 6-digit OTP
+    user["otp"] = otp
+    user["otp_ts"] = time.time()
+    _save_users(users)
+    # OTP shown on screen (no email service configured)
+    return {"otp": otp, "message": f"Your OTP is ready (shown here since email service not configured).", "expires_in": "10 minutes"}
+
+@app.post("/auth/login")
+def sso_login(payload: LoginRequest):
+    users = _load_users()
+    email_lower = payload.email.lower().strip()
+    user = next((u for u in users if u["email"].lower() == email_lower), None)
+    if not user:
+        raise HTTPException(status_code=401, detail="No account found with this email.")
+    if not user.get("enabled", True):
+        raise HTTPException(status_code=403, detail="Account is disabled. Contact admin.")
+    # OTP login
+    if payload.otp:
+        stored_otp = user.get("otp")
+        otp_ts = user.get("otp_ts", 0)
+        if not stored_otp or payload.otp != stored_otp:
+            raise HTTPException(status_code=401, detail="Invalid OTP.")
+        if (time.time() - otp_ts) > 600:  # 10 min expiry
+            raise HTTPException(status_code=401, detail="OTP expired. Please generate a new one.")
+        user["otp"] = None
+        user["otp_ts"] = 0
+        _save_users(users)
+    # Password login
+    elif payload.password:
+        if user.get("password_hash") != _hash_password(payload.password):
+            raise HTTPException(status_code=401, detail="Incorrect password.")
+    else:
+        raise HTTPException(status_code=400, detail="Provide password or OTP.")
+    token = _create_session(user["id"], user["role"], user["username"])
+    return {"token": token, "role": user["role"], "username": user["username"],
+            "message": "Login successful!"}
+
+@app.get("/auth/me")
+def sso_me(request: Request):
+    sess = _get_session_from_request(request)
+    if not sess:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    return {"user_id": sess["user_id"], "role": sess["role"], "username": sess["username"]}
+
+@app.post("/auth/logout")
+def sso_logout(request: Request):
+    token = request.headers.get("X-Session-Token") or request.cookies.get("sso_token")
+    if token:
+        sessions = _load_sessions()
+        sessions.pop(token, None)
+        _save_sessions(sessions)
+    return {"message": "Logged out."}
+# ─────────────────────────────────────────────────────────────────────────────
 
 # API endpoints
 @app.get("/api/state")
@@ -1593,8 +1775,12 @@ PRODUCT_META = {
 }
 
 @app.get("/product/{product_id}", include_in_schema=False)
-def serve_product_showcase(product_id: str):
-    from fastapi.responses import HTMLResponse
+def serve_product_showcase(product_id: str, request: Request):
+    from fastapi.responses import HTMLResponse, RedirectResponse
+    # Auth gate — must be logged in to view any product page
+    sess = _get_session_from_request(request)
+    if not sess:
+        return RedirectResponse(url=f"/?redirect=/product/{product_id}", status_code=302)
     meta = PRODUCT_META.get(product_id)
     base_url = "https://autonomous-ai-engineer.onrender.com"
 

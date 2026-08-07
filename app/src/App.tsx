@@ -69,20 +69,283 @@ interface ProductItem {
   status: string;
 }
 
+// ─── SSO Types ────────────────────────────────────────────────────────────────
+interface SSOSession { token: string; role: string; username: string; }
+
+// ─── SSO Login Gate Component ─────────────────────────────────────────────────
+function SSOLoginPage({ onLogin }: { onLogin: (sess: SSOSession) => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [otpOnScreen, setOtpOnScreen] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showPw, setShowPw] = useState(false);
+
+  const handleGenerateOTP = async () => {
+    if (!email) { setError('Enter your email first.'); return; }
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch('/auth/otp/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to generate OTP');
+      setOtpOnScreen(data.otp);
+      setOtpSent(true);
+      setSuccess('OTP generated! Enter it below to login.');
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleLogin = async () => {
+    if (!email) { setError('Email is required.'); return; }
+    setLoading(true); setError(null);
+    try {
+      const body: any = { email };
+      if (loginMode === 'otp') body.otp = otpInput; else body.password = password;
+      const res = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Login failed');
+      localStorage.setItem('sso_session', JSON.stringify({ token: data.token, role: data.role, username: data.username }));
+      onLogin({ token: data.token, role: data.role, username: data.username });
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleSignup = async () => {
+    if (!email || !username || !password) { setError('All fields are required.'); return; }
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch('/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, username, password }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Signup failed');
+      localStorage.setItem('sso_session', JSON.stringify({ token: data.token, role: data.role, username: data.username }));
+      onLogin({ token: data.token, role: data.role, username: data.username });
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#080b14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', sans-serif", padding: '20px' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; } input::placeholder { color: #475569; } input:focus { outline: none; }`}</style>
+      {/* BG glow */}
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 70% 50% at 50% -10%, #6366f122 0%, transparent 70%)', pointerEvents: 'none' }} />
+      
+      <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>🤖</div>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Autonomous AI Engineer</h1>
+          <p style={{ color: '#475569', fontSize: '13px', marginTop: '6px' }}>Sign in to access your workspace</p>
+        </div>
+
+        {/* Card */}
+        <div style={{ background: '#0f1629', border: '1px solid #1e293b', borderRadius: '20px', padding: '32px' }}>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', background: '#080b14', borderRadius: '12px', padding: '4px', marginBottom: '24px' }}>
+            {(['login', 'signup'] as const).map(m => (
+              <button key={m} onClick={() => { setMode(m); setError(null); setSuccess(null); setOtpOnScreen(null); setOtpSent(false); }}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all .2s',
+                  background: mode === m ? '#6366f1' : 'transparent', color: mode === m ? '#fff' : '#475569' }}>
+                {m === 'login' ? 'Sign In' : 'Sign Up'}
+              </button>
+            ))}
+          </div>
+
+          {/* Login mode tabs */}
+          {mode === 'login' && (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              {(['password', 'otp'] as const).map(lm => (
+                <button key={lm} onClick={() => { setLoginMode(lm); setError(null); setOtpOnScreen(null); setOtpSent(false); }}
+                  style={{ flex: 1, padding: '7px', border: `1px solid ${loginMode === lm ? '#6366f1' : '#1e293b'}`, borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 500,
+                    background: loginMode === lm ? '#6366f111' : 'transparent', color: loginMode === lm ? '#818cf8' : '#475569', transition: 'all .2s' }}>
+                  {lm === 'password' ? '🔑 Password' : '📱 OTP'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {mode === 'signup' && (
+              <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username"
+                style={{ padding: '12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '14px', width: '100%' }} />
+            )}
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email"
+              style={{ padding: '12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '14px', width: '100%' }} />
+            
+            {(mode === 'login' && loginMode === 'password') || mode === 'signup' ? (
+              <div style={{ position: 'relative' }}>
+                <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type={showPw ? 'text' : 'password'}
+                  onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleSignup())}
+                  style={{ padding: '12px 40px 12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '14px', width: '100%' }} />
+                <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: '16px' }}>
+                  {showPw ? '🙈' : '👁️'}
+                </button>
+              </div>
+            ) : null}
+
+            {mode === 'login' && loginMode === 'otp' && (
+              <>
+                <button onClick={handleGenerateOTP} disabled={loading}
+                  style={{ padding: '11px', background: '#6366f111', border: '1px solid #6366f155', borderRadius: '10px', color: '#818cf8', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                  {loading ? '⏳ Generating...' : '📱 Generate OTP'}
+                </button>
+                {otpOnScreen && (
+                  <div style={{ background: '#0f2d0f', border: '1px solid #22c55e55', borderRadius: '10px', padding: '14px 16px', textAlign: 'center' }}>
+                    <p style={{ color: '#86efac', fontSize: '12px', marginBottom: '6px' }}>Your OTP (shown here — no email configured)</p>
+                    <p style={{ color: '#22c55e', fontSize: '28px', fontWeight: 800, letterSpacing: '8px' }}>{otpOnScreen}</p>
+                    <p style={{ color: '#4ade80', fontSize: '11px', marginTop: '4px' }}>Expires in 10 minutes</p>
+                  </div>
+                )}
+                {otpSent && (
+                  <input value={otpInput} onChange={e => setOtpInput(e.target.value)} placeholder="Enter 6-digit OTP"
+                    onKeyDown={e => e.key === 'Enter' && handleLogin()} maxLength={6}
+                    style={{ padding: '12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '18px', letterSpacing: '6px', textAlign: 'center', width: '100%' }} />
+                )}
+              </>
+            )}
+
+            {/* Error / Success */}
+            {error && <div style={{ background: '#2d0f0f', border: '1px solid #ef444455', borderRadius: '8px', padding: '10px 14px', color: '#fca5a5', fontSize: '13px' }}>❌ {error}</div>}
+            {success && <div style={{ background: '#0f2d0f', border: '1px solid #22c55e55', borderRadius: '8px', padding: '10px 14px', color: '#86efac', fontSize: '13px' }}>✅ {success}</div>}
+
+            {/* Submit */}
+            <button onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading}
+              style={{ padding: '13px', background: loading ? '#334155' : 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all .2s', marginTop: '4px' }}>
+              {loading ? '⏳ Please wait...' : mode === 'login' ? '🚀 Sign In' : '✨ Create Account'}
+            </button>
+          </div>
+        </div>
+
+        <p style={{ textAlign: 'center', color: '#334155', fontSize: '12px', marginTop: '16px' }}>
+          Admin access? Use your credentials to unlock the full dashboard.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── User Apps Page (for normal users) ───────────────────────────────────────
+function UserAppsPage({ session, onLogout }: { session: SSOSession; onLogout: () => void }) {
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/products/catalog', { headers: { 'X-Session-Token': session.token } })
+      .then(r => r.json()).then(d => { if (d.products) setProducts(d.products); }).catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const COLORS: Record<string, string> = {
+    product1_adblocker_extension: '#6366f1', product2_github_blob_storage: '#0ea5e9',
+    product3_email_chat_mvp: '#10b981', product4_techhub_platform: '#f59e0b',
+    product5_url_cleaner: '#8b5cf6', product6_tab_session_saver: '#06b6d4',
+    product7_profile_booster_engine: '#22c55e', product8_sqlite_master_tables: '#f97316',
+  };
+  const EMOJIS: Record<string, string> = {
+    product1_adblocker_extension: '🛡️', product2_github_blob_storage: '📦',
+    product3_email_chat_mvp: '💬', product4_techhub_platform: '🚀',
+    product5_url_cleaner: '🔗', product6_tab_session_saver: '🗂️',
+    product7_profile_booster_engine: '📈', product8_sqlite_master_tables: '📊',
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#080b14', fontFamily: "'Inter', sans-serif", padding: '0' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'); * { box-sizing: border-box; }`}</style>
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 80% 40% at 50% -10%, #6366f115 0%, transparent 70%)', pointerEvents: 'none' }} />
+      
+      {/* Navbar */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: '#080b14cc', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '20px' }}>🤖</span>
+          <span style={{ fontWeight: 700, fontSize: '15px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Autonomous AI Engineer</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ color: '#475569', fontSize: '13px' }}>👤 {session.username}</span>
+          <button onClick={onLogout} style={{ padding: '6px 14px', background: 'transparent', border: '1px solid #334155', borderRadius: '8px', color: '#64748b', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}>Sign Out</button>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px', position: 'relative', zIndex: 1 }}>
+        <div style={{ marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#f1f5f9', marginBottom: '8px' }}>🚀 Deployed Apps</h1>
+          <p style={{ color: '#475569', fontSize: '15px' }}>All products built and deployed by the Autonomous AI Engineer pipeline.</p>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', color: '#334155', padding: '60px' }}>⏳ Loading products...</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+            {products.map(p => {
+              const color = COLORS[p.id] || '#6366f1';
+              const emoji = EMOJIS[p.id] || '⚡';
+              return (
+                <div key={p.id} style={{ background: '#0f1629', border: `1px solid #1e293b`, borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'border-color .2s, transform .2s', cursor: 'default' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${color}66`; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#1e293b'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${color}22`, border: `1px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>{emoji}</div>
+                    <div>
+                      <div style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '14px', lineHeight: 1.3 }}>{p.name}</div>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '4px', padding: '2px 8px', background: '#22c55e22', border: '1px solid #22c55e44', borderRadius: '20px', color: '#22c55e', fontSize: '10px', fontWeight: 600 }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} /> LIVE
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>{p.description}</p>
+                  <a href={`/product/${p.id}`} target="_blank" rel="noreferrer"
+                    style={{ marginTop: 'auto', padding: '10px 16px', background: `${color}22`, border: `1px solid ${color}55`, borderRadius: '10px', color: color, fontSize: '13px', fontWeight: 600, textDecoration: 'none', textAlign: 'center', display: 'block', transition: 'all .2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = `${color}33`; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = `${color}22`; }}>
+                    🌐 Open App →
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'master_tables' | 'my_products' | 'user_auth' | 'ai_timeline'>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  
-  // Hard Security Auth State - default to admin session so dashboard loads instantly
-  const [currentUser, setCurrentUser] = useState<UserEntry | null>(() => {
+
+  // ─── SSO Gate State ───────────────────────────────────────────────────────
+  const [ssoSession, setSsoSession] = useState<SSOSession | null>(() => {
     try {
-      const saved = localStorage.getItem('daily_engine_session');
+      const saved = localStorage.getItem('sso_session');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return { id: 1, username: 'admin', role: 'super_admin', enabled: true };
+    return null;
   });
 
-  // OTP Authentication Engine States
+  const handleSSOLogin = (sess: SSOSession) => setSsoSession(sess);
+  const handleSSOLogout = () => {
+    if (ssoSession?.token) fetch('/auth/logout', { method: 'POST', headers: { 'X-Session-Token': ssoSession.token } }).catch(() => {});
+    localStorage.removeItem('sso_session');
+    setSsoSession(null);
+  };
+
+  // Not logged in → show login page
+  if (!ssoSession) return <SSOLoginPage onLogin={handleSSOLogin} />;
+  // Normal user → show deployed apps catalog
+  if (ssoSession.role === 'user') return <UserAppsPage session={ssoSession} onLogout={handleSSOLogout} />;
+  // Admin/SuperAdmin → fall through to full dashboard below
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Hard Security Auth State (legacy — kept for dashboard user mgmt tab)
+  const [currentUser, setCurrentUser] = useState<UserEntry | null>({ id: 1, username: ssoSession.username, role: 'super_admin', enabled: true });
+
+  // OTP Authentication Engine States (legacy)
   const [authTab, setAuthTab] = useState<'otp' | 'super_admin'>('otp');
   const [authStep, setAuthStep] = useState<'send' | 'verify'>('send');
   const [loginEmail, setLoginEmail] = useState<string>('aditya@example.com');
