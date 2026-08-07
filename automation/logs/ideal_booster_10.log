@@ -1,0 +1,3 @@
+Task: Cache Key Manager Admin Console Dashboard
+Desc: Build web dashboard to inspect, filter regex, and bulk-purge distributed Redis keys.
+Timestamp: Fri Aug  7 11:06:39 2026
