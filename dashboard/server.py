@@ -2562,7 +2562,16 @@ def serve_dynamic_dist_asset(asset_file: str):
             media_type = "text/css" if ext == "css" else "application/javascript"
             return FileResponse(str(latest_file), media_type=media_type)
 
-    raise HTTPException(status_code=404, detail="Asset not found")
+@app.get("/favicon.ico", include_in_schema=False)
+def serve_favicon():
+    from fastapi.responses import FileResponse, Response
+    fav_path = ROOT_DIR / "app" / "dist" / "favicon.ico"
+    if fav_path.exists():
+        return FileResponse(str(fav_path), media_type="image/svg+xml")
+    fav_png = ROOT_DIR / "app" / "public" / "favicon.ico"
+    if fav_png.exists():
+        return FileResponse(str(fav_png), media_type="image/svg+xml")
+    return Response(status_code=204)
 
 # Serve storage directory for Product 02 blob storage
 storage_dir_path = ROOT_DIR / "app" / "product2_github_blob_storage" / "storage"
