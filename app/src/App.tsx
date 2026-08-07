@@ -914,8 +914,8 @@ export default function App() {
               const liveUrl = status.result.url;
               setCardDeployStatus(prev => ({ ...prev, [prodId]: 'success' }));
               setCardDeployUrls(prev => ({ ...prev, [prodId]: liveUrl }));
-              setCardDeployLogs(prev => ({ ...prev, [prodId]: (status.log || '') + `\n\n🎉 SUCCESS! Deployed to Netlify CDN.\n🌐 Live URL: ${liveUrl}` }));
-              setSuccessToast(`🎉 ${prod.name} deployed to Netlify! URL: ${liveUrl}`);
+              setCardDeployLogs(prev => ({ ...prev, [prodId]: (status.log || '') + `\n\n🎉 SUCCESS! Deployed & Live.\n🌐 Live URL: ${liveUrl}` }));
+              setSuccessToast(`🎉 ${prod.name} deployed successfully! URL: ${liveUrl}`);
               setTimeout(() => window.open(liveUrl, '_blank'), 600);
             } else {
               const err = status.result?.message || 'Deployment failed. Check environment variables.';
