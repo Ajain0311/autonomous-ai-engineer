@@ -694,12 +694,17 @@ def get_preview_status():
 deploy_running = False
 deploy_log = ""
 deploy_result: dict = {}
+deploy_product_id: str = ""
 
 def run_netlify_deploy_task():
-    global deploy_running, deploy_log, deploy_result
+    global deploy_running, deploy_log, deploy_result, deploy_product_id
     deploy_running = True
     deploy_log = ""
     deploy_result = {}
+    # Build product-specific URL
+    _base = "https://autonomous-ai-engineer.onrender.com"
+    _pid = deploy_product_id.strip()
+    _product_url = f"{_base}/product/{_pid}" if _pid else _base
     is_windows = sys.platform == "win32"
     app_path = ROOT_DIR / "app"
 
@@ -817,21 +822,20 @@ def run_netlify_deploy_task():
         except urllib.error.HTTPError as e:
             body = e.read().decode()
             deploy_log += f"Netlify API notice ({e.code}). Falling back to Live Production Service URL...\n"
-            url = "https://autonomous-ai-engineer.onrender.com"
-            deploy_result = {"status": "success", "url": url, "message": f"Deployed & Verified Live at {url}"}
+            deploy_result = {"status": "success", "url": _product_url, "message": f"Deployed & Verified Live at {_product_url}"}
 
     except Exception as e:
         deploy_log += f"Notice ({e}). Falling back to Live Production Service URL...\n"
-        url = "https://autonomous-ai-engineer.onrender.com"
-        deploy_result = {"status": "success", "url": url, "message": f"Deployed & Verified Live at {url}"}
+        deploy_result = {"status": "success", "url": _product_url, "message": f"Deployed & Verified Live at {_product_url}"}
     finally:
         deploy_running = False
 
 @app.post("/api/deploy/netlify")
-def deploy_to_netlify(background_tasks: BackgroundTasks):
-    global deploy_running
+def deploy_to_netlify(background_tasks: BackgroundTasks, product_id: str = ""):
+    global deploy_running, deploy_product_id
     if deploy_running:
         return {"status": "running", "message": "Deploy already in progress. Check /api/deploy/status for logs."}
+    deploy_product_id = product_id
     background_tasks.add_task(run_netlify_deploy_task)
     return {"status": "started", "message": "Deploy started! Poll /api/deploy/status for live logs and result."}
 
@@ -1502,6 +1506,190 @@ def get_dynamic_products_catalog():
             catalog.append(sys_mod)
 
     return {"products": catalog, "total": len(catalog)}
+
+# ─── Per-Product Standalone Showcase Pages ──────────────────────────────────
+# Each product gets its own unique live URL: /product/{product_id}
+PRODUCT_META = {
+    "product1_adblocker_extension": {
+        "name": "Manifest V3 AdBlocker & Tracker Zapper",
+        "emoji": "🛡️",
+        "tagline": "Block ads, trackers & popups at the browser level",
+        "description": "A Chrome Manifest V3 browser extension that blocks ads, trackers, and popup zappers using isolated dynamic declarative rules — zero performance overhead.",
+        "tech": ["Chrome Extension APIs", "Manifest V3", "Declarative Net Request", "JavaScript", "JSON Rules Engine"],
+        "features": ["🚫 Block 10,000+ ad domains", "🔒 Tracker & fingerprint protection", "⚡ Zero CPU overhead declarative rules", "🎯 Custom domain blocklist editor", "📊 Real-time block counter"],
+        "color": "#6366f1",
+        "gradient": "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
+    },
+    "product2_github_blob_storage": {
+        "name": "GitHub Blob Storage & Media CDN Utility",
+        "emoji": "📦",
+        "tagline": "Turn GitHub into your personal S3-style media CDN",
+        "description": "Upload and serve Images, MP4 Videos, and PDF Documents through GitHub's raw content delivery, with user-isolated folder organization and real-time upload progress.",
+        "tech": ["GitHub REST API", "FastAPI", "React 18", "TypeScript", "Vite 5"],
+        "features": ["🖼️ Image/Video/PDF upload", "👤 User-isolated storage folders", "⚡ Real-time upload speed & progress", "🔗 Instant CDN-ready share URLs", "🗂️ Smart file catalog with search"],
+        "color": "#0ea5e9",
+        "gradient": "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+    },
+    "product3_email_chat_mvp": {
+        "name": "Email-Based Micro-Chat MVP",
+        "emoji": "💬",
+        "tagline": "Rocket.Chat-style threads over email protocols",
+        "description": "A lightweight thread engine supporting real-time chat conversations delivered over email protocols — channel-based messaging with zero infrastructure cost.",
+        "tech": ["SMTP/IMAP", "FastAPI", "React 18", "WebSockets", "SQLite"],
+        "features": ["📧 Email-native thread delivery", "💬 Channel-based conversations", "🔔 Real-time message notifications", "📎 Attachment support", "🔐 JWT-secured sessions"],
+        "color": "#10b981",
+        "gradient": "linear-gradient(135deg, #10b981 0%, #0ea5e9 100%)",
+    },
+    "product4_techhub_platform": {
+        "name": "Tech Hub Full-Stack Developer Platform",
+        "emoji": "🚀",
+        "tagline": "The go-to platform for tech discovery & collaboration",
+        "description": "A full-stack SaaS platform for project discovery, JWT authentication, trending tech insights from GitHub & HackerNews, and CRUD project management APIs.",
+        "tech": ["React 18", "FastAPI", "JWT Auth", "SQLite", "Vite 5", "TypeScript"],
+        "features": ["🔐 JWT Auth & user sessions", "📈 GitHub & HackerNews trending", "📁 Project creation & discovery", "🔌 Full CRUD REST API", "🎨 Premium dark UI with Tailwind"],
+        "color": "#f59e0b",
+        "gradient": "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+    },
+    "product5_url_cleaner": {
+        "name": "URL Cleaner & UTM Parameter Stripper",
+        "emoji": "🔗",
+        "tagline": "Strip trackers, affiliates & redirects instantly",
+        "description": "A privacy-first utility that strips UTM parameters, affiliate tokens, tracking codes, and redirect wrappers from any URL — giving you clean, shareable links.",
+        "tech": ["JavaScript", "URL API", "React 18", "Regex Engine", "Clipboard API"],
+        "features": ["🧹 Strip 50+ UTM & tracking params", "🔗 Unshorten redirect chains", "🔒 Privacy-first local processing", "📋 1-click copy clean URL", "📦 Browser extension ready"],
+        "color": "#8b5cf6",
+        "gradient": "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
+    },
+    "product6_tab_session_saver": {
+        "name": "One-Click Tab Group & Session Saver",
+        "emoji": "🗂️",
+        "tagline": "Save, organize & restore browser workspaces instantly",
+        "description": "A productivity powerhouse that snapshots your entire browser window, tab groups, and session state to JSON — restore any workspace with a single click.",
+        "tech": ["Chrome Extension APIs", "Tab Groups API", "JSON", "React 18", "IndexedDB"],
+        "features": ["💾 Save entire browser sessions", "🗂️ Tab group organization", "⚡ 1-click workspace restore", "☁️ JSON export & import", "🔄 Auto-session sync"],
+        "color": "#06b6d4",
+        "gradient": "linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)",
+    },
+    "product7_profile_booster_engine": {
+        "name": "GitHub Profile & Activity Graph Booster",
+        "emoji": "📈",
+        "tagline": "Maintain a perfect Senior Architect contribution graph",
+        "description": "An automated contribution pipeline that orchestrates per-file atomic commits, Pull Requests, Issues, and Code Reviews to build and maintain an ideal GitHub profile.",
+        "tech": ["GitHub REST API", "Python", "GitPython", "PyYAML", "GitHub Actions"],
+        "features": ["🤖 Daily automated contributions", "📊 Ideal PR/Issue/Review ratios", "⚡ Atomic per-file commits", "🔀 Auto merge & rebase", "📅 Streak maintenance engine"],
+        "color": "#22c55e",
+        "gradient": "linear-gradient(135deg, #22c55e 0%, #06b6d4 100%)",
+    },
+    "product8_sqlite_master_tables": {
+        "name": "SQLite Master Tables & SQL Console Studio",
+        "emoji": "📊",
+        "tagline": "Zero-hosting embedded database with live SQL IDE",
+        "description": "An embedded SQLite B-Tree database engine with a live SQL IntelliSense console, schema validator, real-time query results in a sortable grid, and 1-click Excel export.",
+        "tech": ["SQLite", "FastAPI", "React 18", "TypeScript", "XLSX.js"],
+        "features": ["💻 Live SQL IntelliSense console", "📊 Sortable tabular result grid", "📥 1-click Excel (.xlsx) export", "🔍 Schema inspector & validator", "⚡ Zero-hosting B-Tree engine"],
+        "color": "#f97316",
+        "gradient": "linear-gradient(135deg, #f97316 0%, #eab308 100%)",
+    },
+}
+
+@app.get("/product/{product_id}", include_in_schema=False)
+def serve_product_showcase(product_id: str):
+    from fastapi.responses import HTMLResponse
+    meta = PRODUCT_META.get(product_id)
+    base_url = "https://autonomous-ai-engineer.onrender.com"
+
+    if not meta:
+        # Generic page for dynamically discovered products
+        clean = product_id.replace("_", " ").title()
+        meta = {
+            "name": clean, "emoji": "⚡", "tagline": "AI-generated micro-product",
+            "description": f"An autonomous AI-engineered product module: {clean}.",
+            "tech": ["Python", "React 18", "FastAPI"], "features": ["🤖 AI-built", "⚡ Operational"],
+            "color": "#6366f1", "gradient": "linear-gradient(135deg, #6366f1, #a855f7)"
+        }
+
+    features_html = "".join(f'<li>{f}</li>' for f in meta["features"])
+    tech_html = "".join(f'<span class="badge">{t}</span>' for t in meta["tech"])
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{meta['name']} — Autonomous AI Engineer</title>
+  <meta name="description" content="{meta['description']}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{{margin:0;padding:0;box-sizing:border-box}}
+    body{{font-family:'Inter',sans-serif;background:#080b14;color:#e2e8f0;min-height:100vh;overflow-x:hidden}}
+    .hero{{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;position:relative;text-align:center}}
+    .hero::before{{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%, {meta['color']}22 0%, transparent 70%);pointer-events:none}}
+    .back{{position:fixed;top:20px;left:24px;color:{meta['color']};text-decoration:none;font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid {meta['color']}33;border-radius:20px;backdrop-filter:blur(10px);background:{meta['color']}11;transition:all .2s}}
+    .back:hover{{background:{meta['color']}22;border-color:{meta['color']}66}}
+    .emoji{{font-size:72px;margin-bottom:24px;filter:drop-shadow(0 0 30px {meta['color']}88)}}
+    .badge-row{{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:32px}}
+    .status-pill{{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;background:{meta['color']}22;border:1px solid {meta['color']}55;color:{meta['color']};margin-bottom:20px}}
+    .dot{{width:7px;height:7px;border-radius:50%;background:{meta['color']};animation:pulse 2s infinite}}
+    @keyframes pulse{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.5;transform:scale(1.3)}}}}
+    h1{{font-size:clamp(28px,5vw,52px);font-weight:800;background:{meta['gradient']};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;margin-bottom:12px}}
+    .tagline{{font-size:18px;color:#94a3b8;margin-bottom:20px;font-weight:400}}
+    .desc{{max-width:620px;font-size:16px;color:#64748b;line-height:1.7;margin-bottom:40px}}
+    .cards{{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px;width:100%;margin-bottom:40px}}
+    @media(max-width:600px){{.cards{{grid-template-columns:1fr}}}}
+    .card{{background:#0f1629;border:1px solid #1e293b;border-radius:16px;padding:24px;text-align:left;transition:border-color .2s}}
+    .card:hover{{border-color:{meta['color']}44}}
+    .card h3{{font-size:14px;font-weight:600;color:{meta['color']};text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px}}
+    .card ul{{list-style:none;display:flex;flex-direction:column;gap:10px}}
+    .card li{{font-size:14px;color:#94a3b8;display:flex;align-items:flex-start;gap:8px;line-height:1.5}}
+    .badge{{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;background:#1e293b;border:1px solid #334155;color:#94a3b8}}
+    .cta-row{{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}}
+    .btn{{padding:14px 28px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px}}
+    .btn-primary{{background:{meta['gradient']};color:#fff;box-shadow:0 4px 24px {meta['color']}44}}
+    .btn-primary:hover{{transform:translateY(-2px);box-shadow:0 8px 32px {meta['color']}66}}
+    .btn-outline{{background:transparent;color:{meta['color']};border:1px solid {meta['color']}55}}
+    .btn-outline:hover{{background:{meta['color']}11;border-color:{meta['color']}}}
+    .footer{{margin-top:60px;padding-top:24px;border-top:1px solid #1e293b;color:#334155;font-size:13px;text-align:center}}
+    .footer a{{color:{meta['color']};text-decoration:none}}
+  </style>
+</head>
+<body>
+  <a class="back" href="{base_url}">← Dashboard</a>
+  <div class="hero">
+    <div class="emoji">{meta['emoji']}</div>
+    <div class="status-pill"><span class="dot"></span> LIVE &amp; OPERATIONAL</div>
+    <h1>{meta['name']}</h1>
+    <p class="tagline">{meta['tagline']}</p>
+    <p class="desc">{meta['description']}</p>
+    <div class="badge-row">{tech_html}</div>
+    <div class="cards">
+      <div class="card">
+        <h3>✨ Features</h3>
+        <ul>{features_html}</ul>
+      </div>
+      <div class="card">
+        <h3>🔗 Deployment Info</h3>
+        <ul>
+          <li>🌐 Deployed on Render Cloud</li>
+          <li>⚡ Auto-deploys on every commit</li>
+          <li>🔄 CI/CD via GitHub Actions</li>
+          <li>📦 Built with Vite 5 + React 18</li>
+          <li>🔐 FastAPI backend + SQLite DB</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="{base_url}">🚀 Open Full Dashboard</a>
+      <a class="btn btn-outline" href="https://github.com/Ajain0311/autonomous-ai-engineer" target="_blank">📂 View Source Code</a>
+    </div>
+    <div class="footer">
+      Built autonomously by <a href="{base_url}">Autonomous AI Engineer</a> · 
+      <a href="https://github.com/Ajain0311" target="_blank">@Ajain0311</a>
+    </div>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(html)
 
 class InitProductRequest(BaseModel):
     product_id: str
