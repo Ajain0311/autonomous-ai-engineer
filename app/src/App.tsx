@@ -631,12 +631,13 @@ export default function App() {
 
   // Handle Hard Logout
   const handleLogout = () => {
+    // Clear SSO session (clears localStorage sso_session + server-side token)
+    handleSSOLogout();
     setCurrentUser(null);
     try {
       localStorage.removeItem('daily_engine_session');
     } catch {}
     setAuthStep('send');
-    setSuccessToast('🔒 Logged out successfully! Dashboard locked.');
   };
 
   // Send Email OTP Handler
