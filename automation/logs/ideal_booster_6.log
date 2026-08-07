@@ -1,0 +1,3 @@
+Task: Zustand Global State Manager Architecture
+Desc: Decouple Master Tables UI state from main app root component for modular rendering.
+Timestamp: Fri Aug  7 11:05:23 2026
