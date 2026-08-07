@@ -1,0 +1,3 @@
+Task: SignalR Real-Time WebSocket Channel
+Desc: Add bi-directional WebSocket connection handler with auto-reconnect fallback.
+Timestamp: Fri Aug  7 11:05:59 2026
