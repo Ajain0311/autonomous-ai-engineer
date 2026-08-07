@@ -335,15 +335,9 @@ export default function App() {
     setSsoSession(null);
   };
 
-  // Not logged in → show login page
-  if (!ssoSession) return <SSOLoginPage onLogin={handleSSOLogin} />;
-  // Normal user → show deployed apps catalog
-  if (ssoSession.role === 'user') return <UserAppsPage session={ssoSession} onLogout={handleSSOLogout} />;
-  // Admin/SuperAdmin → fall through to full dashboard below
-  // ─────────────────────────────────────────────────────────────────────────
-
   // Hard Security Auth State (legacy — kept for dashboard user mgmt tab)
-  const [currentUser, setCurrentUser] = useState<UserEntry | null>({ id: 1, username: ssoSession.username, role: 'super_admin', enabled: true });
+  // NOTE: SSO early returns are placed AFTER all hooks (see bottom of App) to respect Rules of Hooks
+  const [currentUser, setCurrentUser] = useState<UserEntry | null>({ id: 1, username: ssoSession?.username ?? '', role: 'super_admin', enabled: true });
 
   // OTP Authentication Engine States (legacy)
   const [authTab, setAuthTab] = useState<'otp' | 'super_admin'>('otp');
@@ -1738,6 +1732,11 @@ export default function App() {
       </div>
     );
   }
+
+  // ─── SSO Gate (placed here AFTER all hooks to respect Rules of Hooks) ───────
+  if (!ssoSession) return <SSOLoginPage onLogin={handleSSOLogin} />;
+  if (ssoSession.role === 'user') return <UserAppsPage session={ssoSession} onLogout={handleSSOLogout} />;
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // ════════════════════════════════════════════════════════════════
   // AUTHENTICATED DASHBOARD APPLICATION
