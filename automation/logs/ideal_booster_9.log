@@ -1,0 +1,3 @@
+Task: Azure Blob Provider Storage Abstraction
+Desc: Construct cloud-agnostic blob storage client supporting Azure, MinIO, and local filesystem.
+Timestamp: Fri Aug  7 11:06:25 2026
