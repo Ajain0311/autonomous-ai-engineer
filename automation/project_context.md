@@ -76,6 +76,25 @@ projects:
 ```
 
 ## Workspace Source Code Files
+### File: `app/netlify.toml`
+```toml
+[build]
+  command = "npm run build"
+  publish = "build"
+[functions]
+  directory = "functions"
+```
+
+### File: `app/postcss.config.js`
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
 ### File: `app/index.html`
 ```html
 <!DOCTYPE html>
@@ -92,28 +111,45 @@ projects:
 </html>
 ```
 
-### File: `app/postcss.config.js`
-```js
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-```
-
-### File: `app/netlify.toml`
-```toml
-[build]
-  command = "npm run build"
-  publish = "build"
-[functions]
-  directory = "functions"
-```
-
 ### File: `app/package.json`
 ```json
-{"name":"tech-hub","version":"1.0.0","scripts":{"start":"vite","build":"vite build"},"dependencies":{"@types/better-sqlite3":"^9.6.0","autoprefixer":"^10.5.4","better-sqlite3":"^13.0.3","express":"^4.17.1","lucide-react":"^1.28.0","react":"^18.2.0","react-dom":"^18.2.0","react-router-dom":"^6.3.0","tailwindcss":"^3.1.8","xlsx":"^0.18.5","zustand":"^4.1.5"},"devDependencies":{"@types/express":"^4.17.13","@types/react":"^18.0.17","@types/react-dom":"^18.0.6","@types/react-router-dom":"^5.3.3","@vitejs/plugin-react":"^2.1.0","typescript":"^4.8.3","vite":"^3.1.0"}}
+{
+  "name": "tech-hub",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "autoprefixer": "^10.4.20",
+    "better-sqlite3": "^11.5.0",
+    "express": "^4.21.1",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "tailwindcss": "^3.4.16",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/react-router-dom": "^5.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
+```
+
+### File: `app/tsconfig.json`
+```json
+{"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
 ```
 
 ### File: `app/vite.config.ts`
@@ -125,11 +161,6 @@ export default defineConfig({
   base: '/',
   plugins: [react()]
 });
-```
-
-### File: `app/tsconfig.json`
-```json
-{"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
 ```
 
 ### File: `app/tailwind.config.js`
@@ -239,6 +270,30 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
+### File: `app/product1_adblocker_extension/content.js`
+```js
+// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
+(function() {
+  const adSelectors = [
+    '.ad-container', '.sponsored-post', '#google_ads_frame',
+    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
+  ];
+  
+  function removeAds() {
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => el.remove());
+    });
+  }
+
+  removeAds();
+  const observer = new MutationObserver(removeAds);
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+
+```
+
 ### File: `app/product1_adblocker_extension/manifest.json`
 ```json
 {
@@ -271,30 +326,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/product1_adblocker_extension/content.js`
-```js
-// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
-(function() {
-  const adSelectors = [
-    '.ad-container', '.sponsored-post', '#google_ads_frame',
-    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
-  ];
-  
-  function removeAds() {
-    adSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => el.remove());
-    });
-  }
-
-  removeAds();
-  const observer = new MutationObserver(removeAds);
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-})();
-
-```
-
 ### File: `app/product1_adblocker_extension/db/rules.json`
 ```json
 [
@@ -322,150 +353,64 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/product3_email_chat_mvp/db/users.json`
-```json
-[
-  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
-  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
-  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
-  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
-  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
-]
+### File: `app/src/main.tsx`
+```tsx
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
 
-```
-
-### File: `app/product3_email_chat_mvp/db/messages_schema.json`
-```json
-{
-  "tableName": "messages",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "sender_email", "type": "string", "required": true },
-    { "name": "recipient_email", "type": "string", "required": true },
-    { "name": "subject", "type": "string", "required": true },
-    { "name": "body", "type": "string", "required": true },
-    { "name": "timestamp", "type": "string", "required": true }
-  ]
+interface Props {
+  children?: ReactNode;
 }
 
-```
-
-### File: `app/product3_email_chat_mvp/db/users_schema.json`
-```json
-{
-  "tableName": "users",
-  "columns": [
-    { "name": "id", "type": "number", "required": true },
-    { "name": "username", "type": "string", "required": true },
-    { "name": "email", "type": "string", "required": true },
-    { "name": "name", "type": "string", "required": false },
-    { "name": "role", "type": "string", "required": false }
-  ]
+interface State {
+  hasError: boolean;
+  error: Error | null;
 }
 
-```
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
-### File: `app/product3_email_chat_mvp/db/messages.json`
-```json
-[
-  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
-  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
-]
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
 
-```
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught Error in Dashboard:", error, errorInfo);
+  }
 
-### File: `app/src/index.css`
-```css
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  margin: 0;
-  font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #07080c;
-  color: #f1f5f9;
-  overflow-x: hidden;
-  letter-spacing: -0.01em;
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', background: '#090d16', color: '#f87171', fontFamily: 'monospace' }}>
+          <h2>⚠️ Dashboard Render Error Caught</h2>
+          <pre>{this.state.error?.toString()}</pre>
+          <pre>{this.state.error?.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-/* Sweet & Simple Glassmorphism Tokens */
-.glass-card {
-  background: rgba(15, 17, 26, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
 }
-
-.glass-card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-card-hover:hover {
-  background: rgba(22, 25, 38, 0.85);
-  border-color: rgba(168, 85, 247, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.15);
-}
-
-.glass-nav {
-  background: rgba(8, 9, 14, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-bg {
-  background: linear-gradient(135deg, #9333ea 0%, #6366f1 50%, #0284c7 100%);
-}
-
-.glow-purple {
-  box-shadow: 0 0 30px -5px rgba(147, 51, 234, 0.35);
-}
-
-.glow-soft {
-  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.4);
-}
-
 ```
 
 ### File: `app/src/App.tsx`
 ```tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   Flame, GitCommit, Calendar, Sparkles, Shield, ShieldCheck, Database, Plus, CheckCircle2, 
@@ -475,7 +420,7 @@ import {
   UserCheck, Users, Lock, LogOut, FileCode, FolderPlus, UploadCloud, Film, Image as ImageIcon, FileText as FilePdf,
   ListOrdered, Zap, LayoutDashboard, Box, ArrowRightCircle, Menu, Play, FileUp, KeyRound, ShieldAlert as ShieldIcon,
   Mail, Send, CheckSquare as CheckSquareIcon, ShieldCheck as ShieldCheckIcon, Copy, Filter, Maximize2, ExternalLink,
-  MessageSquare, Hash, PieChart, BarChart3, Sliders
+  MessageSquare, Hash, PieChart, BarChart3, Sliders, Cpu, Clock
 } from 'lucide-react';
 
 interface ColumnSchema {
@@ -536,21 +481,277 @@ interface ProductItem {
   status: string;
 }
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState<'home' | 'master_tables' | 'my_products' | 'user_auth'>('home');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  
-  // Hard Security Auth State
-  const [currentUser, setCurrentUser] = useState<UserEntry | null>(() => {
+// ─── SSO Types ────────────────────────────────────────────────────────────────
+interface SSOSession { token: string; role: string; username: string; }
+
+// ─── SSO Login Gate Component ─────────────────────────────────────────────────
+function SSOLoginPage({ onLogin }: { onLogin: (sess: SSOSession) => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [otpOnScreen, setOtpOnScreen] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [showPw, setShowPw] = useState(false);
+
+  const handleGenerateOTP = async () => {
+    if (!email) { setError('Enter your email first.'); return; }
+    setLoading(true); setError(null);
     try {
-      const saved = localStorage.getItem('daily_engine_session');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
+      const res = await fetch('/auth/otp/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Failed to generate OTP');
+      setOtpOnScreen(data.otp);
+      setOtpSent(true);
+      setSuccess('OTP generated! Enter it below to login.');
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleLogin = async () => {
+    if (!email) { setError('Email is required.'); return; }
+    setLoading(true); setError(null);
+    try {
+      const body: any = { email };
+      if (loginMode === 'otp') body.otp = otpInput; else body.password = password;
+      const res = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Login failed');
+      localStorage.setItem('sso_session', JSON.stringify({ token: data.token, role: data.role, username: data.username }));
+      onLogin({ token: data.token, role: data.role, username: data.username });
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleSignup = async () => {
+    if (!email || !username || !password) { setError('All fields are required.'); return; }
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch('/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, username, password }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Signup failed');
+      localStorage.setItem('sso_session', JSON.stringify({ token: data.token, role: data.role, username: data.username }));
+      onLogin({ token: data.token, role: data.role, username: data.username });
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#080b14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', sans-serif", padding: '20px' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; } input::placeholder { color: #475569; } input:focus { outline: none; }`}</style>
+      {/* BG glow */}
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 70% 50% at 50% -10%, #6366f122 0%, transparent 70%)', pointerEvents: 'none' }} />
+      
+      <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>🤖</div>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Autonomous AI Engineer</h1>
+          <p style={{ color: '#475569', fontSize: '13px', marginTop: '6px' }}>Sign in to access your workspace</p>
+        </div>
+
+        {/* Card */}
+        <div style={{ background: '#0f1629', border: '1px solid #1e293b', borderRadius: '20px', padding: '32px' }}>
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', background: '#080b14', borderRadius: '12px', padding: '4px', marginBottom: '24px' }}>
+            {(['login', 'signup'] as const).map(m => (
+              <button key={m} onClick={() => { setMode(m); setError(null); setSuccess(null); setOtpOnScreen(null); setOtpSent(false); }}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all .2s',
+                  background: mode === m ? '#6366f1' : 'transparent', color: mode === m ? '#fff' : '#475569' }}>
+                {m === 'login' ? 'Sign In' : 'Sign Up'}
+              </button>
+            ))}
+          </div>
+
+          {/* Login mode tabs */}
+          {mode === 'login' && (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              {(['password', 'otp'] as const).map(lm => (
+                <button key={lm} onClick={() => { setLoginMode(lm); setError(null); setOtpOnScreen(null); setOtpSent(false); }}
+                  style={{ flex: 1, padding: '7px', border: `1px solid ${loginMode === lm ? '#6366f1' : '#1e293b'}`, borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 500,
+                    background: loginMode === lm ? '#6366f111' : 'transparent', color: loginMode === lm ? '#818cf8' : '#475569', transition: 'all .2s' }}>
+                  {lm === 'password' ? '🔑 Password' : '📱 OTP'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {mode === 'signup' && (
+              <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username"
+                style={{ padding: '12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '14px', width: '100%' }} />
+            )}
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" type="email"
+              style={{ padding: '12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '14px', width: '100%' }} />
+            
+            {(mode === 'login' && loginMode === 'password') || mode === 'signup' ? (
+              <div style={{ position: 'relative' }}>
+                <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type={showPw ? 'text' : 'password'}
+                  onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleSignup())}
+                  style={{ padding: '12px 40px 12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '14px', width: '100%' }} />
+                <button onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: '16px' }}>
+                  {showPw ? '🙈' : '👁️'}
+                </button>
+              </div>
+            ) : null}
+
+            {mode === 'login' && loginMode === 'otp' && (
+              <>
+                <button onClick={handleGenerateOTP} disabled={loading}
+                  style={{ padding: '11px', background: '#6366f111', border: '1px solid #6366f155', borderRadius: '10px', color: '#818cf8', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                  {loading ? '⏳ Generating...' : '📱 Generate OTP'}
+                </button>
+                {otpOnScreen && (
+                  <div style={{ background: '#0f2d0f', border: '1px solid #22c55e55', borderRadius: '10px', padding: '14px 16px', textAlign: 'center' }}>
+                    <p style={{ color: '#86efac', fontSize: '12px', marginBottom: '6px' }}>Your OTP (shown here — no email configured)</p>
+                    <p style={{ color: '#22c55e', fontSize: '28px', fontWeight: 800, letterSpacing: '8px' }}>{otpOnScreen}</p>
+                    <p style={{ color: '#4ade80', fontSize: '11px', marginTop: '4px' }}>Expires in 10 minutes</p>
+                  </div>
+                )}
+                {otpSent && (
+                  <input value={otpInput} onChange={e => setOtpInput(e.target.value)} placeholder="Enter 6-digit OTP"
+                    onKeyDown={e => e.key === 'Enter' && handleLogin()} maxLength={6}
+                    style={{ padding: '12px 16px', background: '#080b14', border: '1px solid #1e293b', borderRadius: '10px', color: '#e2e8f0', fontSize: '18px', letterSpacing: '6px', textAlign: 'center', width: '100%' }} />
+                )}
+              </>
+            )}
+
+            {/* Error / Success */}
+            {error && <div style={{ background: '#2d0f0f', border: '1px solid #ef444455', borderRadius: '8px', padding: '10px 14px', color: '#fca5a5', fontSize: '13px' }}>❌ {error}</div>}
+            {success && <div style={{ background: '#0f2d0f', border: '1px solid #22c55e55', borderRadius: '8px', padding: '10px 14px', color: '#86efac', fontSize: '13px' }}>✅ {success}</div>}
+
+            {/* Submit */}
+            <button onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading}
+              style={{ padding: '13px', background: loading ? '#334155' : 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'all .2s', marginTop: '4px' }}>
+              {loading ? '⏳ Please wait...' : mode === 'login' ? '🚀 Sign In' : '✨ Create Account'}
+            </button>
+          </div>
+        </div>
+
+        <p style={{ textAlign: 'center', color: '#334155', fontSize: '12px', marginTop: '16px' }}>
+          Admin access? Use your credentials to unlock the full dashboard.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── User Apps Page (for normal users) ───────────────────────────────────────
+function UserAppsPage({ session, onLogout }: { session: SSOSession; onLogout: () => void }) {
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/products/catalog', { headers: { 'X-Session-Token': session.token } })
+      .then(r => r.json()).then(d => { if (d.products) setProducts(d.products); }).catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const COLORS: Record<string, string> = {
+    product1_adblocker_extension: '#6366f1', product2_github_blob_storage: '#0ea5e9',
+    product3_email_chat_mvp: '#10b981', product4_techhub_platform: '#f59e0b',
+    product5_url_cleaner: '#8b5cf6', product6_tab_session_saver: '#06b6d4',
+    product7_profile_booster_engine: '#22c55e', product8_sqlite_master_tables: '#f97316',
+  };
+  const EMOJIS: Record<string, string> = {
+    product1_adblocker_extension: '🛡️', product2_github_blob_storage: '📦',
+    product3_email_chat_mvp: '💬', product4_techhub_platform: '🚀',
+    product5_url_cleaner: '🔗', product6_tab_session_saver: '🗂️',
+    product7_profile_booster_engine: '📈', product8_sqlite_master_tables: '📊',
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#080b14', fontFamily: "'Inter', sans-serif", padding: '0' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'); * { box-sizing: border-box; }`}</style>
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 80% 40% at 50% -10%, #6366f115 0%, transparent 70%)', pointerEvents: 'none' }} />
+      
+      {/* Navbar */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: '#080b14cc', backdropFilter: 'blur(16px)', borderBottom: '1px solid #1e293b', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '20px' }}>🤖</span>
+          <span style={{ fontWeight: 700, fontSize: '15px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Autonomous AI Engineer</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ color: '#475569', fontSize: '13px' }}>👤 {session.username}</span>
+          <button onClick={onLogout} style={{ padding: '6px 14px', background: 'transparent', border: '1px solid #334155', borderRadius: '8px', color: '#64748b', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}>Sign Out</button>
+        </div>
+      </nav>
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 24px', position: 'relative', zIndex: 1 }}>
+        <div style={{ marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, color: '#f1f5f9', marginBottom: '8px' }}>🚀 Deployed Apps</h1>
+          <p style={{ color: '#475569', fontSize: '15px' }}>All products built and deployed by the Autonomous AI Engineer pipeline.</p>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', color: '#334155', padding: '60px' }}>⏳ Loading products...</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+            {products.map(p => {
+              const color = COLORS[p.id] || '#6366f1';
+              const emoji = EMOJIS[p.id] || '⚡';
+              return (
+                <div key={p.id} style={{ background: '#0f1629', border: `1px solid #1e293b`, borderRadius: '16px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', transition: 'border-color .2s, transform .2s', cursor: 'default' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${color}66`; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#1e293b'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${color}22`, border: `1px solid ${color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>{emoji}</div>
+                    <div>
+                      <div style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '14px', lineHeight: 1.3 }}>{p.name}</div>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '4px', padding: '2px 8px', background: '#22c55e22', border: '1px solid #22c55e44', borderRadius: '20px', color: '#22c55e', fontSize: '10px', fontWeight: 600 }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} /> LIVE
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>{p.description}</p>
+                  <a href={`/product/${p.id}`} target="_blank" rel="noreferrer"
+                    style={{ marginTop: 'auto', padding: '10px 16px', background: `${color}22`, border: `1px solid ${color}55`, borderRadius: '10px', color: color, fontSize: '13px', fontWeight: 600, textDecoration: 'none', textAlign: 'center', display: 'block', transition: 'all .2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = `${color}33`; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = `${color}22`; }}>
+                    🌐 Open App →
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<'home' | 'master_tables' | 'my_products' | 'user_auth' | 'ai_timeline'>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+
+  // ─── SSO Gate State ───────────────────────────────────────────────────────
+  const [ssoSession, setSsoSession] = useState<SSOSession | null>(() => {
+    try {
+      const saved = localStorage.getItem('sso_session');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
   });
 
-  // OTP Authentication Engine States
+  const handleSSOLogin = (sess: SSOSession) => setSsoSession(sess);
+  const handleSSOLogout = () => {
+    if (ssoSession?.token) fetch('/auth/logout', { method: 'POST', headers: { 'X-Session-Token': ssoSession.token } }).catch(() => {});
+    localStorage.removeItem('sso_session');
+    setSsoSession(null);
+  };
+
+  // Hard Security Auth State (legacy — kept for dashboard user mgmt tab)
+  // NOTE: SSO early returns are placed AFTER all hooks (see bottom of App) to respect Rules of Hooks
+  const [currentUser, setCurrentUser] = useState<UserEntry | null>({ id: 1, username: ssoSession?.username ?? '', role: 'super_admin', enabled: true });
+
+  // OTP Authentication Engine States (legacy)
   const [authTab, setAuthTab] = useState<'otp' | 'super_admin'>('otp');
   const [authStep, setAuthStep] = useState<'send' | 'verify'>('send');
   const [loginEmail, setLoginEmail] = useState<string>('aditya@example.com');
@@ -593,6 +794,77 @@ export default function App() {
   const [showSqlSuggestions, setShowSqlSuggestions] = useState<boolean>(false);
   const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState<number>(0);
 
+  // AI Project State & Live Build Timeline Engine
+  const [aiProjectState, setAiProjectState] = useState<any>(null);
+  const [isLoadingAiState, setIsLoadingAiState] = useState<boolean>(false);
+  const [pipelineRunLog, setPipelineRunLog] = useState<string>('');
+  const [isPipelineRunning, setIsPipelineRunning] = useState<boolean>(false);
+
+  const fetchAiProjectState = async () => {
+    setIsLoadingAiState(true);
+    try {
+      const res = await fetch('/api/state');
+      if (res.ok) {
+        const data = await res.json();
+        setAiProjectState(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch AI project state', e);
+    } finally {
+      setIsLoadingAiState(false);
+    }
+  };
+
+  const handleTriggerNextFeature = async () => {
+    setIsPipelineRunning(true);
+    setPipelineRunLog('🚀 Triggering Autonomous AI Engine build pipeline...\n');
+    try {
+      const res = await fetch('/api/run', { method: 'POST' });
+      if (res.ok) {
+        setSuccessToast('⚡ Autonomous AI Feature Build Triggered!');
+        const interval = setInterval(async () => {
+          try {
+            const statusRes = await fetch('/api/run/status');
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              setPipelineRunLog(statusData.log);
+              if (!statusData.running) {
+                clearInterval(interval);
+                setIsPipelineRunning(false);
+                fetchAiProjectState();
+              }
+            }
+          } catch {
+            clearInterval(interval);
+            setIsPipelineRunning(false);
+          }
+        }, 2000);
+      }
+    } catch (e) {
+      setIsPipelineRunning(false);
+      setPipelineRunLog(prev => prev + '\n❌ Error starting build.');
+    }
+  };
+
+  const fetchProductsCatalog = async () => {
+    try {
+      const res = await fetch('/api/products/catalog');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.products && data.products.length > 0) {
+          setProductsList(data.products);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch dynamic products catalog', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAiProjectState();
+    fetchProductsCatalog();
+  }, []);
+
 
 
 
@@ -601,7 +873,7 @@ export default function App() {
   const [inspectRows, setInspectRows] = useState<any[]>([]);
   const [inspectModalSearch, setInspectModalSearch] = useState<string>('');
 
-  // Products Portfolio
+  // Products Portfolio - Full Built Catalog
   const [productsList, setProductsList] = useState<ProductItem[]>([
     {
       id: 'product1_adblocker_extension',
@@ -622,6 +894,41 @@ export default function App() {
       name: 'Product 03: Email-Based Micro-Chat MVP (Rocket.Chat Style)',
       description: 'Lightweight thread engine supporting real-time chat conversations over email protocols.',
       db_folder: 'app/product3_email_chat_mvp/db',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product4_techhub_platform',
+      name: 'Product 04: Tech Hub Full-Stack Developer Platform',
+      description: 'Developer SaaS platform for project discovery, JWT authentication, trending tech insights, and CRUD APIs.',
+      db_folder: 'automation/project_state.yaml',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product5_url_cleaner',
+      name: 'Product 05: URL Cleaner & UTM Parameter Stripper Engine',
+      description: 'Privacy tool to strip tracking parameters, affiliate tokens, and redirect wrappers from URLs.',
+      db_folder: 'app/product5_url_cleaner/db',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product6_tab_session_saver',
+      name: 'Product 06: One-Click Tab Group & Session Saver',
+      description: 'Productivity suite to backup, categorize, and restore browser window sessions with 1-click JSON export.',
+      db_folder: 'app/product6_tab_session_saver/db',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product7_profile_booster_engine',
+      name: 'Product 07: Ideal GitHub Profile & Activity Graph Booster Engine',
+      description: 'Automated contribution pipeline generating per-file atomic commits, Pull Requests, Issues, and Code Reviews.',
+      db_folder: 'automation/github_activity.py',
+      status: 'OPERATIONAL'
+    },
+    {
+      id: 'product8_sqlite_master_tables',
+      name: 'Product 08: SQLite B-Tree Master Tables & SQL Console Studio',
+      description: 'Embedded database engine with live SQL IntelliSense console, schema validator, and 1-click Excel exporter.',
+      db_folder: 'db/app_data.db',
       status: 'OPERATIONAL'
     }
   ]);
@@ -736,12 +1043,13 @@ export default function App() {
 
   // Handle Hard Logout
   const handleLogout = () => {
+    // Clear SSO session (clears localStorage sso_session + server-side token)
+    handleSSOLogout();
     setCurrentUser(null);
     try {
       localStorage.removeItem('daily_engine_session');
     } catch {}
     setAuthStep('send');
-    setSuccessToast('🔒 Logged out successfully! Dashboard locked.');
   };
 
   // Send Email OTP Handler
@@ -1164,562 +1472,98 @@ export default function App() {
       return;
     }
 
-    const matched = adblockRules.find(r => {
-      if (!r.enabled) return false;
-      const cleanDomain = r.domain.replace(/\*/g, '');
-      return url.includes(cleanDomain);
-    });
-
-    if (matched) {
-      setTestResult({ blocked: true, rule: matched });
-      setSuccessToast(`🛡️ URL matched rule: ${matched.domain}`);
-    } else {
-      setTestResult({ blocked: false });
-      setSuccessToast(`✅ URL allowed - No active block rules matched.`);
-    }
-  };
-
-  // Product 03 Action Handler
-  const handleSendChatMessage = async () => {
-    if (!chatBody.trim()) return;
-    const newMsg = {
-      id: Date.now() % 10000,
-      sender_email: currentUser?.email || `${currentUser?.username}@example.com`,
-      recipient_email: chatRecipient.trim() || 'team@antigravity.dev',
-      subject: chatSubject.trim() || 'General Conversation',
-      body: chatBody.trim(),
-      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
-    };
-    const updated = [...chatMessages, newMsg];
-    setChatMessages(updated);
-    setChatBody('');
-    try {
-      await fetch('/api/products/data/product3_email_chat_mvp/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated)
-      });
-      setSuccessToast('📧 Email message sent and saved to thread DB!');
-    } catch {
-      setSuccessToast('📧 Message sent locally!');
-    }
-  };
-
-  // Commit Daily Roadmap Progress Handler
-  const handleCommitDailyProgress = async () => {
-    try {
-      const res = await fetch('/api/db/commit_progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project: activeProject,
-          today_done: todayDoneInput,
-          tomorrow_plan: tomorrowPlanInput,
-          phase: 'BUILD'
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSuccessToast(`🚀 Progress committed to Git! Streak: ${data.current_streak_days} Days (Commit: ${data.commit_hash})`);
-      } else {
-        setSuccessToast('✅ Daily progress saved!');
-      }
-    } catch {
-      setSuccessToast('✅ Daily progress saved locally!');
-    }
-  };
-
-  // Run Build & Verify Verification Suite Handler
-  const handleRunBuildVerify = async (prod: ProductItem) => {
-    setSuccessToast(`▶️ Running build & test suite verification for ${prod.name}...`);
-    try {
-      const res = await fetch('/api/tests/run', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        setSuccessToast(`✅ Build Verification Passed! ${data.passed}/${data.total} tests passed (${data.coverage.statements}% statement coverage)`);
-      } else {
-        setSuccessToast(`✅ Build & verify check passed for ${prod.name}!`);
-      }
-    } catch {
-      setSuccessToast(`✅ Build & verify check passed for ${prod.name}!`);
-    }
-  };
-
-  // In-Card Inline Deploy Handler (Flips product card into live terminal log box)
-  const handleDeployProduct = async (prod: ProductItem) => {
-    const prodId = prod.id;
-    setExpandedDeployCard(prodId);
-    setCardDeployStatus(prev => ({ ...prev, [prodId]: 'building' }));
-    setCardDeployLogs(prev => ({ ...prev, [prodId]: `🚀 Starting deploy pipeline for ${prod.name}...\nStep 1/3: Initializing production build...\n` }));
-
-    try {
-      const res = await fetch('/api/deploy/netlify', { method: 'POST' });
-      const data = await res.json();
-      
-      if (data.status === 'running') {
-        setCardDeployLogs(prev => ({ ...prev, [prodId]: (prev[prodId] || '') + '⚠️ Deploy pipeline already active — tailing live logs...\n' }));
-      }
-
-      // Poll status every 1.5s until build finishes
-      const poll = setInterval(async () => {
-        try {
-          const statusRes = await fetch('/api/deploy/status');
-          const status = await statusRes.json();
-          
-          if (status.log) {
-            setCardDeployLogs(prev => ({ ...prev, [prodId]: status.log }));
-          }
-
-          if (!status.running) {
-            clearInterval(poll);
-            if (status.result?.status === 'success' && status.result?.url) {
-              const liveUrl = status.result.url;
-              setCardDeployStatus(prev => ({ ...prev, [prodId]: 'success' }));
-              setCardDeployUrls(prev => ({ ...prev, [prodId]: liveUrl }));
-              setCardDeployLogs(prev => ({ ...prev, [prodId]: (status.log || '') + `\n\n🎉 SUCCESS! Deployed to Netlify CDN.\n🌐 Live URL: ${liveUrl}` }));
-              setSuccessToast(`🎉 ${prod.name} deployed to Netlify! URL: ${liveUrl}`);
-              setTimeout(() => window.open(liveUrl, '_blank'), 600);
-            } else {
-              const err = status.result?.message || 'Deployment failed. Check environment variables.';
-              setCardDeployStatus(prev => ({ ...prev, [prodId]: 'error' }));
-              setCardDeployLogs(prev => ({ ...prev, [prodId]: (status.log || '') + `\n\n❌ DEPLOYMENT FAILED: ${err}` }));
-              setSuccessToast(`❌ Deploy failed for ${prod.name}`);
-            }
-          }
-        } catch {
-          // Keep polling resilience
-        }
-      }, 1500);
-
-    } catch (e: any) {
-      setCardDeployStatus(prev => ({ ...prev, [prodId]: 'error' }));
-      setCardDeployLogs(prev => ({ ...prev, [prodId]: `❌ API Connection Error: ${e.message || e}\nVerify server backend is running.` }));
-    }
-  };
-
-  // Micro-Product User Auth Handlers
-  const handleProductUserLogin = async () => {
-    setProductAuthError(null);
-    if (!productUsernameInput.trim()) {
-      setProductAuthError('Username is required.');
-      return;
-    }
-    try {
-      const res = await fetch('/api/auth/user_login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: productUsernameInput.trim(),
-          password: productPasswordInput || 'password123'
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProductAuthUser(data.user);
-        setCurrentUser(data.user);
-        setSuccessToast(`🔑 Authenticated as @${data.user.username}!`);
-      } else {
-        const err = await res.json();
-        setProductAuthError(err.detail || 'Invalid username or password.');
-      }
-    } catch {
-      const user: UserEntry = { id: Date.now() % 10000, username: productUsernameInput.trim(), email: `${productUsernameInput.trim()}@example.com`, role: 'developer', enabled: true };
-      setProductAuthUser(user);
-      setCurrentUser(user);
-      setSuccessToast(`🔑 Authenticated as @${user.username}!`);
-    }
-  };
-
-  const handleProductUserRegister = async () => {
-    setProductAuthError(null);
-    if (!productUsernameInput.trim() || !productEmailInput.trim()) {
-      setProductAuthError('Username and Email are required.');
-      return;
-    }
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: productUsernameInput.trim(),
-          email: productEmailInput.trim(),
-          password: productPasswordInput || 'password123',
-          role: productRoleInput
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProductAuthUser(data.user);
-        setCurrentUser(data.user);
-        setSuccessToast(`🎉 Account created! Authenticated as @${data.user.username}!`);
-      } else {
-        const err = await res.json();
-        setProductAuthError(err.detail || 'Registration failed.');
-      }
-    } catch {
-      const user: UserEntry = { id: Date.now() % 10000, username: productUsernameInput.trim(), email: productEmailInput.trim(), role: productRoleInput as any, enabled: true };
-      setProductAuthUser(user);
-      setCurrentUser(user);
-      setSuccessToast(`🎉 Account created! Authenticated as @${user.username}!`);
-    }
-  };
-
-  // Add Blank Row in Inspect Table Modal
-  const handleAddRowToInspectTable = () => {
-    const columns = Array.from(new Set(inspectRows.flatMap(r => Object.keys(r))));
-    const newRow: Record<string, any> = { id: inspectRows.length + 1 };
-    columns.forEach(col => {
-      if (col !== 'id') newRow[col] = '';
-    });
-    setInspectRows([...inspectRows, newRow]);
-    setSuccessToast('➕ New row added to inspector table. Click Save & Commit to persist!');
-  };
-
-  // Delete Row in Inspect Modal
-  const handleDeleteInspectRow = (rowIndex: number) => {
-    const updated = inspectRows.filter((_, idx) => idx !== rowIndex);
-    setInspectRows(updated);
-    setSuccessToast('🗑️ Row deleted from inspector preview.');
-  };
-
-  // Export Inspect Table to JSON File
-  const handleExportInspectTableJSON = () => {
-    if (!inspectTableModal) return;
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inspectRows, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `${inspectTableModal.tableName}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-    setSuccessToast(`📥 Downloaded ${inspectTableModal.tableName}.json!`);
-  };
-
-  // Export Inspect Table to Excel (.xlsx) with conditional formatting & data validation
-  const handleExportInspectTableXLSX = () => {
-    if (!inspectTableModal || inspectRows.length === 0) return;
-    const tableName = inspectTableModal.tableName;
-    const columns = Array.from(new Set(inspectRows.flatMap(r => Object.keys(r))));
-
-    // Build worksheet data: header row + data rows
-    const wsData: any[][] = [
-      columns,
-      ...inspectRows.map(row => columns.map(col => row[col] !== undefined ? row[col] : ''))
-    ];
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // --- Column widths ---
-    ws['!cols'] = columns.map(() => ({ wch: 20 }));
-
-    // --- Header row styling (bold, cyan-ish fill) ---
-    columns.forEach((col, cIdx) => {
-      const cellRef = XLSX.utils.encode_cell({ r: 0, c: cIdx });
-      if (!ws[cellRef]) ws[cellRef] = { v: col, t: 's' };
-      ws[cellRef].s = {
-        font: { bold: true, color: { rgb: 'FFFFFF' } },
-        fill: { fgColor: { rgb: '0E7490' } }, // cyan-700
-        alignment: { horizontal: 'center' },
-        border: { bottom: { style: 'medium', color: { rgb: '06B6D4' } } }
-      };
-    });
-
-    // --- Data rows: conditional formatting per cell type ---
-    inspectRows.forEach((row, rIdx) => {
-      columns.forEach((col, cIdx) => {
-        const cellRef = XLSX.utils.encode_cell({ r: rIdx + 1, c: cIdx });
-        if (!ws[cellRef]) return;
-        const val = row[col];
-        const isNum = typeof val === 'number' || (!isNaN(Number(val)) && val !== '' && val !== null);
-        const isBool = typeof val === 'boolean' || val === 'true' || val === 'false';
-        const isDate = col.toLowerCase().includes('date') || col.toLowerCase().includes('_at') || col.toLowerCase().includes('time');
-
-        let fill = { fgColor: { rgb: '0F172A' } }; // default dark bg
-        let font = { color: { rgb: 'CBD5E1' } };
-
-        if (isBool) {
-          const boolVal = val === true || val === 'true';
-          fill = { fgColor: { rgb: boolVal ? '14532D' : '7F1D1D' } }; // green-900 / red-900
-          font = { color: { rgb: boolVal ? '86EFAC' : 'FCA5A5' } };   // green-300 / red-300
-          ws[cellRef].v = boolVal ? 'TRUE' : 'FALSE';
-          ws[cellRef].t = 's';
-        } else if (isNum && !isDate) {
-          fill = { fgColor: { rgb: '713F12' } }; // yellow-900
-          font = { color: { rgb: 'FDE047' } };   // yellow-300
-          ws[cellRef].t = 'n';
-          ws[cellRef].v = Number(val);
-        } else if (isDate && val) {
-          fill = { fgColor: { rgb: '312E81' } }; // indigo-900
-          font = { color: { rgb: 'A5B4FC' } };   // indigo-300
-          ws[cellRef].z = 'YYYY-MM-DD HH:MM';
-        }
-
-        ws[cellRef].s = { fill, font, alignment: { wrapText: false } };
-      });
-    });
-
-    // --- Freeze header row ---
-    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-
-    // --- Auto-filter on header row ---
-    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: inspectRows.length, c: columns.length - 1 } }) };
-
-    XLSX.utils.book_append_sheet(wb, ws, tableName.slice(0, 31));
-    XLSX.writeFile(wb, `${tableName}.xlsx`, { bookType: 'xlsx', cellStyles: true });
-    setSuccessToast(`📊 Downloaded ${tableName}.xlsx with conditional formatting!`);
-  };
-
-  // Whitelist Handlers (Product 01)
-  const handleAddWhitelistDomain = () => {
-    if (!newWhitelistInput.trim()) return;
-    const dom = newWhitelistInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    if (!whitelistDomains.includes(dom)) {
-      setWhitelistDomains([...whitelistDomains, dom]);
-      setNewWhitelistInput('');
-      setSuccessToast(`✅ Added '${dom}' to whitelisted domains!`);
-    }
-  };
-
-  const handleRemoveWhitelistDomain = (domain: string) => {
-    setWhitelistDomains(whitelistDomains.filter(d => d !== domain));
-    setSuccessToast(`✅ Removed '${domain}' from whitelist.`);
-  };
-
-  const handleTestCosmeticSelector = () => {
-    if (!cosmeticSelectorInput.trim()) return;
-    const sel = cosmeticSelectorInput.trim();
-    setCosmeticTestResult(`[COSMETIC HIDE RULE GENERATED] Target CSS Selector "${sel}" injected with { display: none !important; visibility: hidden; }`);
-    setSuccessToast(`✨ Dynamic cosmetic rule applied for ${sel}`);
-  };
-
-  // Blob Asset Handlers (Product 02)
-  const handleCopyBlobUrl = (url: string) => {
-    navigator.clipboard.writeText(url);
-    setSuccessToast(`📋 Asset URL '${url}' copied to clipboard!`);
-  };
-
-  const handleDeleteBlobAsset = async (id: number) => {
-    try {
-      const res = await fetch(`/api/blob/assets/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchBlobAssets();
-        setSuccessToast('🗑️ Asset deleted from storage & DB!');
-      } else {
-        setBlobAssets(blobAssets.filter(b => b.id !== id));
-        setSuccessToast('🗑️ Asset removed locally!');
-      }
-    } catch {
-      setBlobAssets(blobAssets.filter(b => b.id !== id));
-      setSuccessToast('🗑️ Asset removed locally!');
-    }
-  };
-
-  // Inspect Table Handler
-  const openInspectTableModal = (projectId: string, tableName: string) => {
-    setInspectTableModal({ projectId, tableName });
-    setInspectModalSearch('');
-    const defaultFallback = fallbackTableMap[tableName] || [{ id: 1, title: `Sample item in ${tableName}` }];
-
-    fetch(`/api/products/data/${projectId}/${tableName}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data.rows) && data.rows.length > 0) setInspectRows(data.rows);
-        else setInspectRows(defaultFallback);
-      })
-      .catch(() => setInspectRows(defaultFallback));
-  };
-
-  // Cell Inline Edit Handler
-  const handleCellEdit = (rowIndex: number, colKey: string, newValue: any) => {
-    const updatedRows = [...inspectRows];
-    updatedRows[rowIndex] = { ...updatedRows[rowIndex], [colKey]: newValue };
-    setInspectRows(updatedRows);
-  };
-
-  // Save Inspected Table Changes
-  const handleSaveInspectTableData = async () => {
-    if (!inspectTableModal) return;
-    try {
-      await fetch(`/api/products/data/${inspectTableModal.projectId}/${inspectTableModal.tableName}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inspectRows)
-      });
-      setSuccessToast(`✅ Saved changes to ${inspectTableModal.tableName}.json!`);
-      fetchMasterTables();
-    } catch (e) {
-      setSuccessToast('✅ Saved locally');
-    }
-  };
-
-  // Cancel Upload Handler
-  const handleCancelUpload = () => {
-    if (uploadXhrRef.current) {
-      uploadXhrRef.current.abort();
-      uploadXhrRef.current = null;
-    }
-    setIsUploading(false);
-    setUploadProgress(0);
-    setSuccessToast('🛑 File upload cancelled by user.');
-  };
-
-  // File Uploader Handler with Real-Time Progress, Speed & Time Track
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    
-    setIsUploading(true);
-    setUploadProgress(0);
-    setUploadFileName(file.name);
-    setUploadElapsedTime(0);
-    setUploadSpeed('0 KB/s');
-    setUploadStatusText('Initializing upload stream...');
-    setSuccessToast(`Uploading ${file.name}...`);
-
-    const startTime = Date.now();
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('username', currentUser?.username || 'public');
-
-    const xhr = new XMLHttpRequest();
-    uploadXhrRef.current = xhr;
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setUploadProgress(percent);
-
-        const elapsedSeconds = (Date.now() - startTime) / 1000;
-        setUploadElapsedTime(Math.round(elapsedSeconds));
-
-        const bytesPerSec = elapsedSeconds > 0 ? event.loaded / elapsedSeconds : 0;
-        const speedFormatted = bytesPerSec > 1024 * 1024
-          ? `${(bytesPerSec / (1024 * 1024)).toFixed(2)} MB/s`
-          : `${Math.round(bytesPerSec / 1024)} KB/s`;
-        setUploadSpeed(speedFormatted);
-
-        if (percent < 100) {
-          setUploadStatusText(`Uploading... ${percent}% (${(event.loaded / (1024 * 1024)).toFixed(2)} MB / ${(event.total / (1024 * 1024)).toFixed(2)} MB)`);
-        } else {
-          setUploadStatusText('Saving asset & committing to Git...');
-        }
-      }
-    };
-
-    xhr.onload = () => {
-      uploadXhrRef.current = null;
-      setIsUploading(false);
-      fetchBlobAssets();
-      if (xhr.status >= 200 && xhr.status < 300) {
-        setSuccessToast(`✅ File '${file.name}' uploaded in ${Math.round((Date.now() - startTime) / 1000)}s & committed to Git!`);
-      } else {
-        setSuccessToast(`❌ Upload failed with status ${xhr.status}`);
-      }
-    };
-
-    xhr.onerror = () => {
-      uploadXhrRef.current = null;
-      setIsUploading(false);
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      const assetType = ['mp4', 'mkv'].includes(ext) ? 'video' : ['pdf', 'doc'].includes(ext) ? 'doc' : 'image';
-      const sub = assetType === 'video' ? 'videos' : assetType === 'doc' ? 'docs' : 'images';
-      const newAsset: BlobAsset = {
-        id: Date.now() % 10000,
-        filename: file.name,
-        type: assetType as any,
-        url: `/storage/${sub}/${file.name}`,
-        size: `${Math.round((file.size / (1024 * 1024)) * 10) / 10 || 0.5} MB`,
-        created_at: new Date().toISOString().split('T')[0]
-      };
-      setBlobAssets([newAsset, ...blobAssets]);
-      setSuccessToast(`✅ File '${file.name}' saved locally!`);
-    };
-
-    xhr.onabort = () => {
-      uploadXhrRef.current = null;
-      setIsUploading(false);
-      setUploadProgress(0);
-    };
-
-    xhr.open('POST', '/api/blob/upload_file');
-    xhr.send(formData);
-  };
-
-  // Queue Operations
-  const handleAddQueueItem = () => {
-    if (!newQueueTitle.trim()) return;
-    const newItem: QueueItem = {
-      id: Date.now() % 10000,
-      title: newQueueTitle.trim(),
-      category: 'Browser Utility',
-      target_day: productQueue.length + 2,
-      priority: 'HIGH',
-      status: 'QUEUED'
-    };
-    setProductQueue([...productQueue, newItem]);
-    setNewQueueTitle('');
-    setSuccessToast(`✅ Queue item '${newItem.title}' added!`);
-  };
-
-  const handleRemoveQueueItem = (itemId: number) => {
-    setProductQueue(productQueue.filter(q => q.id !== itemId));
-    setSuccessToast('✅ Queue item removed!');
-  };
-
-  const handlePromoteQueueItem = (itemId: number) => {
-    const item = productQueue.find(q => q.id === itemId);
-    if (item) {
-      setActiveProject(item.title.toLowerCase().replace(/[^a-z0-9]/g, '_'));
-      setSuccessToast(`🚀 Promoted '${item.title}' to active building target!`);
-    }
-  };
-
-  // Filtered Master Tables
-  const filteredMasterTables = masterTables.filter(t => {
-    if (!masterSearch.trim()) return true;
-    const s = masterSearch.toLowerCase();
-    return t.tableName.toLowerCase().includes(s) || t.projectName.toLowerCase().includes(s) || t.description.toLowerCase().includes(s);
-  });
-
-  // Filtered Rows for In-Modal Search
-  const filteredInspectRows = inspectRows.filter(r => {
-    if (!inspectModalSearch.trim()) return true;
-    const s = inspectModalSearch.toLowerCase();
-    return Object.values(r).some(val => String(val).toLowerCase().includes(s));
-  });
-
-  const tableColumns = Array.from(new Set(inspectRows.flatMap(row => Object.keys(row))));
-
-  // ════════════════════════════════════════════════════════════════
-  // MANDATORY HARD SECURITY LOCK SCREEN (IF NOT AUTHENTICATED)
-  // ════════════════════════════════════════════════════════════════
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-[#07080d] text-slate-100 font-sans flex items-center justify-center p-4 selection:bg-cyan-600">
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 shadow-2xl backdrop-blur-md">
-          
-          {/* Header Icon */}
-          <div className="text-center space-y-2">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 mx-auto flex items-center justify-center shadow-xl shadow-
+    const matched = adblockRules.fi
 
 ... [Content Truncated due to size limit] ...
 ```
 
-### File: `app/src/main.tsx`
-```tsx
-import React from 'react';
-import ReactDOM from 'react-dom';
-import App from './App';
-import './index.css';
+### File: `app/src/index.css`
+```css
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #07080c;
+  color: #f1f5f9;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+}
+
+/* Sweet & Simple Glassmorphism Tokens */
+.glass-card {
+  background: rgba(15, 17, 26, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-hover:hover {
+  background: rgba(22, 25, 38, 0.85);
+  border-color: rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.15);
+}
+
+.glass-nav {
+  background: rgba(8, 9, 14, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #9333ea 0%, #6366f1 50%, #0284c7 100%);
+}
+
+.glow-purple {
+  box-shadow: 0 0 30px -5px rgba(147, 51, 234, 0.35);
+}
+
+.glow-soft {
+  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.4);
+}
+
 ```
 
 ### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
@@ -1741,6 +1585,58 @@ ReactDOM.render(
 ### File: `app/product2_github_blob_storage/db/blob_assets.json`
 ```json
 [
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages.json`
+```json
+[
+  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
+  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users_schema.json`
+```json
+{
+  "tableName": "users",
+  "columns": [
+    { "name": "id", "type": "number", "required": true },
+    { "name": "username", "type": "string", "required": true },
+    { "name": "email", "type": "string", "required": true },
+    { "name": "name", "type": "string", "required": false },
+    { "name": "role", "type": "string", "required": false }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages_schema.json`
+```json
+{
+  "tableName": "messages",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "sender_email", "type": "string", "required": true },
+    { "name": "recipient_email", "type": "string", "required": true },
+    { "name": "subject", "type": "string", "required": true },
+    { "name": "body", "type": "string", "required": true },
+    { "name": "timestamp", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users.json`
+```json
+[
+  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
+  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
+  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
+  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
+  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
 ]
 
 ```
