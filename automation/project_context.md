@@ -76,25 +76,6 @@ projects:
 ```
 
 ## Workspace Source Code Files
-### File: `app/netlify.toml`
-```toml
-[build]
-  command = "npm run build"
-  publish = "build"
-[functions]
-  directory = "functions"
-```
-
-### File: `app/postcss.config.js`
-```js
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-```
-
 ### File: `app/index.html`
 ```html
 <!DOCTYPE html>
@@ -152,17 +133,6 @@ module.exports = {
 {"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
 ```
 
-### File: `app/vite.config.ts`
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  base: '/',
-  plugins: [react()]
-});
-```
-
 ### File: `app/tailwind.config.js`
 ```js
 module.exports = {
@@ -174,6 +144,60 @@ module.exports = {
   },
   plugins: [],
 };
+```
+
+### File: `app/netlify.toml`
+```toml
+[build]
+  command = "npm run build"
+  publish = "build"
+[functions]
+  directory = "functions"
+```
+
+### File: `app/postcss.config.js`
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+### File: `app/vite.config.ts`
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  base: '/',
+  plugins: [react()]
+});
+```
+
+### File: `app/product1_adblocker_extension/content.js`
+```js
+// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
+(function() {
+  const adSelectors = [
+    '.ad-container', '.sponsored-post', '#google_ads_frame',
+    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
+  ];
+  
+  function removeAds() {
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => el.remove());
+    });
+  }
+
+  removeAds();
+  const observer = new MutationObserver(removeAds);
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+
 ```
 
 ### File: `app/product1_adblocker_extension/popup.html`
@@ -270,30 +294,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/product1_adblocker_extension/content.js`
-```js
-// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
-(function() {
-  const adSelectors = [
-    '.ad-container', '.sponsored-post', '#google_ads_frame',
-    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
-  ];
-  
-  function removeAds() {
-    adSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => el.remove());
-    });
-  }
-
-  removeAds();
-  const observer = new MutationObserver(removeAds);
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-})();
-
-```
-
 ### File: `app/product1_adblocker_extension/manifest.json`
 ```json
 {
@@ -349,6 +349,95 @@ chrome.runtime.onInstalled.addListener(() => {
     { "name": "priority", "type": "number", "required": true, "min": 1, "max": 100, "default": 1 },
     { "name": "enabled", "type": "boolean", "required": true, "default": true }
   ]
+}
+
+```
+
+### File: `app/src/index.css`
+```css
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #07080c;
+  color: #f1f5f9;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+}
+
+/* Sweet & Simple Glassmorphism Tokens */
+.glass-card {
+  background: rgba(15, 17, 26, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-hover:hover {
+  background: rgba(22, 25, 38, 0.85);
+  border-color: rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.15);
+}
+
+.glass-nav {
+  background: rgba(8, 9, 14, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #9333ea 0%, #6366f1 50%, #0284c7 100%);
+}
+
+.glow-purple {
+  box-shadow: 0 0 30px -5px rgba(147, 51, 234, 0.35);
+}
+
+.glow-soft {
+  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.4);
 }
 
 ```
@@ -1477,115 +1566,19 @@ export default function App() {
 ... [Content Truncated due to size limit] ...
 ```
 
-### File: `app/src/index.css`
-```css
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  margin: 0;
-  font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #07080c;
-  color: #f1f5f9;
-  overflow-x: hidden;
-  letter-spacing: -0.01em;
-}
-
-/* Sweet & Simple Glassmorphism Tokens */
-.glass-card {
-  background: rgba(15, 17, 26, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-}
-
-.glass-card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-card-hover:hover {
-  background: rgba(22, 25, 38, 0.85);
-  border-color: rgba(168, 85, 247, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.15);
-}
-
-.glass-nav {
-  background: rgba(8, 9, 14, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #38bdf8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-bg {
-  background: linear-gradient(135deg, #9333ea 0%, #6366f1 50%, #0284c7 100%);
-}
-
-.glow-purple {
-  box-shadow: 0 0 30px -5px rgba(147, 51, 234, 0.35);
-}
-
-.glow-soft {
-  box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.25);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.4);
-}
-
-```
-
-### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
+### File: `app/product3_email_chat_mvp/db/messages_schema.json`
 ```json
 {
-  "tableName": "blob_assets",
+  "tableName": "messages",
   "columns": [
     { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "filename", "type": "string", "required": true },
-    { "name": "type", "type": "string", "required": true, "default": "image" },
-    { "name": "url", "type": "string", "required": true },
-    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
-    { "name": "created_at", "type": "string", "required": true }
+    { "name": "sender_email", "type": "string", "required": true },
+    { "name": "recipient_email", "type": "string", "required": true },
+    { "name": "subject", "type": "string", "required": true },
+    { "name": "body", "type": "string", "required": true },
+    { "name": "timestamp", "type": "string", "required": true }
   ]
 }
-
-```
-
-### File: `app/product2_github_blob_storage/db/blob_assets.json`
-```json
-[
-]
 
 ```
 
@@ -1613,22 +1606,6 @@ body {
 
 ```
 
-### File: `app/product3_email_chat_mvp/db/messages_schema.json`
-```json
-{
-  "tableName": "messages",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "sender_email", "type": "string", "required": true },
-    { "name": "recipient_email", "type": "string", "required": true },
-    { "name": "subject", "type": "string", "required": true },
-    { "name": "body", "type": "string", "required": true },
-    { "name": "timestamp", "type": "string", "required": true }
-  ]
-}
-
-```
-
 ### File: `app/product3_email_chat_mvp/db/users.json`
 ```json
 [
@@ -1637,6 +1614,29 @@ body {
   { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
   { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
   { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
+]
+
+```
+
+### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
+```json
+{
+  "tableName": "blob_assets",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "filename", "type": "string", "required": true },
+    { "name": "type", "type": "string", "required": true, "default": "image" },
+    { "name": "url", "type": "string", "required": true },
+    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
+    { "name": "created_at", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product2_github_blob_storage/db/blob_assets.json`
+```json
+[
 ]
 
 ```
