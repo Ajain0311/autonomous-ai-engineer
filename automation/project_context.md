@@ -76,20 +76,47 @@ projects:
 ```
 
 ## Workspace Source Code Files
-### File: `app/index.html`
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tech Hub</title>
-</head>
-<body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-</body>
-</html>
+### File: `app/postcss.config.js`
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+```
+
+### File: `app/vite.config.ts`
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  base: '/',
+  plugins: [react()]
+});
+```
+
+### File: `app/netlify.toml`
+```toml
+[build]
+  command = "npm run build"
+  publish = "build"
+[functions]
+  directory = "functions"
+```
+
+### File: `app/tailwind.config.js`
+```js
+module.exports = {
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
 ```
 
 ### File: `app/package.json`
@@ -128,120 +155,25 @@ projects:
 }
 ```
 
+### File: `app/index.html`
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tech Hub</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
+```
+
 ### File: `app/tsconfig.json`
 ```json
 {"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
-```
-
-### File: `app/tailwind.config.js`
-```js
-module.exports = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
-```
-
-### File: `app/netlify.toml`
-```toml
-[build]
-  command = "npm run build"
-  publish = "build"
-[functions]
-  directory = "functions"
-```
-
-### File: `app/postcss.config.js`
-```js
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-```
-
-### File: `app/vite.config.ts`
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  base: '/',
-  plugins: [react()]
-});
-```
-
-### File: `app/product1_adblocker_extension/content.js`
-```js
-// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
-(function() {
-  const adSelectors = [
-    '.ad-container', '.sponsored-post', '#google_ads_frame',
-    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
-  ];
-  
-  function removeAds() {
-    adSelectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => el.remove());
-    });
-  }
-
-  removeAds();
-  const observer = new MutationObserver(removeAds);
-  if (document.body) {
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-})();
-
-```
-
-### File: `app/product1_adblocker_extension/popup.html`
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {
-      width: 280px;
-      padding: 16px;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #07080d;
-      color: #fff;
-      margin: 0;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #1e293b;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-    }
-    .title { font-weight: 800; font-size: 14px; color: #38bdf8; }
-    .status { font-size: 11px; color: #4ade80; font-weight: 700; }
-    .card { background: #1e293b; p: 10px; border-radius: 8px; margin-bottom: 8px; padding: 10px; }
-    .val { font-size: 18px; font-weight: 800; color: #38bdf8; }
-    .lbl { font-size: 10px; color: #94a3b8; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="title">Product 1: ShieldBlock AI</div>
-    <div class="status">● Active</div>
-  </div>
-  <div class="card">
-    <div class="val">14,892</div>
-    <div class="lbl">Ads & Trackers Blocked Today</div>
-  </div>
-</body>
-</html>
-
 ```
 
 ### File: `app/product1_adblocker_extension/background.js`
@@ -326,6 +258,74 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
+### File: `app/product1_adblocker_extension/content.js`
+```js
+// Content Script - DOM Cosmetic Ad Filter & Popup Zapper
+(function() {
+  const adSelectors = [
+    '.ad-container', '.sponsored-post', '#google_ads_frame',
+    '[id^="div-gpt-ad"]', '.cookie-consent-modal', '.popup-overlay'
+  ];
+  
+  function removeAds() {
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => el.remove());
+    });
+  }
+
+  removeAds();
+  const observer = new MutationObserver(removeAds);
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+
+```
+
+### File: `app/product1_adblocker_extension/popup.html`
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 280px;
+      padding: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #07080d;
+      color: #fff;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .title { font-weight: 800; font-size: 14px; color: #38bdf8; }
+    .status { font-size: 11px; color: #4ade80; font-weight: 700; }
+    .card { background: #1e293b; p: 10px; border-radius: 8px; margin-bottom: 8px; padding: 10px; }
+    .val { font-size: 18px; font-weight: 800; color: #38bdf8; }
+    .lbl { font-size: 10px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Product 1: ShieldBlock AI</div>
+    <div class="status">● Active</div>
+  </div>
+  <div class="card">
+    <div class="val">14,892</div>
+    <div class="lbl">Ads & Trackers Blocked Today</div>
+  </div>
+</body>
+</html>
+
+```
+
 ### File: `app/product1_adblocker_extension/db/rules.json`
 ```json
 [
@@ -348,6 +348,58 @@ chrome.runtime.onInstalled.addListener(() => {
     { "name": "action", "type": "string", "required": true, "default": "block" },
     { "name": "priority", "type": "number", "required": true, "min": 1, "max": 100, "default": 1 },
     { "name": "enabled", "type": "boolean", "required": true, "default": true }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users.json`
+```json
+[
+  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
+  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
+  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
+  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
+  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages.json`
+```json
+[
+  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
+  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/messages_schema.json`
+```json
+{
+  "tableName": "messages",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "sender_email", "type": "string", "required": true },
+    { "name": "recipient_email", "type": "string", "required": true },
+    { "name": "subject", "type": "string", "required": true },
+    { "name": "body", "type": "string", "required": true },
+    { "name": "timestamp", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users_schema.json`
+```json
+{
+  "tableName": "users",
+  "columns": [
+    { "name": "id", "type": "number", "required": true },
+    { "name": "username", "type": "string", "required": true },
+    { "name": "email", "type": "string", "required": true },
+    { "name": "name", "type": "string", "required": false },
+    { "name": "role", "type": "string", "required": false }
   ]
 }
 
@@ -440,61 +492,6 @@ body {
   background: rgba(168, 85, 247, 0.4);
 }
 
-```
-
-### File: `app/src/main.tsx`
-```tsx
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './index.css';
-
-interface Props {
-  children?: ReactNode;
-}
-
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
-
-class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
-
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Uncaught Error in Dashboard:", error, errorInfo);
-  }
-
-  public render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '40px', background: '#090d16', color: '#f87171', fontFamily: 'monospace' }}>
-          <h2>⚠️ Dashboard Render Error Caught</h2>
-          <pre>{this.state.error?.toString()}</pre>
-          <pre>{this.state.error?.stack}</pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
-}
 ```
 
 ### File: `app/src/App.tsx`
@@ -1566,56 +1563,59 @@ export default function App() {
 ... [Content Truncated due to size limit] ...
 ```
 
-### File: `app/product3_email_chat_mvp/db/messages_schema.json`
-```json
-{
-  "tableName": "messages",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "sender_email", "type": "string", "required": true },
-    { "name": "recipient_email", "type": "string", "required": true },
-    { "name": "subject", "type": "string", "required": true },
-    { "name": "body", "type": "string", "required": true },
-    { "name": "timestamp", "type": "string", "required": true }
-  ]
+### File: `app/src/main.tsx`
+```tsx
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+interface Props {
+  children?: ReactNode;
 }
 
-```
-
-### File: `app/product3_email_chat_mvp/db/messages.json`
-```json
-[
-  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
-  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
-]
-
-```
-
-### File: `app/product3_email_chat_mvp/db/users_schema.json`
-```json
-{
-  "tableName": "users",
-  "columns": [
-    { "name": "id", "type": "number", "required": true },
-    { "name": "username", "type": "string", "required": true },
-    { "name": "email", "type": "string", "required": true },
-    { "name": "name", "type": "string", "required": false },
-    { "name": "role", "type": "string", "required": false }
-  ]
+interface State {
+  hasError: boolean;
+  error: Error | null;
 }
 
-```
+class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
-### File: `app/product3_email_chat_mvp/db/users.json`
-```json
-[
-  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
-  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
-  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
-  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
-  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
-]
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
 
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught Error in Dashboard:", error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px', background: '#090d16', color: '#f87171', fontFamily: 'monospace' }}>
+          <h2>⚠️ Dashboard Render Error Caught</h2>
+          <pre>{this.state.error?.toString()}</pre>
+          <pre>{this.state.error?.stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
 ```
 
 ### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
