@@ -86,15 +86,20 @@ module.exports = {
 };
 ```
 
-### File: `app/vite.config.ts`
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  base: '/',
-  plugins: [react()]
-});
+### File: `app/index.html`
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tech Hub</title>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
 ```
 
 ### File: `app/netlify.toml`
@@ -106,17 +111,20 @@ export default defineConfig({
   directory = "functions"
 ```
 
-### File: `app/tailwind.config.js`
-```js
-module.exports = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
+### File: `app/tsconfig.json`
+```json
+{"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
+```
+
+### File: `app/vite.config.ts`
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  base: '/',
+  plugins: [react()]
+});
 ```
 
 ### File: `app/package.json`
@@ -155,75 +163,17 @@ module.exports = {
 }
 ```
 
-### File: `app/index.html`
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tech Hub</title>
-</head>
-<body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-</body>
-</html>
-```
-
-### File: `app/tsconfig.json`
-```json
-{"compilerOptions": {"target": "es6", "lib": ["dom", "dom.iterable", "esnext"], "allowJs": true, "skipLibCheck": true, "esModuleInterop": false, "allowSyntheticDefaultImports": true, "strict": true, "forceConsistentCasingInFileNames": true, "noFallthroughCasesInSwitch": true, "module": "esnext", "moduleResolution": "node", "resolveJsonModule": true, "outDir": "build", "jsx": "react"}}
-```
-
-### File: `app/product1_adblocker_extension/background.js`
+### File: `app/tailwind.config.js`
 ```js
-// Background Service Worker - Declarative Net Request Rules synced with product1_adblocker_extension/db/rules.json
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("Product 1 - ShieldBlock AI Extension Activated!");
-  chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1, 2, 3, 4],
-    addRules: [
-      {
-        "id": 1,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*doubleclick.net*",
-          "resourceTypes": ["script", "image", "xmlhttprequest"]
-        }
-      },
-      {
-        "id": 2,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*google-analytics.com*",
-          "resourceTypes": ["script"]
-        }
-      },
-      {
-        "id": 3,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*connect.facebook.net*",
-          "resourceTypes": ["script"]
-        }
-      },
-      {
-        "id": 4,
-        "priority": 1,
-        "action": { "type": "block" },
-        "condition": {
-          "urlFilter": "*popads.net*",
-          "resourceTypes": ["script"]
-        }
-      }
-    ]
-  });
-});
-
+module.exports = {
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
 ```
 
 ### File: `app/product1_adblocker_extension/manifest.json`
@@ -279,6 +229,56 @@ chrome.runtime.onInstalled.addListener(() => {
     observer.observe(document.body, { childList: true, subtree: true });
   }
 })();
+
+```
+
+### File: `app/product1_adblocker_extension/background.js`
+```js
+// Background Service Worker - Declarative Net Request Rules synced with product1_adblocker_extension/db/rules.json
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("Product 1 - ShieldBlock AI Extension Activated!");
+  chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [1, 2, 3, 4],
+    addRules: [
+      {
+        "id": 1,
+        "priority": 1,
+        "action": { "type": "block" },
+        "condition": {
+          "urlFilter": "*doubleclick.net*",
+          "resourceTypes": ["script", "image", "xmlhttprequest"]
+        }
+      },
+      {
+        "id": 2,
+        "priority": 1,
+        "action": { "type": "block" },
+        "condition": {
+          "urlFilter": "*google-analytics.com*",
+          "resourceTypes": ["script"]
+        }
+      },
+      {
+        "id": 3,
+        "priority": 1,
+        "action": { "type": "block" },
+        "condition": {
+          "urlFilter": "*connect.facebook.net*",
+          "resourceTypes": ["script"]
+        }
+      },
+      {
+        "id": 4,
+        "priority": 1,
+        "action": { "type": "block" },
+        "condition": {
+          "urlFilter": "*popads.net*",
+          "resourceTypes": ["script"]
+        }
+      }
+    ]
+  });
+});
 
 ```
 
@@ -353,24 +353,41 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/product3_email_chat_mvp/db/users.json`
+### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
+```json
+{
+  "tableName": "blob_assets",
+  "columns": [
+    { "name": "id", "type": "number", "required": true, "min": 1 },
+    { "name": "filename", "type": "string", "required": true },
+    { "name": "type", "type": "string", "required": true, "default": "image" },
+    { "name": "url", "type": "string", "required": true },
+    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
+    { "name": "created_at", "type": "string", "required": true }
+  ]
+}
+
+```
+
+### File: `app/product2_github_blob_storage/db/blob_assets.json`
 ```json
 [
-  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
-  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
-  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
-  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
-  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
 ]
 
 ```
 
-### File: `app/product3_email_chat_mvp/db/messages.json`
+### File: `app/product3_email_chat_mvp/db/users_schema.json`
 ```json
-[
-  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
-  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
-]
+{
+  "tableName": "users",
+  "columns": [
+    { "name": "id", "type": "number", "required": true },
+    { "name": "username", "type": "string", "required": true },
+    { "name": "email", "type": "string", "required": true },
+    { "name": "name", "type": "string", "required": false },
+    { "name": "role", "type": "string", "required": false }
+  ]
+}
 
 ```
 
@@ -390,18 +407,24 @@ chrome.runtime.onInstalled.addListener(() => {
 
 ```
 
-### File: `app/product3_email_chat_mvp/db/users_schema.json`
+### File: `app/product3_email_chat_mvp/db/messages.json`
 ```json
-{
-  "tableName": "users",
-  "columns": [
-    { "name": "id", "type": "number", "required": true },
-    { "name": "username", "type": "string", "required": true },
-    { "name": "email", "type": "string", "required": true },
-    { "name": "name", "type": "string", "required": false },
-    { "name": "role", "type": "string", "required": false }
-  ]
-}
+[
+  { "id": 1, "sender_email": "aditya@example.com", "recipient_email": "team@antigravity.dev", "subject": "Product 03 Chat Initialization", "body": "Welcome to Email-based Micro Chat MVP!", "timestamp": "2026-08-03 22:30:00" },
+  { "id": 2, "sender_email": "team@antigravity.dev", "recipient_email": "aditya@example.com", "subject": "Re: Product 03 Chat Initialization", "body": "Real-time email threads integrated into isolated JSON DB.", "timestamp": "2026-08-03 22:31:00" }
+]
+
+```
+
+### File: `app/product3_email_chat_mvp/db/users.json`
+```json
+[
+  { "id": 1, "username": "team", "email": "team@antigravity.dev", "name": "Antigravity Engineering Team", "role": "team" },
+  { "id": 2, "username": "kuldeep", "email": "kuldeepswarnkar4@gmail.com", "name": "Kuldeep Swarnkar", "role": "super_admin" },
+  { "id": 3, "username": "aditya", "email": "adityajain8875389629@gmail.com", "name": "Aditya Jain", "role": "developer" },
+  { "id": 4, "username": "adityadhing9", "email": "adityadhing9@gmail.com", "name": "Aditya Dhing9", "role": "developer" },
+  { "id": 5, "username": "adityadhing76", "email": "adityadhing76@gmail.com", "name": "Aditya Dhing76", "role": "developer" }
+]
 
 ```
 
@@ -1616,27 +1639,4 @@ if (rootElement) {
     </ErrorBoundary>
   );
 }
-```
-
-### File: `app/product2_github_blob_storage/db/blob_assets_schema.json`
-```json
-{
-  "tableName": "blob_assets",
-  "columns": [
-    { "name": "id", "type": "number", "required": true, "min": 1 },
-    { "name": "filename", "type": "string", "required": true },
-    { "name": "type", "type": "string", "required": true, "default": "image" },
-    { "name": "url", "type": "string", "required": true },
-    { "name": "size", "type": "string", "required": true, "default": "1.2 MB" },
-    { "name": "created_at", "type": "string", "required": true }
-  ]
-}
-
-```
-
-### File: `app/product2_github_blob_storage/db/blob_assets.json`
-```json
-[
-]
-
 ```
